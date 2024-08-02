@@ -28,7 +28,7 @@ struct BulkImportView: View {
                         .foregroundColor(.red)
                 } else {
                     List(albums, id: \.localIdentifier) { album in
-                        NavigationLink(destination: AlbumPhotosView(viewModel: viewModel, person: $person, album: album, onImportComplete: onImportComplete)) {
+                        NavigationLink(destination: AlbumPhotosView(viewModel: viewModel, person: $person, album: album, onImportComplete: onImportComplete, dismissParent: { presentationMode.wrappedValue.dismiss() })) {
                             Text(album.localizedTitle ?? "Untitled Album")
                         }
                     }
@@ -73,6 +73,7 @@ struct AlbumPhotosView: View {
     @State private var importStartTime: Date?
     @State private var estimatedTimeRemaining: TimeInterval?
     @State private var averageTimePerPhoto: TimeInterval = 0
+    var dismissParent: (() -> Void)?
 
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 4)
 
@@ -209,7 +210,9 @@ struct AlbumPhotosView: View {
             print("Import completed")
             isLoading = false
             onImportComplete?()
-            presentationMode.wrappedValue.dismiss()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                dismissParent?()
+            }
         }
         
         importBatch(batchIndex: 0)

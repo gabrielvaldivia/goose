@@ -150,18 +150,17 @@ struct PersonDetailView: View {
                     if let image = sortedPhotos[safeIndex].image {
                         Spacer()
                         
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: geometry.size.height * 0.6)
-                            .onTapGesture {
-                                photoToDelete = sortedPhotos[safeIndex]
-                                showingDeleteAlert = true
-                            }
+                        NavigationLink(destination: FullScreenPhotoView(photo: sortedPhotos[safeIndex], onDelete: {
+                            deletePhoto(sortedPhotos[safeIndex])
+                        })) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: geometry.size.height * 0.6)
+                        }
                         
                         VStack {
-                            let age = viewModel.calculateAge(for: person, at: sortedPhotos[safeIndex].dateTaken)
-                            Text(formatAge(years: age.years, months: age.months, days: age.days))
+                            Text(formatAge())
                                 .font(.title3)
                             Text(formatDate(sortedPhotos[safeIndex].dateTaken))
                                 .font(.caption)
@@ -211,10 +210,17 @@ struct PersonDetailView: View {
                             .padding(.leading)
                         
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
-                            ForEach(Array(photos.prefix(6).enumerated()), id: \.element.id) { index, photo in
-                                if index < 5 || photos.count == 6 {
+                            ForEach(Array(photos.prefix(5)), id: \.id) { photo in
+                                NavigationLink(destination: FullScreenPhotoView(photo: photo, onDelete: {
+                                    deletePhoto(photo)
+                                })) {
                                     photoThumbnail(photo)
-                                } else {
+                                }
+                            }
+                            if photos.count > 5 {
+                                NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: { photo in
+                                    deletePhoto(photo)
+                                })) {
                                     remainingPhotosCount(photos.count - 5)
                                 }
                             }
@@ -262,22 +268,28 @@ struct PersonDetailView: View {
         var groupedPhotos: [(String, [Photo])] = []
 
         for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+            let components = calendar.dateComponents([.year, .month, .weekOfYear], from: person.dateOfBirth, to: photo.dateTaken)
             let years = components.year ?? 0
             let months = components.month ?? 0
 
             let sectionTitle: String
-            if years == 0 {
-                switch months {
-                case 0:
-                    sectionTitle = "Birth Month"
-                case 1...11:
-                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                default:
-                    sectionTitle = "1 Year"
+            if photo.dateTaken >= person.dateOfBirth {
+                if years == 0 {
+                    switch months {
+                    case 0:
+                        sectionTitle = "Birth Month"
+                    case 1...11:
+                        sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
+                    default:
+                        sectionTitle = "1 Year"
+                    }
+                } else {
+                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
             } else {
-                sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
+                let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+                sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
             }
 
             if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
@@ -287,18 +299,18 @@ struct PersonDetailView: View {
             }
         }
 
+        // Create the order array
+        let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
+        let monthOrder = (1...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
+        let pregnancyOrder = (1...40).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
+        
+        let order = yearOrder + monthOrder + ["Birth Month"] + pregnancyOrder
+
+        // Sort the grouped photos
         return groupedPhotos.sorted { (group1, group2) -> Bool in
-            let order = ["Birth Month"] + (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" }
-            if let index1 = order.firstIndex(of: group1.0), let index2 = order.firstIndex(of: group2.0) {
-                return index1 > index2
-            } else if order.contains(group1.0) {
-                return false
-            } else if order.contains(group2.0) {
-                return true
-            } else {
-                // For year sections, sort in descending order
-                return group1.0 > group2.0
-            }
+            let index1 = order.firstIndex(of: group1.0) ?? Int.max
+            let index2 = order.firstIndex(of: group2.0) ?? Int.max
+            return index1 < index2
         }
     }
     
@@ -357,24 +369,45 @@ struct PersonDetailView: View {
     }
     
     // Helper function to format age
-    private func formatAge(years: Int, months: Int, days: Int) -> String {
-        var components: [String] = []
+    private func formatAge() -> String {
+        let calendar = Calendar.current
+        let birthDate = person.dateOfBirth
         
-        if years > 0 {
-            components.append("\(years) year\(years == 1 ? "" : "s")")
+        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+        guard currentPhotoIndex < sortedPhotos.count else {
+            return "No photo selected"
         }
-        if months > 0 {
-            components.append("\(months) month\(months == 1 ? "" : "s")")
-        }
-        if days > 0 || (years == 0 && months == 0) {
+        
+        let currentPhoto = sortedPhotos[currentPhotoIndex]
+        
+        if currentPhoto.dateTaken >= birthDate {
+            let components = calendar.dateComponents([.year, .month, .day], from: birthDate, to: currentPhoto.dateTaken)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
+            let days = components.day ?? 0
+            
             if years == 0 && months == 0 && days == 0 {
-                components.append("Newborn")
+                return "Newborn"
+            }
+            
+            var ageComponents: [String] = []
+            if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
+            if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
+            if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
+            
+            return ageComponents.joined(separator: ", ")
+        } else {
+            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: currentPhoto.dateTaken, to: birthDate).weekOfYear ?? 0
+            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+            
+            if pregnancyWeek == 40 {
+                return "Newborn"
+            } else if pregnancyWeek > 0 {
+                return "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
             } else {
-                components.append("\(days) day\(days == 1 ? "" : "s")")
+                return "Before pregnancy"
             }
         }
-        
-        return components.joined(separator: ", ")
     }
 }
 

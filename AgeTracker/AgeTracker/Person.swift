@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import AVFoundation
 
 struct Person: Identifiable, Codable, Equatable {
     let id: UUID
@@ -33,25 +34,41 @@ struct Person: Identifiable, Codable, Equatable {
 
 struct Photo: Identifiable, Codable, Equatable {
     let id: UUID
-    let imageName: String
+    let fileName: String
     let dateTaken: Date
+    let isVideo: Bool
     
     var image: UIImage? {
-        let path = Photo.getDocumentsDirectory().appendingPathComponent(imageName).path
-        print("Loading image from path: \(path)")
+        guard !isVideo else { return nil }
+        let path = Photo.getDocumentsDirectory().appendingPathComponent(fileName).path
         return UIImage(contentsOfFile: path)
+    }
+    
+    var videoURL: URL? {
+        guard isVideo else { return nil }
+        return Photo.getDocumentsDirectory().appendingPathComponent(fileName)
     }
     
     init(id: UUID = UUID(), image: UIImage, dateTaken: Date) {
         self.id = id
-        self.imageName = "\(id).jpg"
+        self.fileName = "\(id).jpg"
         self.dateTaken = dateTaken
+        self.isVideo = false
         
         if let data = image.jpegData(compressionQuality: 0.8) {
-            let url = Photo.getDocumentsDirectory().appendingPathComponent(imageName)
-            print("Saving image to path: \(url.path)")
+            let url = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
             try? data.write(to: url)
         }
+    }
+    
+    init(id: UUID = UUID(), videoURL: URL, dateTaken: Date) {
+        self.id = id
+        self.fileName = "\(id).mov"
+        self.dateTaken = dateTaken
+        self.isVideo = true
+        
+        let destinationURL = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
+        try? FileManager.default.copyItem(at: videoURL, to: destinationURL)
     }
     
     static func getDocumentsDirectory() -> URL {
@@ -60,7 +77,8 @@ struct Photo: Identifiable, Codable, Equatable {
     
     static func == (lhs: Photo, rhs: Photo) -> Bool {
         return lhs.id == rhs.id &&
-               lhs.imageName == rhs.imageName &&
-               lhs.dateTaken == rhs.dateTaken
+               lhs.fileName == rhs.fileName &&
+               lhs.dateTaken == rhs.dateTaken &&
+               lhs.isVideo == rhs.isVideo
     }
 }
