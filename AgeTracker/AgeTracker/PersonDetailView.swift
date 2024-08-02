@@ -18,6 +18,9 @@ struct PersonDetailView: View {
     @State private var imageMeta: [String: Any]?
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
+    @State private var currentPhotoIndex = 0
+    @State private var lastFeedbackDate: Date?
+    let impact = UIImpactFeedbackGenerator(style: .light)
 
     init(person: Person, viewModel: PersonViewModel) {
         _person = State(initialValue: person)
@@ -25,34 +28,66 @@ struct PersonDetailView: View {
     }
     
     var body: some View {
-        ScrollView {
+        GeometryReader { geometry in
             VStack {
-                ForEach(person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })) { photo in
-                    if let image = photo.image {
+                if !person.photos.isEmpty {
+                    let sortedPhotos = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+                    if let image = sortedPhotos[currentPhotoIndex].image {
+                        Spacer()
+                        
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: geometry.size.height * 0.6)
+                            .onTapGesture {
+                                photoToDelete = sortedPhotos[currentPhotoIndex]
+                                showingDeleteAlert = true
+                            }
+                        
                         VStack {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .onTapGesture {
-                                    photoToDelete = photo
-                                    showingDeleteAlert = true
-                                }
-                            Text("\(viewModel.calculateAge(for: person, at: photo.dateTaken).years) years, \(viewModel.calculateAge(for: person, at: photo.dateTaken).months) months, \(viewModel.calculateAge(for: person, at: photo.dateTaken).days) days")
-                            Text("Photo taken on: \(formatDate(photo.dateTaken))")
+                            let age = viewModel.calculateAge(for: person, at: sortedPhotos[currentPhotoIndex].dateTaken)
+                            Text(formatAge(years: age.years, months: age.months, days: age.days))
+                                .font(.title3)
+                            Text(formatDate(sortedPhotos[currentPhotoIndex].dateTaken))
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                         .padding()
+                        
+                        Spacer()
+                        
+                        Slider(value: Binding(
+                            get: { Double(sortedPhotos.count - 1 - currentPhotoIndex) },
+                            set: { currentPhotoIndex = sortedPhotos.count - 1 - Int($0) }
+                        ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                        .padding()
+                        .onChange(of: currentPhotoIndex) { newValue in
+                            if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
+                                return
+                            }
+                            lastFeedbackDate = Date()
+                            impact.prepare()
+                            impact.impactOccurred()
+                        }
                     } else {
                         Text("Failed to load image")
                     }
+                } else {
+                    Text("No photos available")
                 }
             }
         }
-        .navigationTitle(person.name)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button(action: { 
-                showingImagePicker = true 
-            }) {
-                Image(systemName: "camera")
+            ToolbarItem(placement: .principal) {
+                Text(person.name).font(.headline)
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { 
+                    showingImagePicker = true 
+                }) {
+                    Image(systemName: "camera")
+                }
             }
         }
         .sheet(isPresented: $showingImagePicker) {
@@ -67,7 +102,6 @@ struct PersonDetailView: View {
             }
         }
         .onAppear {
-            // Ensure we have the latest data
             if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
                 person = updatedPerson
             }
@@ -128,5 +162,19 @@ struct PersonDetailView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+    
+    private func formatAge(years: Int, months: Int, days: Int) -> String {
+        var components: [String] = []
+        
+        if years > 0 {
+            components.append("\(years) year\(years == 1 ? "" : "s")")
+        }
+        if months > 0 {
+            components.append("\(months) month\(months == 1 ? "" : "s")")
+        }
+        components.append("\(days) day\(days == 1 ? "" : "s")")
+        
+        return components.joined(separator: ", ")
     }
 }
