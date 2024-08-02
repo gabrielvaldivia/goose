@@ -94,13 +94,10 @@ struct PersonDetailView: View {
         }
         // Sheet presentation for bulk import
         .sheet(isPresented: $showingBulkImport) {
-            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: { albumIdentifier in
-                if let albumIdentifier = albumIdentifier {
-                    person.syncedAlbumIdentifier = albumIdentifier
-                } else {
-                    person.syncedAlbumIdentifier = nil
+            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                    person = updatedPerson
                 }
-                viewModel.updatePerson(person)
             })
         }
         // Sheet presentation for settings
