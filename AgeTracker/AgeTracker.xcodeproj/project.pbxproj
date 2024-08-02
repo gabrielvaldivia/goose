@@ -19,6 +19,7 @@
 		4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */; };
 		4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */; };
 		4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */; };
+		4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7602C5D62E4001FA4E4 /* BulkImportView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +55,7 @@
 		4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPersonView.swift; sourceTree = "<group>"; };
 		4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonDetailView.swift; sourceTree = "<group>"; };
 		4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
+		4015B7602C5D62E4001FA4E4 /* BulkImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkImportView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +115,7 @@
 				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
 				4015B7302C5C5628001FA4E4 /* Assets.xcassets */,
 				4015B7322C5C5628001FA4E4 /* Preview Content */,
+				4015B7602C5D62E4001FA4E4 /* BulkImportView.swift */,
 			);
 			path = AgeTracker;
 			sourceTree = "<group>";
@@ -275,6 +278,7 @@
 				4015B7572C5C5644001FA4E4 /* Person.swift in Sources */,
 				4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */,
 				4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */,
+				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* AgeTrackerApp.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
