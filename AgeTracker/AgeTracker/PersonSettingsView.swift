@@ -18,6 +18,7 @@ struct PersonSettingsView: View {
     @State private var albums: [PHAssetCollection] = []
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
+    @State private var onBulkImportComplete: ((String?) -> Void)?
 
     init(viewModel: PersonViewModel, person: Binding<Person>) {
         self.viewModel = viewModel
@@ -70,6 +71,10 @@ struct PersonSettingsView: View {
         .onAppear {
             fetchAlbums()
             fetchSelectedAlbum()
+            onBulkImportComplete = { albumIdentifier in
+                self.person.syncedAlbumIdentifier = albumIdentifier
+                self.fetchSelectedAlbum()
+            }
         }
     }
 

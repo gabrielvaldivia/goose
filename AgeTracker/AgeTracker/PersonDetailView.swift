@@ -94,7 +94,14 @@ struct PersonDetailView: View {
         }
         // Sheet presentation for bulk import
         .sheet(isPresented: $showingBulkImport) {
-            BulkImportView(viewModel: viewModel, person: $person)
+            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: { albumIdentifier in
+                if let albumIdentifier = albumIdentifier {
+                    person.syncedAlbumIdentifier = albumIdentifier
+                } else {
+                    person.syncedAlbumIdentifier = nil
+                }
+                viewModel.updatePerson(person)
+            })
         }
         // Sheet presentation for settings
         .sheet(isPresented: $showingSettings) {
@@ -141,7 +148,9 @@ struct PersonDetailView: View {
             VStack {
                 if !person.photos.isEmpty {
                     let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                    if let image = sortedPhotos[currentPhotoIndex].image {
+                    let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
+                    
+                    if let image = sortedPhotos[safeIndex].image {
                         Spacer()
                         
                         Image(uiImage: image)
@@ -149,15 +158,15 @@ struct PersonDetailView: View {
                             .scaledToFit()
                             .frame(height: geometry.size.height * 0.6)
                             .onTapGesture {
-                                photoToDelete = sortedPhotos[currentPhotoIndex]
+                                photoToDelete = sortedPhotos[safeIndex]
                                 showingDeleteAlert = true
                             }
                         
                         VStack {
-                            let age = viewModel.calculateAge(for: person, at: sortedPhotos[currentPhotoIndex].dateTaken)
+                            let age = viewModel.calculateAge(for: person, at: sortedPhotos[safeIndex].dateTaken)
                             Text(formatAge(years: age.years, months: age.months, days: age.days))
                                 .font(.title3)
-                            Text(formatDate(sortedPhotos[currentPhotoIndex].dateTaken))
+                            Text(formatDate(sortedPhotos[safeIndex].dateTaken))
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
@@ -166,7 +175,7 @@ struct PersonDetailView: View {
                         Spacer()
                         
                         Slider(value: Binding(
-                            get: { Double(currentPhotoIndex) },
+                            get: { Double(safeIndex) },
                             set: { 
                                 currentPhotoIndex = Int($0)
                                 latestPhotoIndex = currentPhotoIndex
@@ -190,7 +199,7 @@ struct PersonDetailView: View {
             }
         }
         .onAppear {
-            currentPhotoIndex = latestPhotoIndex
+            currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
         }
     }
 

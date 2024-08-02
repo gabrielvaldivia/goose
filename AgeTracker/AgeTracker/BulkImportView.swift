@@ -21,12 +21,18 @@ struct BulkImportView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var syncWithAlbum = false
     @State private var importAll = false
+    var onImportComplete: ((String?) -> Void)?
+    @State private var importProgress: Float = 0
     
     var body: some View {
         NavigationView {
             VStack {
                 if isLoading {
-                    ProgressView("Loading...")
+                    VStack {
+                        ProgressView("Importing photos...", value: importProgress, total: 1.0)
+                        Text("\(Int(importProgress * 100))%")
+                    }
+                    .padding()
                 } else if let errorMessage = errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.red)
@@ -62,6 +68,7 @@ struct BulkImportView: View {
                 }
             }
             .navigationBarTitle("Bulk Import")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 leading: Button("Cancel") {
                     presentationMode.wrappedValue.dismiss()
@@ -125,38 +132,54 @@ struct BulkImportView: View {
         let assetsToImport = selectedPhotos.filter { selectedAssets.contains($0.localIdentifier) }
         print("Importing \(assetsToImport.count) photos")
         
-        let group = DispatchGroup()
+        let batchSize = 10 // Reduced batch size
+        let totalBatches = (assetsToImport.count + batchSize - 1) / batchSize
         
-        for asset in assetsToImport {
-            group.enter()
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
+        func importBatch(batchIndex: Int) {
+            let start = batchIndex * batchSize
+            let end = min(start + batchSize, assetsToImport.count)
+            let batch = Array(assetsToImport[start..<end])
             
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                defer { group.leave() }
-                if let image = image {
-                    print("Successfully retrieved image for asset: \(asset.localIdentifier)")
-                    print("Image size: \(image.size.width) x \(image.size.height)")
-                    viewModel.addPhoto(to: &person, image: image, dateTaken: asset.creationDate ?? Date())
-                } else {
-                    print("Failed to import photo for asset: \(asset.localIdentifier)")
-                    if let error = info?[PHImageErrorKey] as? Error {
-                        print("Error: \(error.localizedDescription)")
+            for (index, asset) in batch.enumerated() {
+                let options = PHImageRequestOptions()
+                options.isSynchronous = false
+                options.deliveryMode = .highQualityFormat
+                options.isNetworkAccessAllowed = true
+                
+                PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+                    if let image = image {
+                        print("Successfully retrieved image for asset: \(asset.localIdentifier)")
+                        self.viewModel.addPhoto(to: &self.person, image: image, dateTaken: asset.creationDate ?? Date())
+                    } else {
+                        print("Failed to import photo for asset: \(asset.localIdentifier)")
                     }
-                    if let isDegraded = info?[PHImageResultIsDegradedKey] as? Bool, isDegraded {
-                        print("Image is degraded")
+                    
+                    let progress = Float(batchIndex * batchSize + index + 1) / Float(assetsToImport.count)
+                    DispatchQueue.main.async {
+                        self.importProgress = progress
+                        print("Progress: \(Int(progress * 100))%")
+                    }
+                    
+                    if index == batch.count - 1 {
+                        if batchIndex + 1 < totalBatches {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                importBatch(batchIndex: batchIndex + 1)
+                            }
+                        } else {
+                            finishImport()
+                        }
                     }
                 }
             }
         }
         
-        group.notify(queue: .main) {
+        func finishImport() {
             if syncWithAlbum, let selectedAlbum = selectedAlbum {
                 person.syncedAlbumIdentifier = selectedAlbum.localIdentifier
+                onImportComplete?(selectedAlbum.localIdentifier)
             } else {
                 person.syncedAlbumIdentifier = nil
+                onImportComplete?(nil)
             }
             
             viewModel.updatePerson(person)
@@ -169,6 +192,8 @@ struct BulkImportView: View {
             isLoading = false
             presentationMode.wrappedValue.dismiss()
         }
+        
+        importBatch(batchIndex: 0)
     }
 }
 
