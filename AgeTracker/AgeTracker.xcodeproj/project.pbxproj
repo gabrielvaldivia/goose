@@ -20,6 +20,7 @@
 		4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */; };
 		4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */; };
 		4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7602C5D62E4001FA4E4 /* BulkImportView.swift */; };
+		4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,8 @@
 		4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonDetailView.swift; sourceTree = "<group>"; };
 		4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 		4015B7602C5D62E4001FA4E4 /* BulkImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkImportView.swift; sourceTree = "<group>"; };
+		4015B7642C5D69C5001FA4E4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,9 +109,11 @@
 		4015B72B2C5C5628001FA4E4 /* AgeTracker */ = {
 			isa = PBXGroup;
 			children = (
+				4015B7642C5D69C5001FA4E4 /* Info.plist */,
 				4015B72C2C5C5628001FA4E4 /* AgeTrackerApp.swift */,
 				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
+				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
@@ -282,6 +287,7 @@
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* AgeTrackerApp.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
+				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,
 				4015B7592C5C5663001FA4E4 /* PersonViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -449,6 +455,7 @@
 				DEVELOPMENT_TEAM = RWC965TCNN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgeTracker/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -480,6 +487,7 @@
 				DEVELOPMENT_TEAM = RWC965TCNN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgeTracker/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

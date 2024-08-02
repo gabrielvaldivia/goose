@@ -27,6 +27,7 @@ struct PersonDetailView: View {
     let impact = UIImpactFeedbackGenerator(style: .light)
     @State private var selectedView = 0 // 0 for All, 1 for Years
     @State private var showingBulkImport = false // New state variable
+    @State private var showingSettings = false // New state variable
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -62,22 +63,31 @@ struct PersonDetailView: View {
                 Text(person.name).font(.headline)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button(action: { 
-                        showingImagePicker = true 
-                    }) {
-                        Label("Add Photo", systemImage: "camera")
-                    }
+                HStack {
                     Button(action: {
-                        showingBulkImport = true
+                        showingSettings = true
                     }) {
-                        Label("Bulk Import", systemImage: "square.and.arrow.down")
+                        Image(systemName: "gear")
                     }
-                } label: {
-                    Image(systemName: "plus")
+                    Menu {
+                        Button(action: { 
+                            showingImagePicker = true 
+                        }) {
+                            Label("Add Photo", systemImage: "camera")
+                        }
+                        Button(action: {
+                            showingBulkImport = true
+                        }) {
+                            Label("Bulk Import", systemImage: "square.and.arrow.down")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(leading: CustomBackButton())
         // Sheet presentation for image picker
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(image: $inputImage, imageMeta: $imageMeta, isPresented: $showingImagePicker)
@@ -85,6 +95,12 @@ struct PersonDetailView: View {
         // Sheet presentation for bulk import
         .sheet(isPresented: $showingBulkImport) {
             BulkImportView(viewModel: viewModel, person: $person)
+        }
+        // Sheet presentation for settings
+        .sheet(isPresented: $showingSettings) {
+            NavigationView {
+                PersonSettingsView(viewModel: viewModel, person: $person)
+            }
         }
         // Image selection handler
         .onChange(of: inputImage) { newImage in
@@ -353,5 +369,18 @@ struct PersonDetailView: View {
         }
         
         return components.joined(separator: ", ")
+    }
+}
+
+struct CustomBackButton: View {
+    @Environment(\.presentationMode) var presentationMode
+
+    var body: some View {
+        Button(action: {
+            presentationMode.wrappedValue.dismiss()
+        }) {
+            Image(systemName: "chevron.left")
+                .foregroundColor(.blue)
+        }
     }
 }

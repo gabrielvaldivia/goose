@@ -19,6 +19,8 @@ struct BulkImportView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @Environment(\.presentationMode) var presentationMode
+    @State private var syncWithAlbum = false
+    @State private var importAll = false
     
     var body: some View {
         NavigationView {
@@ -38,7 +40,16 @@ struct BulkImportView: View {
                     .pickerStyle(MenuPickerStyle())
                     .padding()
                     
-                    if let _ = selectedAlbum {
+                    if let selectedAlbum = selectedAlbum {
+                        Toggle("Sync with Album", isOn: $syncWithAlbum)
+                            .padding()
+                        
+                        Toggle("Import All Photos", isOn: $importAll)
+                            .padding()
+                            .onChange(of: importAll) { newValue in
+                                selectedAssets = newValue ? Set(selectedPhotos.map { $0.localIdentifier }) : []
+                            }
+                        
                         List {
                             ForEach(selectedPhotos, id: \.localIdentifier) { asset in
                                 AssetThumbnailView(asset: asset, isSelected: binding(for: asset))
@@ -110,16 +121,21 @@ struct BulkImportView: View {
     }
     
     private func importSelectedPhotos() {
+        isLoading = true
         let assetsToImport = selectedPhotos.filter { selectedAssets.contains($0.localIdentifier) }
         print("Importing \(assetsToImport.count) photos")
         
+        let group = DispatchGroup()
+        
         for asset in assetsToImport {
+            group.enter()
             let options = PHImageRequestOptions()
-            options.isSynchronous = true
+            options.isSynchronous = false
             options.deliveryMode = .highQualityFormat
             options.isNetworkAccessAllowed = true
             
             PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+                defer { group.leave() }
                 if let image = image {
                     print("Successfully retrieved image for asset: \(asset.localIdentifier)")
                     print("Image size: \(image.size.width) x \(image.size.height)")
@@ -136,12 +152,23 @@ struct BulkImportView: View {
             }
         }
         
-        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-            person = updatedPerson
+        group.notify(queue: .main) {
+            if syncWithAlbum, let selectedAlbum = selectedAlbum {
+                person.syncedAlbumIdentifier = selectedAlbum.localIdentifier
+            } else {
+                person.syncedAlbumIdentifier = nil
+            }
+            
+            viewModel.updatePerson(person)
+            
+            if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                person = updatedPerson
+            }
+            
+            print("Import completed")
+            isLoading = false
+            presentationMode.wrappedValue.dismiss()
         }
-        
-        print("Import completed")
-        presentationMode.wrappedValue.dismiss()
     }
 }
 

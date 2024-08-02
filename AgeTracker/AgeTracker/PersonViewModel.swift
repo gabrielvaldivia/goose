@@ -175,9 +175,77 @@ class PersonViewModel: ObservableObject {
             }
         }
     }
+    
+    func syncAlbums(completion: @escaping (Bool) -> Void) {
+        let group = DispatchGroup()
+        var success = true
+        
+        for person in people {
+            if let albumIdentifier = person.syncedAlbumIdentifier,
+               let album = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [albumIdentifier], options: nil).firstObject {
+                group.enter()
+                fetchNewPhotosFromAlbum(album, for: person) { result in
+                    if !result {
+                        success = false
+                    }
+                    group.leave()
+                }
+            }
+        }
+        
+        group.notify(queue: .main) {
+            completion(success)
+        }
+    }
+    
+    private func fetchNewPhotosFromAlbum(_ album: PHAssetCollection, for person: Person, completion: @escaping (Bool) -> Void) {
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let assets = PHAsset.fetchAssets(in: album, options: fetchOptions)
+        
+        var success = true
+        let group = DispatchGroup()
+        
+        assets.enumerateObjects { (asset, _, stop) in
+            if person.photos.contains(where: { $0.dateTaken == asset.creationDate }) {
+                stop.pointee = true
+                return
+            }
+            
+            group.enter()
+            let options = PHImageRequestOptions()
+            options.isSynchronous = false
+            options.deliveryMode = .highQualityFormat
+            
+            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, _ in
+                if let image = image {
+                    var updatedPerson = person
+                    self.addPhoto(to: &updatedPerson, image: image, dateTaken: asset.creationDate ?? Date())
+                    self.updatePerson(updatedPerson)
+                } else {
+                    success = false
+                }
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            completion(success)
+        }
+    }
+    
+    func fetchAlbum(withIdentifier identifier: String, completion: @escaping (Result<PHAssetCollection, Error>) -> Void) {
+        let result = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [identifier], options: nil)
+        if let album = result.firstObject {
+            completion(.success(album))
+        } else {
+            completion(.failure(PhotoAccessError.albumNotFound))
+        }
+    }
 }
 
 enum PhotoAccessError: Error {
     case denied
     case unknown
+    case albumNotFound
 }

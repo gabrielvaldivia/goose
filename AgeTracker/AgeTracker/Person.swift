@@ -8,11 +8,12 @@
 import Foundation
 import UIKit
 
-struct Person: Identifiable, Codable {
+struct Person: Identifiable, Codable, Equatable {
     let id: UUID
-    let name: String
-    let dateOfBirth: Date
+    var name: String
+    var dateOfBirth: Date
     var photos: [Photo]
+    var syncedAlbumIdentifier: String?
     
     init(name: String, dateOfBirth: Date) {
         self.id = UUID()
@@ -20,9 +21,17 @@ struct Person: Identifiable, Codable {
         self.dateOfBirth = dateOfBirth
         self.photos = []
     }
+    
+    static func == (lhs: Person, rhs: Person) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.name == rhs.name &&
+               lhs.dateOfBirth == rhs.dateOfBirth &&
+               lhs.photos == rhs.photos &&
+               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier
+    }
 }
 
-struct Photo: Identifiable, Codable {
+struct Photo: Identifiable, Codable, Equatable {
     let id: UUID
     let imageName: String
     let dateTaken: Date
@@ -47,5 +56,11 @@ struct Photo: Identifiable, Codable {
     
     static func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+    
+    static func == (lhs: Photo, rhs: Photo) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.imageName == rhs.imageName &&
+               lhs.dateTaken == rhs.dateTaken
     }
 }
