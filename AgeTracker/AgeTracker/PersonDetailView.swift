@@ -158,6 +158,7 @@ struct PersonDetailView: View {
                                 .scaledToFit()
                                 .frame(height: geometry.size.height * 0.6)
                         }
+                        .frame(width: geometry.size.width) // Center the image horizontally
                         
                         VStack {
                             Text(formatAge())
@@ -170,21 +171,23 @@ struct PersonDetailView: View {
                         
                         Spacer()
                         
-                        Slider(value: Binding(
-                            get: { Double(safeIndex) },
-                            set: { 
-                                currentPhotoIndex = Int($0)
-                                latestPhotoIndex = currentPhotoIndex
+                        if sortedPhotos.count > 1 {
+                            Slider(value: Binding(
+                                get: { Double(safeIndex) },
+                                set: { 
+                                    currentPhotoIndex = Int($0)
+                                    latestPhotoIndex = currentPhotoIndex
+                                }
+                            ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                            .padding()
+                            .onChange(of: currentPhotoIndex) { newValue in
+                                if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
+                                    return
+                                }
+                                lastFeedbackDate = Date()
+                                impact.prepare()
+                                impact.impactOccurred()
                             }
-                        ), in: 0...Double(sortedPhotos.count - 1), step: 1)
-                        .padding()
-                        .onChange(of: currentPhotoIndex) { newValue in
-                            if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
-                                return
-                            }
-                            lastFeedbackDate = Date()
-                            impact.prepare()
-                            impact.impactOccurred()
                         }
                     } else {
                         Text("Failed to load image")
@@ -193,6 +196,7 @@ struct PersonDetailView: View {
                     Text("No photos available")
                 }
             }
+            .frame(width: geometry.size.width) // Center the VStack horizontally
         }
         .onAppear {
             currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
