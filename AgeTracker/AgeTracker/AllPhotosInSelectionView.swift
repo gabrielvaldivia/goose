@@ -12,32 +12,50 @@ struct AllPhotosInSectionView: View {
     let sectionTitle: String
     let photos: [Photo]
     var onDelete: (Photo) -> Void
+    @State private var isShowingFullScreen = false
+    @State private var selectedPhotoIndex: Int?
     
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
     
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(photos) { photo in
-                    NavigationLink(destination: FullScreenPhotoView(photo: photo, onDelete: {
-                        onDelete(photo)
-                    })) {
-                        if let image = photo.image {
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        } else {
-                            Color.gray
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                    photoThumbnail(photo)
+                        .onTapGesture {
+                            selectedPhotoIndex = index
+                            isShowingFullScreen = true
                         }
-                    }
                 }
             }
             .padding()
         }
         .navigationTitle(sectionTitle)
+        .fullScreenCover(isPresented: $isShowingFullScreen) {
+            if let index = selectedPhotoIndex {
+                FullScreenPhotoView(
+                    photo: photos[index],
+                    currentIndex: index,
+                    photos: photos,
+                    onDelete: onDelete
+                )
+            }
+        }
+    }
+    
+    private func photoThumbnail(_ photo: Photo) -> some View {
+        Group {
+            if let image = photo.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 100, height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                Color.gray
+                    .frame(width: 100, height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
     }
 }

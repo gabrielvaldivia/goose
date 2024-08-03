@@ -14,30 +14,42 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    ForEach(viewModel.people) { person in
-                        PersonItemView(person: person, viewModel: viewModel)
-                            .onDrag {
-                                self.dragging = person
-                                return NSItemProvider(object: person.id.uuidString as NSString)
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack {
+                        Spacer(minLength: 0)
+                        
+                        LazyVStack(spacing: 20) {
+                            ForEach(viewModel.people) { person in
+                                PersonItemView(person: person, viewModel: viewModel)
+                                    .onDrag {
+                                        self.dragging = person
+                                        return NSItemProvider(object: person.id.uuidString as NSString)
+                                    } preview: {
+                                        DragPreviewView(person: person)
+                                    }
+                                    .onDrop(of: [.text], delegate: DropViewDelegate(item: person, items: $viewModel.people, dragging: $dragging))
                             }
-                            .onDrop(of: [.text], delegate: DropViewDelegate(item: person, items: $viewModel.people, dragging: $dragging))
-                    }
-                    
-                    Button(action: { showingAddPerson = true }) {
-                        VStack {
-                            Image(systemName: "plus.circle.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 60, height: 60)
-                                .foregroundColor(.blue)
-                            Text("Add Person")
-                                .foregroundColor(.blue)
+                            
+                            Button(action: { showingAddPerson = true }) {
+                                VStack {
+                                    Image(systemName: "plus.circle.fill")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 60, height: 60)
+                                        .foregroundColor(.blue)
+                                    Text("Add Person")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding()
                         }
+                        
+                        Spacer(minLength: 0)
                     }
+                    .frame(minHeight: geometry.size.height)
+                    .padding(.vertical)
                 }
-                .padding()
             }
             .navigationTitle("Age Tracker")
             .navigationBarTitleDisplayMode(.inline)
@@ -70,7 +82,23 @@ struct PersonItemView: View {
                 }
                 Text(person.name)
                     .foregroundColor(.primary)
+                Text(calculateAge())
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
+        }
+    }
+    
+    private func calculateAge() -> String {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: Date())
+        let years = ageComponents.year ?? 0
+        let months = ageComponents.month ?? 0
+        
+        if years == 0 {
+            return "\(months) month\(months == 1 ? "" : "s") old"
+        } else {
+            return "\(years) year\(years == 1 ? "" : "s") old"
         }
     }
 }
@@ -99,6 +127,35 @@ struct DropViewDelegate: DropDelegate {
     
     func dropUpdated(info: DropInfo) -> DropProposal? {
         return DropProposal(operation: .move)
+    }
+}
+
+struct DragPreviewView: View {
+    let person: Person
+    
+    var body: some View {
+        VStack {
+            if let latestPhoto = person.photos.last?.image {
+                Image(uiImage: latestPhoto)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 60, height: 60)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(.gray)
+            }
+            Text(person.name)
+                .font(.caption)
+                .foregroundColor(.primary)
+        }
+        .padding(8)
+        .background(Color.white)
+        .cornerRadius(10)
+        .shadow(radius: 5)
     }
 }
 

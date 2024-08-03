@@ -10,6 +10,7 @@ import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
 import Photos
+import UIKit
 
 // Main view struct
 struct PersonDetailView: View {
@@ -21,13 +22,16 @@ struct PersonDetailView: View {
     @State private var imageMeta: [String: Any]?
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
-    @State private var currentPhotoIndex = 0
+    @State private var currentPhotoIndex: Int = 0
     @State private var latestPhotoIndex = 0 // New state variable
     @State private var lastFeedbackDate: Date?
     let impact = UIImpactFeedbackGenerator(style: .light)
     @State private var selectedView = 0 // 0 for All, 1 for Years
     @State private var showingBulkImport = false // New state variable
     @State private var showingSettings = false // New state variable
+    @State private var isShowingFullScreen = false
+    @State private var selectedPhotoIndex: Int? = nil
+    @Namespace private var animation
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -40,102 +44,115 @@ struct PersonDetailView: View {
     
     // Main body of the view
     var body: some View {
-        VStack {
-            // Segmented control for view selection
-            Picker("View", selection: $selectedView) {
-                Text("All").tag(0)
-                Text("Years").tag(1)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding()
+        GeometryReader { geometry in
+            VStack {
+                // Segmented control for view selection
+                Picker("View", selection: $selectedView) {
+                    Text("All").tag(0)
+                    Text("Years").tag(1)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
 
-            // Conditional view based on selection
-            if selectedView == 0 {
-                allPhotosView
-            } else {
-                yearsView
+                // Conditional view based on selection
+                if selectedView == 0 {
+                    allPhotosView
+                } else {
+                    yearsView
+                }
             }
-        }
-        // Navigation and toolbar setup
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(person.name).font(.headline)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack {
-                    Button(action: {
-                        showingSettings = true
-                    }) {
-                        Image(systemName: "gear")
-                    }
-                    Menu {
-                        Button(action: { 
-                            showingImagePicker = true 
-                        }) {
-                            Label("Add Photo", systemImage: "camera")
-                        }
+            // Navigation and toolbar setup
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(person.name).font(.headline)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack {
                         Button(action: {
-                            showingBulkImport = true
+                            showingSettings = true
                         }) {
-                            Label("Bulk Import", systemImage: "square.and.arrow.down")
+                            Image(systemName: "gear")
                         }
-                    } label: {
-                        Image(systemName: "plus")
+                        Menu {
+                            Button(action: { 
+                                showingImagePicker = true 
+                            }) {
+                                Label("Add Photo", systemImage: "camera")
+                            }
+                            Button(action: {
+                                showingBulkImport = true
+                            }) {
+                                Label("Bulk Import", systemImage: "square.and.arrow.down")
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
-        }
-        .navigationBarBackButtonHidden(true)
-        .navigationBarItems(leading: CustomBackButton())
-        // Sheet presentation for image picker
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $inputImage, imageMeta: $imageMeta, isPresented: $showingImagePicker)
-        }
-        // Sheet presentation for bulk import
-        .sheet(isPresented: $showingBulkImport) {
-            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+            .navigationBarBackButtonHidden(true)
+            .navigationBarItems(leading: CustomBackButton())
+            // Sheet presentation for image picker
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(image: $inputImage, imageMeta: $imageMeta, isPresented: $showingImagePicker)
+            }
+            // Sheet presentation for bulk import
+            .sheet(isPresented: $showingBulkImport) {
+                BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                    if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                        person = updatedPerson
+                    }
+                })
+            }
+            // Sheet presentation for settings
+            .sheet(isPresented: $showingSettings) {
+                NavigationView {
+                    PersonSettingsView(viewModel: viewModel, person: $person)
+                }
+            }
+            // Image selection handler
+            .onChange(of: inputImage) { newImage in
+                if let newImage = newImage {
+                    print("Image selected: \(newImage)")
+                    loadImage()
+                } else {
+                    print("No image selected")
+                }
+            }
+            // View appearance handler
+            .onAppear {
                 if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
                     person = updatedPerson
+                    let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                    latestPhotoIndex = sortedPhotos.count - 1
+                    currentPhotoIndex = latestPhotoIndex
                 }
-            })
-        }
-        // Sheet presentation for settings
-        .sheet(isPresented: $showingSettings) {
-            NavigationView {
-                PersonSettingsView(viewModel: viewModel, person: $person)
             }
-        }
-        // Image selection handler
-        .onChange(of: inputImage) { newImage in
-            if let newImage = newImage {
-                print("Image selected: \(newImage)")
-                loadImage()
-            } else {
-                print("No image selected")
+            // Delete photo alert
+            .alert(isPresented: $showingDeleteAlert) {
+                Alert(
+                    title: Text("Delete Photo"),
+                    message: Text("Are you sure you want to delete this photo?"),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let photoToDelete = photoToDelete {
+                            deletePhoto(photoToDelete)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
             }
-        }
-        // View appearance handler
-        .onAppear {
-            if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                person = updatedPerson
-                let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                latestPhotoIndex = sortedPhotos.count - 1
-                currentPhotoIndex = latestPhotoIndex
+            .fullScreenCover(item: Binding<Photo?>(
+                get: { selectedPhotoIndex.flatMap { person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })[$0] } },
+                set: { _ in selectedPhotoIndex = nil }
+            )) { photo in
+                FullScreenPhotoView(
+                    photo: photo,
+                    currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
+                    photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
+                    onDelete: deletePhoto
+                )
             }
-        }
-        // Delete photo alert
-        .alert(isPresented: $showingDeleteAlert) {
-            Alert(
-                title: Text("Delete Photo"),
-                message: Text("Are you sure you want to delete this photo?"),
-                primaryButton: .destructive(Text("Delete")) {
-                    if let photoToDelete = photoToDelete {
-                        deletePhoto(photoToDelete)
-                    }
-                },
-                secondaryButton: .cancel()
-            )
         }
     }
     
@@ -147,56 +164,96 @@ struct PersonDetailView: View {
                     let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
                     let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
                     
-                    if let image = sortedPhotos[safeIndex].image {
-                        Spacer()
-                        
-                        NavigationLink(destination: FullScreenPhotoView(photo: sortedPhotos[safeIndex], onDelete: {
-                            deletePhoto(sortedPhotos[safeIndex])
-                        })) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: geometry.size.height * 0.6)
-                        }
-                        .frame(width: geometry.size.width) // Center the image horizontally
-                        
-                        VStack {
-                            Text(formatAge())
-                                .font(.title3)
-                            Text(formatDate(sortedPhotos[safeIndex].dateTaken))
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
-                        
-                        Spacer()
-                        
-                        if sortedPhotos.count > 1 {
-                            Slider(value: Binding(
-                                get: { Double(safeIndex) },
-                                set: { 
-                                    currentPhotoIndex = Int($0)
-                                    latestPhotoIndex = currentPhotoIndex
+                    Spacer()
+                    
+                    ZStack {
+                        ForEach(-1...1, id: \.self) { offset in
+                            let index = safeIndex + offset
+                            if index >= 0 && index < sortedPhotos.count {
+                                AsyncImage(url: URL(fileURLWithPath: Photo.getDocumentsDirectory().appendingPathComponent(sortedPhotos[index].fileName).path)) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(height: geometry.size.height * 0.6)
+                                            .frame(width: geometry.size.width)
+                                    case .failure(_):
+                                        Color.gray
+                                    case .empty:
+                                        ProgressView()
+                                    @unknown default:
+                                        EmptyView()
+                                    }
                                 }
-                            ), in: 0...Double(sortedPhotos.count - 1), step: 1)
-                            .padding()
-                            .onChange(of: currentPhotoIndex) { newValue in
-                                if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
-                                    return
-                                }
-                                lastFeedbackDate = Date()
-                                impact.prepare()
-                                impact.impactOccurred()
+                                .offset(x: CGFloat(offset) * geometry.size.width)
                             }
                         }
-                    } else {
-                        Text("Failed to load image")
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height * 0.6)
+                    .clipped()
+                    .gesture(
+                        DragGesture()
+                            .onChanged { gesture in
+                                let offset = gesture.translation.width / geometry.size.width
+                                if (safeIndex > 0 || offset > 0) && (safeIndex < sortedPhotos.count - 1 || offset < 0) {
+                                    withAnimation(.interactiveSpring()) {
+                                        currentPhotoIndex = safeIndex - Int(offset)
+                                    }
+                                }
+                            }
+                            .onEnded { gesture in
+                                let predictedOffset = gesture.predictedEndTranslation.width / geometry.size.width
+                                withAnimation(.spring()) {
+                                    if predictedOffset > 0.5 && safeIndex > 0 {
+                                        currentPhotoIndex = safeIndex - 1
+                                    } else if predictedOffset < -0.5 && safeIndex < sortedPhotos.count - 1 {
+                                        currentPhotoIndex = safeIndex + 1
+                                    } else {
+                                        currentPhotoIndex = safeIndex
+                                    }
+                                }
+                                latestPhotoIndex = currentPhotoIndex
+                            }
+                    )
+                    .onTapGesture {
+                        selectedPhotoIndex = safeIndex
+                    }
+                    
+                    VStack {
+                        Text(formatAge())
+                            .font(.title3)
+                        Text(formatDate(sortedPhotos[safeIndex].dateTaken))
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    
+                    Spacer()
+                    
+                    if sortedPhotos.count > 1 {
+                        Slider(value: Binding(
+                            get: { Double(safeIndex) },
+                            set: { 
+                                currentPhotoIndex = Int($0)
+                                latestPhotoIndex = currentPhotoIndex
+                            }
+                        ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                        .padding()
+                        .onChange(of: currentPhotoIndex) { newValue in
+                            if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
+                                return
+                            }
+                            lastFeedbackDate = Date()
+                            impact.prepare()
+                            impact.impactOccurred()
+                        }
                     }
                 } else {
                     Text("No photos available")
                 }
             }
-            .frame(width: geometry.size.width) // Center the VStack horizontally
+            .frame(width: geometry.size.width)
         }
         .onAppear {
             currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
@@ -208,61 +265,80 @@ struct PersonDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(groupPhotosByAge(), id: \.0) { section, photos in
-                    VStack(alignment: .leading) {
-                        Text(section)
-                            .font(.headline)
-                            .padding(.leading)
-                        
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
-                            ForEach(Array(photos.prefix(5)), id: \.id) { photo in
-                                NavigationLink(destination: FullScreenPhotoView(photo: photo, onDelete: {
-                                    deletePhoto(photo)
-                                })) {
-                                    photoThumbnail(photo)
-                                }
-                            }
-                            if photos.count > 5 {
-                                NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: { photo in
-                                    deletePhoto(photo)
-                                })) {
-                                    remainingPhotosCount(photos.count - 5)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
+                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, isShowingFullScreen: $isShowingFullScreen, selectedPhotoIndex: $selectedPhotoIndex)
                 }
             }
         }
     }
 
-    // Helper view for photo thumbnail
-    private func photoThumbnail(_ photo: Photo) -> some View {
-        Group {
-            if let image = photo.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-            } else {
-                Color.gray
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+    private struct YearSectionView: View {
+        let section: String
+        let photos: [Photo]
+        let onDelete: (Photo) -> Void
+        @Binding var isShowingFullScreen: Bool
+        @Binding var selectedPhotoIndex: Int?
+        
+        var body: some View {
+            VStack(alignment: .leading) {
+                Text(section)
+                    .font(.headline)
+                    .padding(.leading)
+                
+                PhotoGridView(section: section, photos: photos, onDelete: onDelete, isShowingFullScreen: $isShowingFullScreen, selectedPhotoIndex: $selectedPhotoIndex)
             }
         }
     }
 
-    // Helper view for remaining photos count
-    private func remainingPhotosCount(_ count: Int) -> some View {
-        ZStack {
-            Color.gray.opacity(0.3)
-            Text("+\(count)")
-                .font(.title2)
-                .foregroundColor(.white)
+    private struct PhotoGridView: View {
+        let section: String
+        let photos: [Photo]
+        let onDelete: (Photo) -> Void
+        @Binding var isShowingFullScreen: Bool
+        @Binding var selectedPhotoIndex: Int?
+        
+        var body: some View {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
+                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                    photoThumbnail(photo)
+                        .onTapGesture {
+                            selectedPhotoIndex = index
+                        }
+                }
+                if photos.count > 5 {
+                    NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete)) {
+                        remainingPhotosCount(photos.count - 5)
+                    }
+                }
+            }
+            .padding(.horizontal)
         }
-        .frame(width: 100, height: 100)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        
+        private func photoThumbnail(_ photo: Photo) -> some View {
+            Group {
+                if let image = photo.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 100, height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else {
+                    Color.gray
+                        .frame(width: 100, height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        
+        private func remainingPhotosCount(_ count: Int) -> some View {
+            ZStack {
+                Color.gray.opacity(0.3)
+                Text("+\(count)")
+                    .font(.title2)
+                    .foregroundColor(.white)
+            }
+            .frame(width: 100, height: 100)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
     }
 
     // Function to group photos by age
