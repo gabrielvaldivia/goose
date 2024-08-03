@@ -15,6 +15,7 @@ struct PersonSettingsView: View {
     @State private var editedName: String
     @State private var editedDateOfBirth: Date
     @State private var showingDeletePhotosAlert = false
+    @State private var showingDeletePersonAlert = false
     @State private var albums: [PHAssetCollection] = []
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
@@ -51,6 +52,13 @@ struct PersonSettingsView: View {
                     Text("Delete All Photos")
                         .foregroundColor(.red)
                 }
+                
+                Button(action: {
+                    showingDeletePersonAlert = true
+                }) {
+                    Text("Delete Person")
+                        .foregroundColor(.red)
+                }
             }
         }
         .navigationTitle("Settings")
@@ -64,6 +72,16 @@ struct PersonSettingsView: View {
                 message: Text("Are you sure you want to delete all photos for this person? This action cannot be undone."),
                 primaryButton: .destructive(Text("Delete")) {
                     deleteAllPhotos()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert(isPresented: $showingDeletePersonAlert) {
+            Alert(
+                title: Text("Delete Person"),
+                message: Text("Are you sure you want to delete this person? This action cannot be undone."),
+                primaryButton: .destructive(Text("Delete")) {
+                    deletePerson()
                 },
                 secondaryButton: .cancel()
             )
@@ -113,5 +131,10 @@ struct PersonSettingsView: View {
     private func deleteAllPhotos() {
         person.photos.removeAll()
         viewModel.updatePerson(person)
+    }
+
+    private func deletePerson() {
+        viewModel.deletePerson(person)
+        presentationMode.wrappedValue.dismiss()
     }
 }

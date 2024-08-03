@@ -16,9 +16,12 @@ class PersonViewModel: ObservableObject {
         loadPeople()
     }
     
-    func addPerson(name: String, dateOfBirth: Date) {
+    func addPerson(name: String, dateOfBirth: Date, image: UIImage, dateTaken: Date) {
         let newPerson = Person(name: name, dateOfBirth: dateOfBirth)
         people.append(newPerson)
+        if let index = people.firstIndex(where: { $0.id == newPerson.id }) {
+            addPhoto(to: &people[index], image: image, dateTaken: dateTaken)
+        }
         savePeople()
     }
     
@@ -26,6 +29,7 @@ class PersonViewModel: ObservableObject {
         print("Adding photo to \(person.name) with date: \(dateTaken)")
         let newPhoto = Photo(image: image, dateTaken: dateTaken)
         person.photos.append(newPhoto)
+        person.photos.sort { $0.dateTaken < $1.dateTaken } // Sort photos by date
         if let index = people.firstIndex(where: { $0.id == person.id }) {
             people[index] = person
             savePeople()
@@ -39,6 +43,13 @@ class PersonViewModel: ObservableObject {
     func deletePerson(at offsets: IndexSet) {
         people.remove(atOffsets: offsets)
         savePeople()
+    }
+    
+    func deletePerson(_ person: Person) {
+        if let index = people.firstIndex(where: { $0.id == person.id }) {
+            people.remove(at: index)
+            savePeople()
+        }
     }
     
     func calculateAge(for person: Person, at date: Date) -> (years: Int, months: Int, days: Int) {
@@ -241,6 +252,10 @@ class PersonViewModel: ObservableObject {
         } else {
             completion(.failure(PhotoAccessError.albumNotFound))
         }
+    }
+    
+    func movePerson(from source: IndexSet, to destination: Int) {
+        people.move(fromOffsets: source, toOffset: destination)
     }
 }
 
