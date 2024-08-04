@@ -20,38 +20,17 @@ struct AddPersonView: View {
     @State private var showAgeText = false
     @Environment(\.presentationMode) var presentationMode
     
+    let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
+    
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Photo selection section
-                    ZStack {
-                        Circle()
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(width: 100, height: 100)
-                        
-                        if let image = selectedImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                        } else {
-                            Image(systemName: "camera")
-                                .font(.system(size: 24))
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    .onTapGesture {
-                        showImagePicker = true
-                    }
-                    
                     TextField("Name", text: $name)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 16)
                         .background(Color(UIColor.systemBackground))
                         .cornerRadius(8)
-                        
                     
                     HStack {
                         Text("Date of Birth")
@@ -73,7 +52,32 @@ struct AddPersonView: View {
                         showDatePickerSheet = true
                     }
                     
-                    // Add the age text here
+                    // Photo selection grid
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        if let image = selectedImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 100, height: 100)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        
+                        Button(action: {
+                            showImagePicker = true
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.blue.opacity(0.2))
+                                    .frame(width: 100, height: 100)
+                                
+                                Image(systemName: "plus")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .padding(.top, 20)
+                    
                     if showAgeText, let dob = dateOfBirth, !name.isEmpty, let image = selectedImage {
                         let photoDate = extractDateTaken(from: imageMeta) ?? Date()
                         Text(calculateAge(for: dob, at: photoDate, name: name))
@@ -81,12 +85,12 @@ struct AddPersonView: View {
                             .foregroundColor(.gray)
                     }
                     
-                    Spacer(minLength: 300) // Add extra space at the bottom
+                    Spacer(minLength: 300)
                 }
                 .padding()
             }
             .background(Color(UIColor.secondarySystemBackground))
-            .ignoresSafeArea(.keyboard) // Ignore the keyboard safe area
+            .ignoresSafeArea(.keyboard)
             .navigationTitle("Add Person")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
@@ -114,7 +118,7 @@ struct AddPersonView: View {
                     self.showAgeText = true
                 }
             ), isPresented: $showDatePickerSheet)
-                .presentationDetents([.height(300)]) // Make it a small sheet
+                .presentationDetents([.height(300)])
         }
     }
     
@@ -134,7 +138,6 @@ struct AddPersonView: View {
         return nil
     }
     
-    // Updated function to calculate age or pregnancy stage
     private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
         let calendar = Calendar.current
         
