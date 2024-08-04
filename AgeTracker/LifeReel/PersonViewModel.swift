@@ -38,6 +38,20 @@ class PersonViewModel: ObservableObject {
         }
     }
     
+    func addPhoto(to person: inout Person, photo: Photo) {
+        print("Adding photo to \(person.name) with date: \(photo.dateTaken)")
+        person.photos.append(photo)
+        person.photos.sort { $0.dateTaken < $1.dateTaken }
+        if let index = people.firstIndex(where: { $0.id == person.id }) {
+            people[index] = person
+            savePeople()
+            objectWillChange.send()
+            print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+        } else {
+            print("Failed to find person \(person.name) in people array")
+        }
+    }
+    
     func deletePerson(at offsets: IndexSet) {
         people.remove(atOffsets: offsets)
         savePeople()
@@ -59,9 +73,11 @@ class PersonViewModel: ObservableObject {
     func updatePerson(_ updatedPerson: Person) {
         if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
             people[index] = updatedPerson
-            savePeople()
-            objectWillChange.send()
+        } else {
+            people.append(updatedPerson)
         }
+        savePeople()
+        objectWillChange.send()
     }
     
     private func savePeople() {

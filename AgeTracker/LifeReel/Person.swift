@@ -74,11 +74,4 @@ struct Photo: Identifiable, Codable, Equatable {
     static func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
-    
-    static func == (lhs: Photo, rhs: Photo) -> Bool {
-        return lhs.id == rhs.id &&
-               lhs.fileName == rhs.fileName &&
-               lhs.dateTaken == rhs.dateTaken &&
-               lhs.isVideo == rhs.isVideo
-    }
 }

@@ -13,7 +13,7 @@ struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var name = ""
     @State private var dateOfBirth: Date?
-    @State private var selectedImage: UIImage?
+    @State private var selectedAssets: [PHAsset] = []
     @State private var showImagePicker = false
     @State private var imageMeta: [String: Any]?
     @State private var showDatePickerSheet = false
@@ -54,10 +54,8 @@ struct AddPersonView: View {
                     
                     // Photo selection grid
                     LazyVGrid(columns: columns, spacing: 10) {
-                        if let image = selectedImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
+                        ForEach(selectedAssets, id: \.localIdentifier) { asset in
+                            AssetThumbnail(asset: asset)
                                 .frame(width: 100, height: 100)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
@@ -78,7 +76,7 @@ struct AddPersonView: View {
                     }
                     .padding(.top, 20)
                     
-                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, let image = selectedImage {
+                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, !selectedAssets.isEmpty {
                         let photoDate = extractDateTaken(from: imageMeta) ?? Date()
                         Text(calculateAge(for: dob, at: photoDate, name: name))
                             .font(.caption)
@@ -98,17 +96,15 @@ struct AddPersonView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Save") {
-                    if let image = selectedImage {
-                        let dateTaken = extractDateTaken(from: imageMeta) ?? dateOfBirth ?? Date()
-                        viewModel.addPerson(name: name, dateOfBirth: dateOfBirth ?? Date(), image: image, dateTaken: dateTaken)
-                        presentationMode.wrappedValue.dismiss()
-                    }
+                    saveNewPerson()
                 }
-                .disabled(selectedImage == nil || name.isEmpty)
+                .disabled(selectedAssets.isEmpty || name.isEmpty || dateOfBirth == nil)
             )
         }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(image: $selectedImage, imageMeta: $imageMeta, isPresented: $showImagePicker)
+        .sheet(isPresented: $showImagePicker, onDismiss: {
+            loadImages(from: selectedAssets)
+        }) {
+            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
         }
         .sheet(isPresented: $showDatePickerSheet) {
             BirthDaySheet(dateOfBirth: Binding(
@@ -161,6 +157,88 @@ struct AddPersonView: View {
                 return "\(name)'s mom is \(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
             } else {
                 return "\(name)'s mom is not yet pregnant"
+            }
+        }
+    }
+    
+    private func loadImages(from assets: [PHAsset]) {
+        guard !assets.isEmpty else { return }
+        
+        let asset = assets[0] // For now, we'll just use the first selected asset
+        let options = PHImageRequestOptions()
+        options.isSynchronous = false
+        options.deliveryMode = .highQualityFormat
+        
+        PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+            if let image = image {
+                self.imageMeta = info as? [String: Any]
+            }
+        }
+    }
+    
+    private func saveNewPerson() {
+        guard let dateOfBirth = dateOfBirth else { return }
+        
+        print("Selected assets count: \(selectedAssets.count)")
+        
+        let group = DispatchGroup()
+        var newPhotos: [Photo] = []
+        
+        for (index, asset) in selectedAssets.enumerated() {
+            group.enter()
+            let options = PHImageRequestOptions()
+            options.isSynchronous = false
+            options.deliveryMode = .highQualityFormat
+            options.isNetworkAccessAllowed = true
+            
+            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+                defer { group.leave() }
+                if let image = image {
+                    let dateTaken = asset.creationDate ?? Date()
+                    let newPhoto = Photo(image: image, dateTaken: dateTaken)
+                    newPhotos.append(newPhoto)
+                    print("Added photo \(index + 1) with date: \(dateTaken)")
+                } else {
+                    print("Failed to get image for asset \(index + 1)")
+                }
+            }
+        }
+        
+        group.notify(queue: .main) {
+            print("All photos processed. Total new photos: \(newPhotos.count)")
+            var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth)
+            newPerson.photos = newPhotos
+            self.viewModel.updatePerson(newPerson)
+            print("New person created with \(newPerson.photos.count) photos")
+            self.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
+struct AssetThumbnail: View {
+    let asset: PHAsset
+    @State private var image: UIImage?
+    
+    var body: some View {
+        Group {
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Color.gray
+            }
+        }
+        .onAppear(perform: loadImage)
+    }
+    
+    private func loadImage() {
+        let manager = PHImageManager.default()
+        let option = PHImageRequestOptions()
+        option.isSynchronous = true
+        manager.requestImage(for: asset, targetSize: CGSize(width: 100, height: 100), contentMode: .aspectFill, options: option) { result, info in
+            if let result = result {
+                image = result
             }
         }
     }

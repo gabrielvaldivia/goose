@@ -18,8 +18,7 @@ struct LifeReelApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(personViewModel)
+            ContentView(viewModel: personViewModel)
         }
     }
     
