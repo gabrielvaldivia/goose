@@ -13,6 +13,7 @@ struct AllPhotosInSectionView: View {
     let photos: [Photo]
     var onDelete: (Photo) -> Void
     @State private var selectedPhotoIndex: IdentifiableIndex?
+    let person: Person
     
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
     
@@ -34,7 +35,8 @@ struct AllPhotosInSectionView: View {
                 photo: photos[identifiableIndex.index],
                 currentIndex: identifiableIndex.index,
                 photos: photos,
-                onDelete: onDelete
+                onDelete: onDelete,
+                person: person
             )
         }
     }
@@ -47,6 +49,7 @@ struct AllPhotosInSectionView: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 110, height: 110)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.bottom, 2)
             } else {
                 Color.gray
                     .frame(width: 110, height: 110)

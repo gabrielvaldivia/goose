@@ -26,7 +26,7 @@ struct AddPersonView: View {
                     // Photo selection section
                     ZStack {
                         Circle()
-                            .fill(Color.gray.opacity(0.2))
+                            .fill(Color.blue.opacity(0.2))
                             .frame(width: 100, height: 100)
                         
                         if let image = selectedImage {
@@ -37,7 +37,7 @@ struct AddPersonView: View {
                                 .clipShape(Circle())
                         } else {
                             Image(systemName: "camera")
-                                .font(.system(size: 40))
+                                .font(.system(size: 24))
                                 .foregroundColor(.blue)
                         }
                     }

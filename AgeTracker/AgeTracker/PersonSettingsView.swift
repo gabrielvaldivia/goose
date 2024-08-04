@@ -41,7 +41,13 @@ struct PersonSettingsView: View {
     var body: some View {
         Form {
             Section(header: Text("Personal Information")) {
-                TextField("Name", text: $editedName)
+                HStack {
+                    Text("Name")
+                    Spacer()
+                    TextField("", text: $editedName)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                }
                 Button(action: {
                     showingBirthDaySheet = true
                 }) {
@@ -50,7 +56,7 @@ struct PersonSettingsView: View {
                             .foregroundColor(.primary)
                         Spacer()
                         Text(formatDate(editedDateOfBirth))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
                 }
             }

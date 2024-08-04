@@ -77,7 +77,7 @@ struct PersonItemView: View {
                     Image(uiImage: latestPhoto)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 100, height: 100)
+                        .frame(width: 250, height: 250)
                         .clipShape(Circle())
                 } else {
                     Image(systemName: "person.circle.fill")
@@ -86,40 +86,13 @@ struct PersonItemView: View {
                         .frame(width: 100, height: 100)
                         .foregroundColor(.gray)
                 }
+                Spacer()
                 Text(person.name)
+                    .font(.headline)
                     .foregroundColor(.primary)
-                Text(calculateAge())
+                Text("\(person.photos.count) photo\(person.photos.count == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundColor(.gray)
-            }
-        }
-    }
-    
-    private func calculateAge() -> String {
-        let calendar = Calendar.current
-        let birthDate = person.dateOfBirth
-        let currentDate = Date()
-        
-        if currentDate >= birthDate {
-            let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: currentDate)
-            let years = ageComponents.year ?? 0
-            let months = ageComponents.month ?? 0
-            
-            if years == 0 {
-                return "\(months) month\(months == 1 ? "" : "s") old"
-            } else {
-                return "\(years) year\(years == 1 ? "" : "s") old"
-            }
-        } else {
-            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: currentDate, to: birthDate).weekOfYear ?? 0
-            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-            
-            if pregnancyWeek == 40 {
-                return "Newborn"
-            } else if pregnancyWeek > 0 {
-                return "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
-            } else {
-                return "Before pregnancy"
             }
         }
     }

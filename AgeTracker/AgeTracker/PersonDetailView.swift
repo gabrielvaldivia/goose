@@ -145,7 +145,8 @@ struct PersonDetailView: View {
                     photo: photo,
                     currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
                     photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
-                    onDelete: deletePhoto
+                    onDelete: deletePhoto,
+                    person: person
                 )
                 .transition(.asymmetric(
                     insertion: AnyTransition.opacity.combined(with: .scale),
@@ -266,7 +267,7 @@ struct PersonDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(groupPhotosByAge(), id: \.0) { section, photos in
-                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto)
+                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                 }
             }
         }
@@ -277,6 +278,7 @@ struct PersonDetailView: View {
         let photos: [Photo]
         let onDelete: (Photo) -> Void
         @Binding var selectedPhoto: Photo?
+        let person: Person
         
         var body: some View {
             VStack(alignment: .leading) {
@@ -284,7 +286,7 @@ struct PersonDetailView: View {
                     .font(.headline)
                     .padding(.leading)
                 
-                PhotoGridView(section: section, photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto)
+                PhotoGridView(section: section, photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto, person: person)
             }
             .padding(.bottom, 20)
         }
@@ -296,6 +298,7 @@ struct PersonDetailView: View {
         let onDelete: (Photo) -> Void
         @Binding var selectedPhoto: Photo?
         @Namespace private var namespace
+        let person: Person
         
         var body: some View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
@@ -306,7 +309,7 @@ struct PersonDetailView: View {
                         }
                 }
                 if photos.count > 5 {
-                    NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete)) {
+                    NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete, person: person)) {
                         remainingPhotosCount(photos.count - 5)
                     }
                 }
@@ -323,6 +326,7 @@ struct PersonDetailView: View {
                         .frame(width: 110, height: 110)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .matchedGeometryEffect(id: photo.id, in: namespace)
+                        .padding(.bottom, 2)
                 } else {
                     Color.gray
                         .frame(width: 100, height: 100)
@@ -371,7 +375,11 @@ struct PersonDetailView: View {
             } else {
                 let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
                 let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-                sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
+                if pregnancyWeek == 40 {
+                    sectionTitle = "Birth Month"
+                } else {
+                    sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
+                }
             }
 
             if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
@@ -384,7 +392,7 @@ struct PersonDetailView: View {
         // Create the order array
         let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
         let monthOrder = (1...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        let pregnancyOrder = (1...40).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
+        let pregnancyOrder = (1...39).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
         
         let order = yearOrder + monthOrder + ["Birth Month"] + pregnancyOrder
 
