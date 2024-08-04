@@ -9,7 +9,7 @@ import SwiftUI
 import BackgroundTasks
 
 @main
-struct AgeTrackerApp: App {
+struct LifeReelApp: App {
     @StateObject private var personViewModel = PersonViewModel()
     
     init() {

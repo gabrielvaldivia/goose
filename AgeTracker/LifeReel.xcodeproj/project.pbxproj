@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4015B72D2C5C5628001FA4E4 /* AgeTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B72C2C5C5628001FA4E4 /* AgeTrackerApp.swift */; };
+		4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */; };
 		4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B72E2C5C5628001FA4E4 /* ContentView.swift */; };
 		4015B7312C5C5628001FA4E4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4015B7302C5C5628001FA4E4 /* Assets.xcassets */; };
 		4015B7342C5C5628001FA4E4 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4015B7332C5C5628001FA4E4 /* Preview Assets.xcassets */; };
@@ -45,14 +45,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4015B7292C5C5628001FA4E4 /* AgeTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AgeTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4015B72C2C5C5628001FA4E4 /* AgeTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeTrackerApp.swift; sourceTree = "<group>"; };
+		4015B7292C5C5628001FA4E4 /* LifeReel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LifeReel.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeReelApp.swift; sourceTree = "<group>"; };
 		4015B72E2C5C5628001FA4E4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4015B7302C5C5628001FA4E4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4015B7332C5C5628001FA4E4 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		4015B7392C5C5628001FA4E4 /* AgeTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AgeTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4015B7392C5C5628001FA4E4 /* LifeReelTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LifeReelTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4015B73D2C5C5628001FA4E4 /* AgeTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeTrackerTests.swift; sourceTree = "<group>"; };
-		4015B7432C5C5628001FA4E4 /* AgeTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AgeTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4015B7432C5C5628001FA4E4 /* LifeReelUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LifeReelUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4015B7472C5C5628001FA4E4 /* AgeTrackerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeTrackerUITests.swift; sourceTree = "<group>"; };
 		4015B7492C5C5628001FA4E4 /* AgeTrackerUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeTrackerUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		4015B7562C5C5644001FA4E4 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
@@ -97,9 +97,9 @@
 		4015B7202C5C5628001FA4E4 = {
 			isa = PBXGroup;
 			children = (
-				4015B72B2C5C5628001FA4E4 /* AgeTracker */,
-				4015B73C2C5C5628001FA4E4 /* AgeTrackerTests */,
-				4015B7462C5C5628001FA4E4 /* AgeTrackerUITests */,
+				4015B72B2C5C5628001FA4E4 /* LifeReel */,
+				4015B73C2C5C5628001FA4E4 /* LifeReelTests */,
+				4015B7462C5C5628001FA4E4 /* LifeReelUITests */,
 				4015B72A2C5C5628001FA4E4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -107,18 +107,18 @@
 		4015B72A2C5C5628001FA4E4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4015B7292C5C5628001FA4E4 /* AgeTracker.app */,
-				4015B7392C5C5628001FA4E4 /* AgeTrackerTests.xctest */,
-				4015B7432C5C5628001FA4E4 /* AgeTrackerUITests.xctest */,
+				4015B7292C5C5628001FA4E4 /* LifeReel.app */,
+				4015B7392C5C5628001FA4E4 /* LifeReelTests.xctest */,
+				4015B7432C5C5628001FA4E4 /* LifeReelUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		4015B72B2C5C5628001FA4E4 /* AgeTracker */ = {
+		4015B72B2C5C5628001FA4E4 /* LifeReel */ = {
 			isa = PBXGroup;
 			children = (
 				4015B7642C5D69C5001FA4E4 /* Info.plist */,
-				4015B72C2C5C5628001FA4E4 /* AgeTrackerApp.swift */,
+				4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */,
 				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
@@ -134,7 +134,7 @@
 				4015B7672C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift */,
 				4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */,
 			);
-			path = AgeTracker;
+			path = LifeReel;
 			sourceTree = "<group>";
 		};
 		4015B7322C5C5628001FA4E4 /* Preview Content */ = {
@@ -145,29 +145,29 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		4015B73C2C5C5628001FA4E4 /* AgeTrackerTests */ = {
+		4015B73C2C5C5628001FA4E4 /* LifeReelTests */ = {
 			isa = PBXGroup;
 			children = (
 				4015B73D2C5C5628001FA4E4 /* AgeTrackerTests.swift */,
 			);
-			path = AgeTrackerTests;
+			path = LifeReelTests;
 			sourceTree = "<group>";
 		};
-		4015B7462C5C5628001FA4E4 /* AgeTrackerUITests */ = {
+		4015B7462C5C5628001FA4E4 /* LifeReelUITests */ = {
 			isa = PBXGroup;
 			children = (
 				4015B7472C5C5628001FA4E4 /* AgeTrackerUITests.swift */,
 				4015B7492C5C5628001FA4E4 /* AgeTrackerUITestsLaunchTests.swift */,
 			);
-			path = AgeTrackerUITests;
+			path = LifeReelUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4015B7282C5C5628001FA4E4 /* AgeTracker */ = {
+		4015B7282C5C5628001FA4E4 /* LifeReel */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4015B74D2C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTracker" */;
+			buildConfigurationList = 4015B74D2C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReel" */;
 			buildPhases = (
 				4015B7252C5C5628001FA4E4 /* Sources */,
 				4015B7262C5C5628001FA4E4 /* Frameworks */,
@@ -177,14 +177,14 @@
 			);
 			dependencies = (
 			);
-			name = AgeTracker;
+			name = LifeReel;
 			productName = AgeTracker;
-			productReference = 4015B7292C5C5628001FA4E4 /* AgeTracker.app */;
+			productReference = 4015B7292C5C5628001FA4E4 /* LifeReel.app */;
 			productType = "com.apple.product-type.application";
 		};
-		4015B7382C5C5628001FA4E4 /* AgeTrackerTests */ = {
+		4015B7382C5C5628001FA4E4 /* LifeReelTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4015B7502C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTrackerTests" */;
+			buildConfigurationList = 4015B7502C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReelTests" */;
 			buildPhases = (
 				4015B7352C5C5628001FA4E4 /* Sources */,
 				4015B7362C5C5628001FA4E4 /* Frameworks */,
@@ -195,14 +195,14 @@
 			dependencies = (
 				4015B73B2C5C5628001FA4E4 /* PBXTargetDependency */,
 			);
-			name = AgeTrackerTests;
+			name = LifeReelTests;
 			productName = AgeTrackerTests;
-			productReference = 4015B7392C5C5628001FA4E4 /* AgeTrackerTests.xctest */;
+			productReference = 4015B7392C5C5628001FA4E4 /* LifeReelTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		4015B7422C5C5628001FA4E4 /* AgeTrackerUITests */ = {
+		4015B7422C5C5628001FA4E4 /* LifeReelUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4015B7532C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTrackerUITests" */;
+			buildConfigurationList = 4015B7532C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReelUITests" */;
 			buildPhases = (
 				4015B73F2C5C5628001FA4E4 /* Sources */,
 				4015B7402C5C5628001FA4E4 /* Frameworks */,
@@ -213,9 +213,9 @@
 			dependencies = (
 				4015B7452C5C5628001FA4E4 /* PBXTargetDependency */,
 			);
-			name = AgeTrackerUITests;
+			name = LifeReelUITests;
 			productName = AgeTrackerUITests;
-			productReference = 4015B7432C5C5628001FA4E4 /* AgeTrackerUITests.xctest */;
+			productReference = 4015B7432C5C5628001FA4E4 /* LifeReelUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -241,7 +241,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4015B7242C5C5628001FA4E4 /* Build configuration list for PBXProject "AgeTracker" */;
+			buildConfigurationList = 4015B7242C5C5628001FA4E4 /* Build configuration list for PBXProject "LifeReel" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -254,9 +254,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4015B7282C5C5628001FA4E4 /* AgeTracker */,
-				4015B7382C5C5628001FA4E4 /* AgeTrackerTests */,
-				4015B7422C5C5628001FA4E4 /* AgeTrackerUITests */,
+				4015B7282C5C5628001FA4E4 /* LifeReel */,
+				4015B7382C5C5628001FA4E4 /* LifeReelTests */,
+				4015B7422C5C5628001FA4E4 /* LifeReelUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -298,7 +298,7 @@
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
 				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
-				4015B72D2C5C5628001FA4E4 /* AgeTrackerApp.swift in Sources */,
+				4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
 				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,
 				4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */,
@@ -330,12 +330,12 @@
 /* Begin PBXTargetDependency section */
 		4015B73B2C5C5628001FA4E4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4015B7282C5C5628001FA4E4 /* AgeTracker */;
+			target = 4015B7282C5C5628001FA4E4 /* LifeReel */;
 			targetProxy = 4015B73A2C5C5628001FA4E4 /* PBXContainerItemProxy */;
 		};
 		4015B7452C5C5628001FA4E4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4015B7282C5C5628001FA4E4 /* AgeTracker */;
+			target = 4015B7282C5C5628001FA4E4 /* LifeReel */;
 			targetProxy = 4015B7442C5C5628001FA4E4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -467,15 +467,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"AgeTracker/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"LifeReel/Preview Content\"";
 				DEVELOPMENT_TEAM = RWC965TCNN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AgeTracker/Info.plist;
+				INFOPLIST_FILE = LifeReel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Life Reel";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Life Reel needs access to your camera to take photos for age tracking.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Life Reel needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -486,7 +486,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ValdiviaWorks.AgeTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = ValdiviaWorks.LifeReel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -501,15 +501,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"AgeTracker/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"LifeReel/Preview Content\"";
 				DEVELOPMENT_TEAM = RWC965TCNN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = AgeTracker/Info.plist;
+				INFOPLIST_FILE = LifeReel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Life Reel";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Life Reel needs access to your camera to take photos for age tracking.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Life Reel needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -520,7 +520,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ValdiviaWorks.AgeTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = ValdiviaWorks.LifeReel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -544,7 +544,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AgeTracker.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AgeTracker";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeReel.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LifeReel";
 			};
 			name = Debug;
 		};
@@ -564,7 +564,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AgeTracker.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AgeTracker";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LifeReel.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LifeReel";
 			};
 			name = Release;
 		};
@@ -607,7 +607,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4015B7242C5C5628001FA4E4 /* Build configuration list for PBXProject "AgeTracker" */ = {
+		4015B7242C5C5628001FA4E4 /* Build configuration list for PBXProject "LifeReel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4015B74B2C5C5628001FA4E4 /* Debug */,
@@ -616,7 +616,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4015B74D2C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTracker" */ = {
+		4015B74D2C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4015B74E2C5C5628001FA4E4 /* Debug */,
@@ -625,7 +625,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4015B7502C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTrackerTests" */ = {
+		4015B7502C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReelTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4015B7512C5C5628001FA4E4 /* Debug */,
@@ -634,7 +634,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4015B7532C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "AgeTrackerUITests" */ = {
+		4015B7532C5C5628001FA4E4 /* Build configuration list for PBXNativeTarget "LifeReelUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4015B7542C5C5628001FA4E4 /* Debug */,

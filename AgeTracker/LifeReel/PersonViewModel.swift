@@ -17,11 +17,9 @@ class PersonViewModel: ObservableObject {
     }
     
     func addPerson(name: String, dateOfBirth: Date, image: UIImage, dateTaken: Date) {
-        let newPerson = Person(name: name, dateOfBirth: dateOfBirth)
+        var newPerson = Person(name: name, dateOfBirth: dateOfBirth)
+        addPhoto(to: &newPerson, image: image, dateTaken: dateTaken)
         people.append(newPerson)
-        if let index = people.firstIndex(where: { $0.id == newPerson.id }) {
-            addPhoto(to: &people[index], image: image, dateTaken: dateTaken)
-        }
         savePeople()
     }
     
