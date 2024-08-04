@@ -37,6 +37,7 @@ struct Photo: Identifiable, Codable, Equatable {
     let fileName: String
     let dateTaken: Date
     let isVideo: Bool
+    let uniqueIdentifier: String
     
     var image: UIImage? {
         guard !isVideo else { return nil }
@@ -49,11 +50,12 @@ struct Photo: Identifiable, Codable, Equatable {
         return Photo.getDocumentsDirectory().appendingPathComponent(fileName)
     }
     
-    init(id: UUID = UUID(), image: UIImage, dateTaken: Date) {
+    init(id: UUID = UUID(), image: UIImage, dateTaken: Date, uniqueIdentifier: String = UUID().uuidString) {
         self.id = id
         self.fileName = "\(id).jpg"
         self.dateTaken = dateTaken
         self.isVideo = false
+        self.uniqueIdentifier = uniqueIdentifier
         
         if let data = image.jpegData(compressionQuality: 0.8) {
             let url = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
@@ -61,11 +63,12 @@ struct Photo: Identifiable, Codable, Equatable {
         }
     }
     
-    init(id: UUID = UUID(), videoURL: URL, dateTaken: Date) {
+    init(id: UUID = UUID(), videoURL: URL, dateTaken: Date, uniqueIdentifier: String = UUID().uuidString) {
         self.id = id
         self.fileName = "\(id).mov"
         self.dateTaken = dateTaken
         self.isVideo = true
+        self.uniqueIdentifier = uniqueIdentifier
         
         let destinationURL = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
         try? FileManager.default.copyItem(at: videoURL, to: destinationURL)

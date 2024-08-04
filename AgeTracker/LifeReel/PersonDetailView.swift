@@ -404,42 +404,22 @@ struct PersonDetailView: View {
             return 
         }
         
-        let group = DispatchGroup()
-        var newPhotos: [Photo] = []
-        
         for (index, asset) in selectedAssets.enumerated() {
-            group.enter()
             let options = PHImageRequestOptions()
             options.isSynchronous = false
             options.deliveryMode = .highQualityFormat
             options.isNetworkAccessAllowed = true
             
             PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                defer { group.leave() }
                 if let image = image {
                     let dateTaken = asset.creationDate ?? Date()
-                    let newPhoto = Photo(image: image, dateTaken: dateTaken)
-                    newPhotos.append(newPhoto)
-                    print("Added photo \(index + 1) with date: \(dateTaken)")
+                    let uniqueIdentifier = asset.localIdentifier
+                    let newPhoto = Photo(image: image, dateTaken: dateTaken, uniqueIdentifier: uniqueIdentifier)
+                    self.viewModel.addPhoto(to: &self.person, photo: newPhoto)
+                    print("Added photo \(index + 1) with date: \(dateTaken) and identifier: \(uniqueIdentifier)")
                 } else {
                     print("Failed to get image for asset \(index + 1)")
                 }
-            }
-        }
-        
-        group.notify(queue: .main) {
-            print("All photos processed. Total new photos: \(newPhotos.count)")
-            var updatedPerson = self.person
-            for photo in newPhotos {
-                self.viewModel.addPhoto(to: &updatedPerson, photo: photo)
-            }
-            self.viewModel.updatePerson(updatedPerson)
-            
-            if let updatedPerson = self.viewModel.people.first(where: { $0.id == self.person.id }) {
-                self.person = updatedPerson
-                let sortedPhotos = self.person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                self.latestPhotoIndex = sortedPhotos.count - 1
-                self.currentPhotoIndex = self.latestPhotoIndex
             }
         }
     }
