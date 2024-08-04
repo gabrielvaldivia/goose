@@ -18,7 +18,8 @@ struct PersonDetailView: View {
     @State private var person: Person
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingImagePicker = false
-    @State private var selectedAssets: [PHAsset] = []
+    @State private var inputImage: UIImage?
+    @State private var imageMeta: [String: Any]?
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
     @State private var currentPhotoIndex: Int = 0
@@ -92,7 +93,7 @@ struct PersonDetailView: View {
             .navigationBarItems(leading: CustomBackButton())
             // Sheet presentation for image picker
             .sheet(isPresented: $showingImagePicker) {
-                ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
+                ImagePicker(image: $inputImage, imageMeta: $imageMeta, isPresented: $showingImagePicker)
             }
             // Sheet presentation for bulk import
             .sheet(isPresented: $showingBulkImport) {
@@ -109,9 +110,12 @@ struct PersonDetailView: View {
                 }
             }
             // Image selection handler
-            .onChange(of: selectedAssets) { newAssets in
-                if !newAssets.isEmpty {
-                    loadImages(from: newAssets)
+            .onChange(of: inputImage) { newImage in
+                if let newImage = newImage {
+                    print("Image selected: \(newImage)")
+                    loadImage()
+                } else {
+                    print("No image selected")
                 }
             }
             // View appearance handler
@@ -400,6 +404,44 @@ struct PersonDetailView: View {
         }
     }
     
+    // Image loading function
+    func loadImage() {
+        guard let inputImage = inputImage else { 
+            print("No image to load")
+            return 
+        }
+        print("Full metadata: \(String(describing: imageMeta))")
+        let dateTaken = extractDateTaken(from: imageMeta) ?? Date()
+        print("Extracted date taken: \(dateTaken)")
+        print("Adding photo with date: \(dateTaken)")
+        viewModel.addPhoto(to: &person, image: inputImage, dateTaken: dateTaken)
+        // The local person state is now updated automatically
+        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+            person = updatedPerson
+            // Find the index of the newly added photo
+            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+            if let newPhotoIndex = sortedPhotos.firstIndex(where: { $0.dateTaken == dateTaken }) {
+                latestPhotoIndex = newPhotoIndex
+                currentPhotoIndex = newPhotoIndex
+            }
+        }
+    }
+
+    // Function to extract date taken from metadata
+    func extractDateTaken(from metadata: [String: Any]?) -> Date? {
+        print("Full metadata: \(String(describing: metadata))")
+        if let dateTimeOriginal = metadata?["DateTimeOriginal"] as? String {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+            if let date = dateFormatter.date(from: dateTimeOriginal) {
+                print("Extracted date: \(date)")
+                return date
+            }
+        }
+        print("Failed to extract date, using current date")
+        return Date()
+    }
+
     // Function to delete a photo
     func deletePhoto(_ photo: Photo) {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
@@ -455,32 +497,6 @@ struct PersonDetailView: View {
             } else {
                 return "Before pregnancy"
             }
-        }
-    }
-
-    // Add this function to handle loading multiple images
-    private func loadImages(from assets: [PHAsset]) {
-        let group = DispatchGroup()
-        for asset in assets {
-            group.enter()
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.deliveryMode = .highQualityFormat
-            
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                if let image = image {
-                    let dateTaken = asset.creationDate ?? Date()
-                    self.viewModel.addPhoto(to: &self.person, image: image, dateTaken: dateTaken)
-                }
-                group.leave()
-            }
-        }
-        
-        group.notify(queue: .main) {
-            if let updatedPerson = self.viewModel.people.first(where: { $0.id == self.person.id }) {
-                self.person = updatedPerson
-            }
-            self.selectedAssets.removeAll()
         }
     }
 }
