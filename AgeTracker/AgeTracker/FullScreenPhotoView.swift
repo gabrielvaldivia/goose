@@ -17,11 +17,13 @@ struct FullScreenPhotoView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var offset: CGSize = .zero
     @State private var showControls = true
+    @State private var scale: CGFloat = 1.0
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
+                Color.black
+                    .edgesIgnoringSafeArea(.all)
                 
                 AsyncImage(url: URL(fileURLWithPath: Photo.getDocumentsDirectory().appendingPathComponent(photos[currentIndex].fileName).path)) { phase in
                     switch phase {
@@ -31,6 +33,7 @@ struct FullScreenPhotoView: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .offset(offset)
+                            .scaleEffect(scale)
                             .gesture(
                                 DragGesture()
                                     .onChanged { value in
@@ -90,5 +93,10 @@ struct FullScreenPhotoView: View {
                     showControls.toggle()
                 }
         )
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                scale = 1.0
+            }
+        }
     }
 }

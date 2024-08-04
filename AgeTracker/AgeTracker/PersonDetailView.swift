@@ -29,9 +29,7 @@ struct PersonDetailView: View {
     @State private var selectedView = 0 // 0 for All, 1 for Years
     @State private var showingBulkImport = false // New state variable
     @State private var showingSettings = false // New state variable
-    @State private var isShowingFullScreen = false
-    @State private var selectedPhotoIndex: Int? = nil
-    @Namespace private var animation
+    @State private var selectedPhoto: Photo? = nil // New state variable
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -142,16 +140,17 @@ struct PersonDetailView: View {
                     secondaryButton: .cancel()
                 )
             }
-            .fullScreenCover(item: Binding<Photo?>(
-                get: { selectedPhotoIndex.flatMap { person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })[$0] } },
-                set: { _ in selectedPhotoIndex = nil }
-            )) { photo in
+            .fullScreenCover(item: $selectedPhoto) { photo in
                 FullScreenPhotoView(
                     photo: photo,
                     currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
                     photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
                     onDelete: deletePhoto
                 )
+                .transition(.asymmetric(
+                    insertion: AnyTransition.opacity.combined(with: .scale),
+                    removal: .opacity
+                ))
             }
         }
     }
@@ -217,7 +216,7 @@ struct PersonDetailView: View {
                             }
                     )
                     .onTapGesture {
-                        selectedPhotoIndex = safeIndex
+                        selectedPhoto = sortedPhotos[safeIndex]
                     }
                     
                     VStack {
@@ -267,7 +266,7 @@ struct PersonDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(groupPhotosByAge(), id: \.0) { section, photos in
-                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, isShowingFullScreen: $isShowingFullScreen, selectedPhotoIndex: $selectedPhotoIndex)
+                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto)
                 }
             }
         }
@@ -277,8 +276,7 @@ struct PersonDetailView: View {
         let section: String
         let photos: [Photo]
         let onDelete: (Photo) -> Void
-        @Binding var isShowingFullScreen: Bool
-        @Binding var selectedPhotoIndex: Int?
+        @Binding var selectedPhoto: Photo?
         
         var body: some View {
             VStack(alignment: .leading) {
@@ -286,8 +284,9 @@ struct PersonDetailView: View {
                     .font(.headline)
                     .padding(.leading)
                 
-                PhotoGridView(section: section, photos: photos, onDelete: onDelete, isShowingFullScreen: $isShowingFullScreen, selectedPhotoIndex: $selectedPhotoIndex)
+                PhotoGridView(section: section, photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto)
             }
+            .padding(.bottom, 20)
         }
     }
 
@@ -295,15 +294,15 @@ struct PersonDetailView: View {
         let section: String
         let photos: [Photo]
         let onDelete: (Photo) -> Void
-        @Binding var isShowingFullScreen: Bool
-        @Binding var selectedPhotoIndex: Int?
+        @Binding var selectedPhoto: Photo?
+        @Namespace private var namespace
         
         var body: some View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                ForEach(photos.prefix(5)) { photo in
                     photoThumbnail(photo)
                         .onTapGesture {
-                            selectedPhotoIndex = index
+                            selectedPhoto = photo
                         }
                 }
                 if photos.count > 5 {
@@ -321,8 +320,9 @@ struct PersonDetailView: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 100, height: 100)
+                        .frame(width: 110, height: 110)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .matchedGeometryEffect(id: photo.id, in: namespace)
                 } else {
                     Color.gray
                         .frame(width: 100, height: 100)
