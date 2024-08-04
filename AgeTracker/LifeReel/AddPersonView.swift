@@ -12,11 +12,12 @@ import PhotosUI
 struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var name = ""
-    @State private var dateOfBirth = Date()
+    @State private var dateOfBirth: Date?
     @State private var selectedImage: UIImage?
     @State private var showImagePicker = false
     @State private var imageMeta: [String: Any]?
     @State private var showDatePickerSheet = false
+    @State private var showAgeText = false
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
@@ -55,8 +56,13 @@ struct AddPersonView: View {
                     HStack {
                         Text("Date of Birth")
                         Spacer()
-                        Text(dateOfBirth, formatter: dateFormatter)
-                            .foregroundColor(.gray)
+                        if let dateOfBirth = dateOfBirth {
+                            Text(dateOfBirth, formatter: dateFormatter)
+                                .foregroundColor(.gray)
+                        } else {
+                            Text("Select Date")
+                                .foregroundColor(.blue)
+                        }
                     }
                     .padding(.vertical, 12)
                     .padding(.horizontal, 16)
@@ -65,6 +71,13 @@ struct AddPersonView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         showDatePickerSheet = true
+                    }
+                    
+                    // Add the age text here
+                    if showAgeText, let dob = dateOfBirth, !name.isEmpty {
+                        Text(calculateAge(for: dob, at: Date(), name: name))
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
                     
                     Spacer(minLength: 300) // Add extra space at the bottom
@@ -81,8 +94,8 @@ struct AddPersonView: View {
                 },
                 trailing: Button("Save") {
                     if let image = selectedImage {
-                        let dateTaken = extractDateTaken(from: imageMeta) ?? dateOfBirth
-                        viewModel.addPerson(name: name, dateOfBirth: dateOfBirth, image: image, dateTaken: dateTaken)
+                        let dateTaken = extractDateTaken(from: imageMeta) ?? dateOfBirth ?? Date()
+                        viewModel.addPerson(name: name, dateOfBirth: dateOfBirth ?? Date(), image: image, dateTaken: dateTaken)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -93,7 +106,13 @@ struct AddPersonView: View {
             ImagePicker(image: $selectedImage, imageMeta: $imageMeta, isPresented: $showImagePicker)
         }
         .sheet(isPresented: $showDatePickerSheet) {
-            BirthDaySheet(dateOfBirth: $dateOfBirth, isPresented: $showDatePickerSheet)
+            BirthDaySheet(dateOfBirth: Binding(
+                get: { self.dateOfBirth ?? Date() },
+                set: { 
+                    self.dateOfBirth = $0
+                    self.showAgeText = true
+                }
+            ), isPresented: $showDatePickerSheet)
                 .presentationDetents([.height(300)]) // Make it a small sheet
         }
     }
@@ -112,5 +131,33 @@ struct AddPersonView: View {
             return dateFormatter.date(from: dateTimeOriginal)
         }
         return nil
+    }
+    
+    // Updated function to calculate age or pregnancy stage
+    private func calculateAge(for dob: Date, at date: Date, name: String) -> String {
+        let calendar = Calendar.current
+        
+        if date >= dob {
+            let components = calendar.dateComponents([.year, .month, .day], from: dob, to: date)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
+            let days = components.day ?? 0
+            
+            var ageComponents: [String] = []
+            if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
+            if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
+            if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
+            
+            return "\(name) is \(ageComponents.joined(separator: ", ")) today"
+        } else {
+            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: date, to: dob).weekOfYear ?? 0
+            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+            
+            if pregnancyWeek > 0 {
+                return "\(name)'s mom is \(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant today"
+            } else {
+                return "\(name)'s mom is not yet pregnant"
+            }
+        }
     }
 }
