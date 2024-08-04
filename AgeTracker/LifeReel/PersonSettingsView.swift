@@ -21,6 +21,7 @@ struct PersonSettingsView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var onBulkImportComplete: ((String?) -> Void)?
     @State private var showingBirthDaySheet = false
+    @State private var showingBulkImport = false
 
     // Add this enum at the top of your struct
     enum AlertType {
@@ -69,6 +70,12 @@ struct PersonSettingsView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
+                
+                Button(action: {
+                    showingBulkImport = true
+                }) {
+                    Text("Bulk Import")
+                }
             }
 
             Section(header: Text("Danger Zone")) {
@@ -119,6 +126,13 @@ struct PersonSettingsView: View {
         .sheet(isPresented: $showingBirthDaySheet) {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
                 .presentationDetents([.height(300)]) 
+        }
+        .sheet(isPresented: $showingBulkImport) {
+            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                    person = updatedPerson
+                }
+            })
         }
         .onAppear {
             fetchAlbums()

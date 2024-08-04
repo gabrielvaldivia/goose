@@ -72,18 +72,9 @@ struct PersonDetailView: View {
                         }) {
                             Image(systemName: "gear")
                         }
-                        Menu {
-                            Button(action: { 
-                                showingImagePicker = true 
-                            }) {
-                                Label("Add Photo", systemImage: "camera")
-                            }
-                            Button(action: {
-                                showingBulkImport = true
-                            }) {
-                                Label("Bulk Import", systemImage: "square.and.arrow.down")
-                            }
-                        } label: {
+                        Button(action: { 
+                            showingImagePicker = true 
+                        }) {
                             Image(systemName: "plus")
                         }
                     }
