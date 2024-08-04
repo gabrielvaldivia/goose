@@ -74,8 +74,9 @@ struct AddPersonView: View {
                     }
                     
                     // Add the age text here
-                    if showAgeText, let dob = dateOfBirth, !name.isEmpty {
-                        Text(calculateAge(for: dob, at: Date(), name: name))
+                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, let image = selectedImage {
+                        let photoDate = extractDateTaken(from: imageMeta) ?? Date()
+                        Text(calculateAge(for: dob, at: photoDate, name: name))
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -134,11 +135,11 @@ struct AddPersonView: View {
     }
     
     // Updated function to calculate age or pregnancy stage
-    private func calculateAge(for dob: Date, at date: Date, name: String) -> String {
+    private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
         let calendar = Calendar.current
         
-        if date >= dob {
-            let components = calendar.dateComponents([.year, .month, .day], from: dob, to: date)
+        if photoDate >= dob {
+            let components = calendar.dateComponents([.year, .month, .day], from: dob, to: photoDate)
             let years = components.year ?? 0
             let months = components.month ?? 0
             let days = components.day ?? 0
@@ -148,13 +149,13 @@ struct AddPersonView: View {
             if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
             if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
             
-            return "\(name) is \(ageComponents.joined(separator: ", ")) today"
+            return "\(name) is \(ageComponents.joined(separator: ", ")) old"
         } else {
-            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: date, to: dob).weekOfYear ?? 0
+            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photoDate, to: dob).weekOfYear ?? 0
             let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
             
             if pregnancyWeek > 0 {
-                return "\(name)'s mom is \(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant today"
+                return "\(name)'s mom is \(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
             } else {
                 return "\(name)'s mom is not yet pregnant"
             }
