@@ -13,9 +13,8 @@ struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var name = ""
     @State private var dateOfBirth: Date?
-    @State private var selectedImage: UIImage?
+    @State private var selectedAssets: [PHAsset] = []
     @State private var showImagePicker = false
-    @State private var imageMeta: [String: Any]?
     @State private var showDatePickerSheet = false
     @State private var showAgeText = false
     @Environment(\.presentationMode) var presentationMode
@@ -54,12 +53,8 @@ struct AddPersonView: View {
                     
                     // Photo selection grid
                     LazyVGrid(columns: columns, spacing: 10) {
-                        if let image = selectedImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        ForEach(selectedAssets, id: \.localIdentifier) { asset in
+                            AssetThumbnailView(asset: asset, isSelected: true)
                         }
                         
                         Button(action: {
@@ -78,9 +73,8 @@ struct AddPersonView: View {
                     }
                     .padding(.top, 20)
                     
-                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, let image = selectedImage {
-                        let photoDate = extractDateTaken(from: imageMeta) ?? Date()
-                        Text(calculateAge(for: dob, at: photoDate, name: name))
+                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, !selectedAssets.isEmpty {
+                        Text(calculateAge(for: dob, at: selectedAssets.first?.creationDate ?? Date(), name: name))
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -98,17 +92,13 @@ struct AddPersonView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Save") {
-                    if let image = selectedImage {
-                        let dateTaken = extractDateTaken(from: imageMeta) ?? dateOfBirth ?? Date()
-                        viewModel.addPerson(name: name, dateOfBirth: dateOfBirth ?? Date(), image: image, dateTaken: dateTaken)
-                        presentationMode.wrappedValue.dismiss()
-                    }
+                    saveNewPerson()
                 }
-                .disabled(selectedImage == nil || name.isEmpty)
+                .disabled(selectedAssets.isEmpty || name.isEmpty)
             )
         }
         .sheet(isPresented: $showImagePicker) {
-            ImagePicker(image: $selectedImage, imageMeta: $imageMeta, isPresented: $showImagePicker)
+            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
         }
         .sheet(isPresented: $showDatePickerSheet) {
             BirthDaySheet(dateOfBirth: Binding(
@@ -127,15 +117,6 @@ struct AddPersonView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter
-    }
-    
-    private func extractDateTaken(from metadata: [String: Any]?) -> Date? {
-        if let dateTimeOriginal = metadata?["DateTimeOriginal"] as? String {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
-            return dateFormatter.date(from: dateTimeOriginal)
-        }
-        return nil
     }
     
     private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
@@ -162,6 +143,37 @@ struct AddPersonView: View {
             } else {
                 return "\(name)'s mom is not yet pregnant"
             }
+        }
+    }
+    
+    private func saveNewPerson() {
+        guard let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else { return }
+        
+        let options = PHImageRequestOptions()
+        options.isSynchronous = false
+        options.deliveryMode = .highQualityFormat
+        
+        let group = DispatchGroup()
+        var newPerson: Person?
+        
+        for (index, asset) in selectedAssets.enumerated() {
+            group.enter()
+            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, _ in
+                if let image = image {
+                    if index == 0 {
+                        newPerson = Person(name: self.name, dateOfBirth: dateOfBirth)
+                        self.viewModel.addPerson(name: self.name, dateOfBirth: dateOfBirth, image: image, dateTaken: asset.creationDate ?? Date())
+                    } else if var person = newPerson {
+                        self.viewModel.addPhoto(to: &person, image: image, dateTaken: asset.creationDate ?? Date())
+                        newPerson = person
+                    }
+                }
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            self.presentationMode.wrappedValue.dismiss()
         }
     }
 }
