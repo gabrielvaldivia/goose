@@ -13,10 +13,10 @@ struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var name = ""
     @State private var dateOfBirth = Date()
-    @State private var showDatePicker = false
     @State private var selectedImage: UIImage?
     @State private var showImagePicker = false
     @State private var imageMeta: [String: Any]?
+    @State private var showDatePickerSheet = false
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
@@ -46,8 +46,11 @@ struct AddPersonView: View {
                     }
                     
                     TextField("Name", text: $name)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(8)
+                        
                     
                     HStack {
                         Text("Date of Birth")
@@ -55,21 +58,18 @@ struct AddPersonView: View {
                         Text(dateOfBirth, formatter: dateFormatter)
                             .foregroundColor(.gray)
                     }
-                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(Color(UIColor.systemBackground))
+                    .cornerRadius(8)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        showDatePicker.toggle()
-                    }
-                    
-                    if showDatePicker {
-                        DatePicker("", selection: $dateOfBirth, displayedComponents: .date)
-                            .datePickerStyle(.wheel)
-                            .labelsHidden()
+                        showDatePickerSheet = true
                     }
                     
                     Spacer(minLength: 300) // Add extra space at the bottom
                 }
-                .padding(.top, 20)
+                .padding()
             }
             .background(Color(UIColor.secondarySystemBackground))
             .ignoresSafeArea(.keyboard) // Ignore the keyboard safe area
@@ -91,6 +91,10 @@ struct AddPersonView: View {
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(image: $selectedImage, imageMeta: $imageMeta, isPresented: $showImagePicker)
+        }
+        .sheet(isPresented: $showDatePickerSheet) {
+            BirthDaySheet(dateOfBirth: $dateOfBirth, isPresented: $showDatePickerSheet)
+                .presentationDetents([.height(300)]) // Make it a small sheet
         }
     }
     

@@ -91,14 +91,30 @@ struct PersonItemView: View {
     
     private func calculateAge() -> String {
         let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: Date())
-        let years = ageComponents.year ?? 0
-        let months = ageComponents.month ?? 0
+        let birthDate = person.dateOfBirth
+        let currentDate = Date()
         
-        if years == 0 {
-            return "\(months) month\(months == 1 ? "" : "s") old"
+        if currentDate >= birthDate {
+            let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: currentDate)
+            let years = ageComponents.year ?? 0
+            let months = ageComponents.month ?? 0
+            
+            if years == 0 {
+                return "\(months) month\(months == 1 ? "" : "s") old"
+            } else {
+                return "\(years) year\(years == 1 ? "" : "s") old"
+            }
         } else {
-            return "\(years) year\(years == 1 ? "" : "s") old"
+            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: currentDate, to: birthDate).weekOfYear ?? 0
+            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+            
+            if pregnancyWeek == 40 {
+                return "Newborn"
+            } else if pregnancyWeek > 0 {
+                return "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
+            } else {
+                return "Before pregnancy"
+            }
         }
     }
 }

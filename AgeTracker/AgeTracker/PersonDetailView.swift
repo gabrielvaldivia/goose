@@ -250,7 +250,9 @@ struct PersonDetailView: View {
                         }
                     }
                 } else {
+                    Spacer ()
                     Text("No photos available")
+                    Spacer ()
                 }
             }
             .frame(width: geometry.size.width)

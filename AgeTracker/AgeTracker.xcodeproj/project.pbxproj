@@ -24,6 +24,7 @@
 		4015B7682C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7672C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift */; };
 		4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */; };
 		4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */; };
+		4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 		4015B7672C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllPhotosInSelectionView.swift; sourceTree = "<group>"; };
 		4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenPhotoView.swift; sourceTree = "<group>"; };
 		4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
+		4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirthDaySheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +125,7 @@
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
+				4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */,
 				4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */,
 				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
 				4015B7302C5C5628001FA4E4 /* Assets.xcassets */,
@@ -298,6 +301,7 @@
 				4015B72D2C5C5628001FA4E4 /* AgeTrackerApp.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
 				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,
+				4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */,
 				4015B7592C5C5663001FA4E4 /* PersonViewModel.swift in Sources */,
 				4015B7682C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift in Sources */,
 				4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */,

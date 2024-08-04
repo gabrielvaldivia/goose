@@ -58,11 +58,11 @@ class PersonViewModel: ObservableObject {
         return (ageComponents.year ?? 0, ageComponents.month ?? 0, ageComponents.day ?? 0)
     }
     
-    func updatePerson(_ person: Person) {
-        if let index = people.firstIndex(where: { $0.id == person.id }) {
-            people[index] = person
+    func updatePerson(_ updatedPerson: Person) {
+        if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
+            people[index] = updatedPerson
             savePeople()
-            objectWillChange.send()  // Notify observers of the change
+            objectWillChange.send()
         }
     }
     
@@ -256,6 +256,34 @@ class PersonViewModel: ObservableObject {
     
     func movePerson(from source: IndexSet, to destination: Int) {
         people.move(fromOffsets: source, toOffset: destination)
+    }
+    
+    func deleteAllPhotos(for person: Person, completion: @escaping (Result<Void, Error>) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Find the person in the people array
+            guard var updatedPerson = self.people.first(where: { $0.id == person.id }) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NSError(domain: "PersonNotFound", code: 404, userInfo: nil)))
+                }
+                return
+            }
+            
+            // Remove all photos
+            updatedPerson.photos.removeAll()
+            
+            // Update the person in the people array
+            if let index = self.people.firstIndex(where: { $0.id == person.id }) {
+                self.people[index] = updatedPerson
+            }
+            
+            // Save the updated people array
+            self.savePeople()
+            
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+                completion(.success(()))
+            }
+        }
     }
 }
 

@@ -20,6 +20,16 @@ struct PersonSettingsView: View {
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
     @State private var onBulkImportComplete: ((String?) -> Void)?
+    @State private var showingBirthDaySheet = false
+
+    // Add this enum at the top of your struct
+    enum AlertType {
+        case deletePhotos, deletePerson
+    }
+
+    // Add these state variables
+    @State private var showingAlert = false
+    @State private var activeAlert: AlertType = .deletePhotos
 
     init(viewModel: PersonViewModel, person: Binding<Person>) {
         self.viewModel = viewModel
@@ -32,7 +42,17 @@ struct PersonSettingsView: View {
         Form {
             Section(header: Text("Personal Information")) {
                 TextField("Name", text: $editedName)
-                DatePicker("Date of Birth", selection: $editedDateOfBirth, displayedComponents: .date)
+                Button(action: {
+                    showingBirthDaySheet = true
+                }) {
+                    HStack {
+                        Text("Date of Birth")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(formatDate(editedDateOfBirth))
+                            .foregroundColor(.gray)
+                    }
+                }
             }
 
             Section {
@@ -47,14 +67,16 @@ struct PersonSettingsView: View {
 
             Section(header: Text("Danger Zone")) {
                 Button(action: {
-                    showingDeletePhotosAlert = true
+                    activeAlert = .deletePhotos
+                    showingAlert = true
                 }) {
                     Text("Delete All Photos")
                         .foregroundColor(.red)
                 }
                 
                 Button(action: {
-                    showingDeletePersonAlert = true
+                    activeAlert = .deletePerson
+                    showingAlert = true
                 }) {
                     Text("Delete Person")
                         .foregroundColor(.red)
@@ -66,25 +88,31 @@ struct PersonSettingsView: View {
         .navigationBarItems(trailing: Button("Save") {
             saveChanges()
         })
-        .alert(isPresented: $showingDeletePhotosAlert) {
-            Alert(
-                title: Text("Delete All Photos"),
-                message: Text("Are you sure you want to delete all photos for this person? This action cannot be undone."),
-                primaryButton: .destructive(Text("Delete")) {
-                    deleteAllPhotos()
-                },
-                secondaryButton: .cancel()
-            )
+        .alert(isPresented: $showingAlert) {
+            switch activeAlert {
+            case .deletePhotos:
+                return Alert(
+                    title: Text("Delete All Photos"),
+                    message: Text("Are you sure you want to delete all photos for this person? This action cannot be undone."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        deleteAllPhotos()
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .deletePerson:
+                return Alert(
+                    title: Text("Delete Person"),
+                    message: Text("Are you sure you want to delete this person? This action cannot be undone."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        deletePerson()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
-        .alert(isPresented: $showingDeletePersonAlert) {
-            Alert(
-                title: Text("Delete Person"),
-                message: Text("Are you sure you want to delete this person? This action cannot be undone."),
-                primaryButton: .destructive(Text("Delete")) {
-                    deletePerson()
-                },
-                secondaryButton: .cancel()
-            )
+        .sheet(isPresented: $showingBirthDaySheet) {
+            BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
+                .presentationDetents([.height(300)]) 
         }
         .onAppear {
             fetchAlbums()
@@ -129,12 +157,31 @@ struct PersonSettingsView: View {
     }
 
     private func deleteAllPhotos() {
-        person.photos.removeAll()
-        viewModel.updatePerson(person)
+        viewModel.deleteAllPhotos(for: person) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Update the local person object
+                    self.person.photos.removeAll()
+                    // Notify the view model of the change
+                    self.viewModel.objectWillChange.send()
+                case .failure(let error):
+                    print("Failed to delete photos: \(error.localizedDescription)")
+                    // Optionally, show an alert to the user about the failure
+                }
+            }
+        }
     }
 
     private func deletePerson() {
         viewModel.deletePerson(person)
         presentationMode.wrappedValue.dismiss()
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
