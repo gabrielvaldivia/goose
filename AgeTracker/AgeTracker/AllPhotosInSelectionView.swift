@@ -12,8 +12,7 @@ struct AllPhotosInSectionView: View {
     let sectionTitle: String
     let photos: [Photo]
     var onDelete: (Photo) -> Void
-    @State private var isShowingFullScreen = false
-    @State private var selectedPhotoIndex: Int?
+    @State private var selectedPhotoIndex: IdentifiableIndex?
     
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
     
@@ -23,23 +22,20 @@ struct AllPhotosInSectionView: View {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                     photoThumbnail(photo)
                         .onTapGesture {
-                            selectedPhotoIndex = index
-                            isShowingFullScreen = true
+                            selectedPhotoIndex = IdentifiableIndex(index: index)
                         }
                 }
             }
             .padding()
         }
         .navigationTitle(sectionTitle)
-        .fullScreenCover(isPresented: $isShowingFullScreen) {
-            if let index = selectedPhotoIndex {
-                FullScreenPhotoView(
-                    photo: photos[index],
-                    currentIndex: index,
-                    photos: photos,
-                    onDelete: onDelete
-                )
-            }
+        .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
+            FullScreenPhotoView(
+                photo: photos[identifiableIndex.index],
+                currentIndex: identifiableIndex.index,
+                photos: photos,
+                onDelete: onDelete
+            )
         }
     }
     
@@ -49,13 +45,18 @@ struct AllPhotosInSectionView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 100, height: 100)
+                    .frame(width: 110, height: 110)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 Color.gray
-                    .frame(width: 100, height: 100)
+                    .frame(width: 110, height: 110)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
     }
+}
+
+struct IdentifiableIndex: Identifiable {
+    let id = UUID()
+    let index: Int
 }

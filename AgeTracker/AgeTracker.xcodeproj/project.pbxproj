@@ -472,6 +472,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AgeTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Life Reel";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -504,6 +506,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AgeTracker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Life Reel";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSCameraUsageDescription = "AgeTracker needs access to your camera to take photos for age tracking.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "AgeTracker needs access to your photo library to select photos for age tracking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

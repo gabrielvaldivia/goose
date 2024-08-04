@@ -338,7 +338,7 @@ struct PersonDetailView: View {
                     .font(.title2)
                     .foregroundColor(.white)
             }
-            .frame(width: 100, height: 100)
+            .frame(width: 110, height: 110)
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }

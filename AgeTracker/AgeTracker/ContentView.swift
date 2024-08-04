@@ -19,7 +19,7 @@ struct ContentView: View {
                     VStack {
                         Spacer(minLength: 0)
                         
-                        LazyVStack(spacing: 20) {
+                        LazyVStack(spacing: 40) {
                             ForEach(viewModel.people) { person in
                                 PersonItemView(person: person, viewModel: viewModel)
                                     .onDrag {
@@ -33,12 +33,18 @@ struct ContentView: View {
                             
                             Button(action: { showingAddPerson = true }) {
                                 VStack {
-                                    Image(systemName: "plus.circle.fill")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 60, height: 60)
-                                        .foregroundColor(.blue)
-                                    Text("Add Person")
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.blue.opacity(0.2))
+                                            .frame(width: 100, height: 100)
+                                        
+                                        Image(systemName: "plus")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 24, height: 24)
+                                            .foregroundColor(.blue)
+                                    }
+                                    Text("Add Reel")
                                         .foregroundColor(.blue)
                                 }
                             }
@@ -51,7 +57,7 @@ struct ContentView: View {
                     .padding(.vertical)
                 }
             }
-            .navigationTitle("Age Tracker")
+            .navigationTitle("Reels")
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showingAddPerson) {
