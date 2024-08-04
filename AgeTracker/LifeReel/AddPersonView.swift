@@ -19,6 +19,7 @@ struct AddPersonView: View {
     @State private var showDatePickerSheet = false
     @State private var showAgeText = false
     @Environment(\.presentationMode) var presentationMode
+    @State private var isLoading = false
     
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
     
@@ -116,6 +117,22 @@ struct AddPersonView: View {
             ), isPresented: $showDatePickerSheet)
                 .presentationDetents([.height(300)])
         }
+        .overlay(
+            Group {
+                if isLoading {
+                    Color.black.opacity(0.4)
+                        .edgesIgnoringSafeArea(.all)
+                    VStack {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                        Text("Saving...")
+                            .foregroundColor(.white)
+                            .padding(.top)
+                    }
+                }
+            }
+        )
     }
     
     private var dateFormatter: DateFormatter {
@@ -179,6 +196,7 @@ struct AddPersonView: View {
     private func saveNewPerson() {
         guard let dateOfBirth = dateOfBirth else { return }
         
+        isLoading = true
         print("Selected assets count: \(selectedAssets.count)")
         
         let group = DispatchGroup()
@@ -210,6 +228,7 @@ struct AddPersonView: View {
             newPerson.photos = newPhotos
             self.viewModel.updatePerson(newPerson)
             print("New person created with \(newPerson.photos.count) photos")
+            self.isLoading = false
             self.presentationMode.wrappedValue.dismiss()
         }
     }
