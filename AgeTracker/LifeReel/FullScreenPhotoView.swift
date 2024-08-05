@@ -20,11 +20,19 @@ struct FullScreenPhotoView: View {
     @State private var showControls = true
     @State private var scale: CGFloat = 1.0
     let person: Person
-    @State private var showingShareSheet = false
-    @State private var isShareSheetPresented = false
+    @State private var activeSheet: ActiveSheet?
     @State private var activityItems: [Any] = []
-    @State private var showingPolaroidSheet = false
-
+    @State private var isShareSheetPresented = false
+    
+    enum ActiveSheet: Identifiable {
+        case shareView
+        case activityView
+        
+        var id: Int {
+            hashValue
+        }
+    }
+    
     var body: some View {
         // Main View Layout
         GeometryReader { geometry in
@@ -97,7 +105,7 @@ struct FullScreenPhotoView: View {
                             }
                             Spacer()
                             Button(action: {
-                                showingPolaroidSheet = true
+                                activeSheet = .shareView
                             }) {
                                 Image(systemName: "square.and.arrow.up")
                                     .foregroundColor(.white)
@@ -134,37 +142,25 @@ struct FullScreenPhotoView: View {
                 scale = 1.0
             }
         }
-        // Polaroid Overlay
-        .sheet(isPresented: $showingPolaroidSheet) {
-            NavigationView {
-                VStack {
-                    PolaroidView(
+        // Share Sheet Presentation
+        .sheet(item: $activeSheet) { item in
+            switch item {
+            case .shareView:
+                NavigationView {
+                    SharePhotoView(
                         image: photos[currentIndex].image ?? UIImage(),
                         name: person.name,
-                        age: calculateAge(for: person, at: photos[currentIndex].dateTaken)
+                        age: calculateAge(for: person, at: photos[currentIndex].dateTaken),
+                        isShareSheetPresented: $isShareSheetPresented,
+                        activityItems: $activityItems
                     )
-                    .padding()
-                    
-                    Button(action: sharePhoto) {
-                        Text("Share")
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(10)
-                    }
-                    .padding(.horizontal)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(UIColor.secondarySystemBackground))
-                .navigationTitle("Pick a share template")
-                .navigationBarTitleDisplayMode(.inline)
+            case .activityView:
+                ActivityViewController(activityItems: activityItems)
+                    .onDisappear {
+                        self.activeSheet = nil
+                    }
             }
-        }
-        .presentationDetents([.medium])
-        // Share Sheet Presentation
-        .sheet(isPresented: $isShareSheetPresented) {
-            ActivityViewController(activityItems: activityItems)
         }
     }
     
@@ -178,92 +174,5 @@ struct FullScreenPhotoView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
-    }
-    
-    // Share Photo Function
-    @MainActor
-    private func sharePhoto() {
-        let polaroidView = PolaroidView(
-            image: photos[currentIndex].image ?? UIImage(),
-            name: person.name,
-            age: calculateAge(for: person, at: photos[currentIndex].dateTaken)
-        )
-        
-        let renderer = ImageRenderer(content: polaroidView)
-        renderer.scale = 3.0 // For better quality
-        
-        if let uiImage = renderer.uiImage {
-            let croppedImage = cropToPolaroid(uiImage)
-            let imageToShare = [croppedImage]
-            showingPolaroidSheet = false // Close the polaroid overlay
-            isShareSheetPresented = true
-            activityItems = imageToShare
-        }
-    }
-    
-    // Image Cropping Function
-    private func cropToPolaroid(_ image: UIImage) -> UIImage {
-        let scale = image.scale
-        let size = image.size
-        let rect = CGRect(x: 0, y: 0, width: size.width * scale, height: size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: rect.size)
-        
-        let croppedImage = renderer.image { context in
-            image.draw(in: rect)
-        }
-        
-        return croppedImage
-    }
-}
-
-struct ActivityViewController: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    let applicationActivities: [UIActivity]? = nil
-
-    func makeUIViewController(context: UIViewControllerRepresentableContext<ActivityViewController>) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: UIViewControllerRepresentableContext<ActivityViewController>) {}
-}
-
-struct PolaroidView: View {
-    let image: UIImage
-    let name: String
-    let age: String
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 280, height: 280)
-                .clipped()
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.headline)
-                    Text(age)
-                        .font(.footnote)
-                        .foregroundColor(.gray)
-                }
-                Spacer()
-                Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 40, height: 40)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-                    )
-                }
-            .padding(.horizontal, 20)
-        }
-        .frame(width: 320, height: 380)
-        .background(Color.white)
-        .cornerRadius(10)
     }
 }

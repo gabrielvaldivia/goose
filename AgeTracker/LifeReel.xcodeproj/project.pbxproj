@@ -26,6 +26,8 @@
 		4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */; };
 		4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */; };
 		40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B512C604C5E00C1B076 /* AgeCalculator.swift */; };
+		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
+		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +71,8 @@
 		4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
 		4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirthDaySheet.swift; sourceTree = "<group>"; };
 		40C00B512C604C5E00C1B076 /* AgeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeCalculator.swift; sourceTree = "<group>"; };
+		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
+		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +127,8 @@
 				4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */,
 				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
+				40C00B552C6168A700C1B076 /* SharePhotoView.swift */,
+				40C00B572C61691400C1B076 /* ActivityViewController.swift */,
 				40C00B512C604C5E00C1B076 /* AgeCalculator.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
@@ -298,6 +304,7 @@
 				4015B7572C5C5644001FA4E4 /* Person.swift in Sources */,
 				4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */,
 				4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */,
+				40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */,
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
 				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
@@ -308,6 +315,7 @@
 				4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */,
 				4015B7592C5C5663001FA4E4 /* PersonViewModel.swift in Sources */,
 				4015B7682C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift in Sources */,
+				40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */,
 				4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

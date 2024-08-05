@@ -12,6 +12,16 @@ import UniformTypeIdentifiers
 import Photos
 import UIKit
 
+enum ActiveSheet: Identifiable {
+    case settings
+    case bulkImport
+    case shareView
+    
+    var id: Int {
+        hashValue
+    }
+}
+
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -27,9 +37,10 @@ struct PersonDetailView: View {
     @State private var lastFeedbackDate: Date?
     let impact = UIImpactFeedbackGenerator(style: .light)
     @State private var selectedView = 0 // 0 for All, 1 for Years
-    @State private var showingBulkImport = false // New state variable
-    @State private var showingSettings = false // New state variable
+    @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil // New state variable
+    @State private var isShareSheetPresented = false
+    @State private var activityItems: [Any] = []
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -68,7 +79,7 @@ struct PersonDetailView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack {
                         Button(action: {
-                            showingSettings = true
+                            activeSheet = .settings
                         }) {
                             Image(systemName: "gear")
                         }
@@ -76,6 +87,12 @@ struct PersonDetailView: View {
                             showingImagePicker = true 
                         }) {
                             Image(systemName: "plus")
+                        }
+                        Button(action: {
+                            activeSheet = .shareView
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(.accentColor)
                         }
                     }
                 }
@@ -89,18 +106,38 @@ struct PersonDetailView: View {
                 ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
             }
             // Sheet presentation for bulk import
-            .sheet(isPresented: $showingBulkImport) {
-                BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                    if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                        person = updatedPerson
+            .sheet(item: $activeSheet) { item in
+                switch item {
+                case .settings:
+                    NavigationView {
+                        PersonSettingsView(viewModel: viewModel, person: $person)
                     }
-                })
-            }
-            // Sheet presentation for settings
-            .sheet(isPresented: $showingSettings) {
-                NavigationView {
-                    PersonSettingsView(viewModel: viewModel, person: $person)
+                case .bulkImport:
+                    BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                            person = updatedPerson
+                        }
+                    })
+                case .shareView:
+                    NavigationView {
+                        if !person.photos.isEmpty {
+                            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                            let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
+                            SharePhotoView(
+                                image: sortedPhotos[safeIndex].image ?? UIImage(),
+                                name: person.name,
+                                age: calculateAge(),
+                                isShareSheetPresented: $isShareSheetPresented,
+                                activityItems: $activityItems
+                            )
+                        } else {
+                            Text("No photos available to share")
+                        }
+                    }
                 }
+            }
+            .sheet(isPresented: $isShareSheetPresented) {
+                ActivityViewController(activityItems: activityItems)
             }
             // Image selection handler
             .onChange(of: selectedAssets) { newAssets in
