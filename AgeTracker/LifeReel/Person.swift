@@ -8,6 +8,7 @@
 import Foundation
 import UIKit
 import AVFoundation
+import Photos
 
 struct Person: Identifiable, Codable, Equatable {
     let id: UUID
@@ -34,47 +35,49 @@ struct Person: Identifiable, Codable, Equatable {
 
 struct Photo: Identifiable, Codable, Equatable {
     let id: UUID
-    let fileName: String
+    let assetIdentifier: String
     let dateTaken: Date
     let isVideo: Bool
-    let uniqueIdentifier: String
-    
+
     var image: UIImage? {
         guard !isVideo else { return nil }
-        let path = Photo.getDocumentsDirectory().appendingPathComponent(fileName).path
-        return UIImage(contentsOfFile: path)
+        let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
+        guard let asset = result.firstObject else { return nil }
+        
+        let manager = PHImageManager.default()
+        var image: UIImage?
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        
+        manager.requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { result, _ in
+            image = result
+        }
+        
+        return image
     }
-    
+
     var videoURL: URL? {
         guard isVideo else { return nil }
-        return Photo.getDocumentsDirectory().appendingPathComponent(fileName)
-    }
-    
-    init(id: UUID = UUID(), image: UIImage, dateTaken: Date, uniqueIdentifier: String = UUID().uuidString) {
-        self.id = id
-        self.fileName = "\(id).jpg"
-        self.dateTaken = dateTaken
-        self.isVideo = false
-        self.uniqueIdentifier = uniqueIdentifier
+        let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
+        guard let asset = result.firstObject else { return nil }
         
-        if let data = image.jpegData(compressionQuality: 0.8) {
-            let url = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
-            try? data.write(to: url)
+        var videoURL: URL?
+        let options = PHVideoRequestOptions()
+        options.version = .original
+        
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
+            if let urlAsset = avAsset as? AVURLAsset {
+                videoURL = urlAsset.url
+            }
         }
-    }
-    
-    init(id: UUID = UUID(), videoURL: URL, dateTaken: Date, uniqueIdentifier: String = UUID().uuidString) {
-        self.id = id
-        self.fileName = "\(id).mov"
-        self.dateTaken = dateTaken
-        self.isVideo = true
-        self.uniqueIdentifier = uniqueIdentifier
         
-        let destinationURL = Photo.getDocumentsDirectory().appendingPathComponent(fileName)
-        try? FileManager.default.copyItem(at: videoURL, to: destinationURL)
+        return videoURL
     }
-    
-    static func getDocumentsDirectory() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+
+    init(id: UUID = UUID(), asset: PHAsset) {
+        self.id = id
+        self.assetIdentifier = asset.localIdentifier
+        self.dateTaken = asset.creationDate ?? Date()
+        self.isVideo = asset.mediaType == .video
     }
 }

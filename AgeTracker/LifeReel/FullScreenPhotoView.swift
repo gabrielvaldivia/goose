@@ -26,37 +26,31 @@ struct FullScreenPhotoView: View {
                 Color.black
                     .edgesIgnoringSafeArea(.all)
                 
-                AsyncImage(url: URL(fileURLWithPath: Photo.getDocumentsDirectory().appendingPathComponent(photos[currentIndex].fileName).path)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                            .offset(offset)
-                            .scaleEffect(scale)
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        offset = value.translation
-                                        showControls = false
+                if let image = photos[currentIndex].image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .offset(offset)
+                        .scaleEffect(scale)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    offset = value.translation
+                                    showControls = false
+                                }
+                                .onEnded { value in
+                                    if abs(value.translation.height) > 100 {
+                                        presentationMode.wrappedValue.dismiss()
+                                    } else {
+                                        withAnimation { offset = .zero }
                                     }
-                                    .onEnded { value in
-                                        if abs(value.translation.height) > 100 {
-                                            presentationMode.wrappedValue.dismiss()
-                                        } else {
-                                            withAnimation { offset = .zero }
-                                        }
-                                        showControls = true
-                                    }
-                            )
-                    case .failure(_):
-                        Color.gray
-                    case .empty:
-                        ProgressView()
-                    @unknown default:
-                        EmptyView()
-                    }
+                                    showControls = true
+                                }
+                        )
+                } else {
+                    Color.gray
+                        .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 
                 if showControls {

@@ -197,43 +197,21 @@ struct AddPersonView: View {
     }
     
     private func saveNewPerson() {
-        guard let dateOfBirth = dateOfBirth else { return }
+        guard let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else { return }
         
         isLoading = true
         print("Selected assets count: \(selectedAssets.count)")
         
-        let group = DispatchGroup()
-        var newPhotos: [Photo] = []
+        var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth)
         
-        for (index, asset) in selectedAssets.enumerated() {
-            group.enter()
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
-            
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                defer { group.leave() }
-                if let image = image {
-                    let dateTaken = asset.creationDate ?? Date()
-                    let newPhoto = Photo(image: image, dateTaken: dateTaken)
-                    newPhotos.append(newPhoto)
-                    print("Added photo \(index + 1) with date: \(dateTaken)")
-                } else {
-                    print("Failed to get image for asset \(index + 1)")
-                }
-            }
+        for asset in selectedAssets {
+            viewModel.addPhoto(to: &newPerson, asset: asset)
         }
         
-        group.notify(queue: .main) {
-            print("All photos processed. Total new photos: \(newPhotos.count)")
-            var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth)
-            newPerson.photos = newPhotos
-            self.viewModel.updatePerson(newPerson)
-            print("New person created with \(newPerson.photos.count) photos")
-            self.isLoading = false
-            self.presentationMode.wrappedValue.dismiss()
-        }
+        viewModel.updatePerson(newPerson)
+        print("New person created with \(newPerson.photos.count) photos")
+        self.isLoading = false
+        self.presentationMode.wrappedValue.dismiss()
     }
     
     private func requestPhotoLibraryAuthorization() {

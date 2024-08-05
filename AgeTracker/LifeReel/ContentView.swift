@@ -79,25 +79,18 @@ struct PersonItemView: View {
         NavigationLink(destination: PersonDetailView(person: person, viewModel: viewModel)) {
             VStack {
                 if let latestPhoto = person.photos.last {
-                    AsyncImage(url: URL(fileURLWithPath: Photo.getDocumentsDirectory().appendingPathComponent(latestPhoto.fileName).path)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 250, height: 250)
-                                .clipShape(Circle())
-                        case .failure(_):
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 100, height: 100)
-                                .foregroundColor(.gray)
-                        case .empty:
-                            ProgressView()
-                        @unknown default:
-                            EmptyView()
-                        }
+                    if let image = latestPhoto.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 250, height: 250)
+                            .clipShape(Circle())
+                    } else {
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
                     }
                 } else {
                     Image(systemName: "person.circle.fill")

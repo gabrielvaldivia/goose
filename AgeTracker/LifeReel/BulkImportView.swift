@@ -167,7 +167,7 @@ struct AlbumPhotosView: View {
                 PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
                     if let image = image {
                         print("Successfully retrieved image for asset: \(asset.localIdentifier)")
-                        self.viewModel.addPhoto(to: &self.person, image: image, dateTaken: asset.creationDate ?? Date())
+                        self.viewModel.addPhoto(to: &self.person, asset: asset)
                     } else {
                         print("Failed to import photo for asset: \(asset.localIdentifier)")
                     }

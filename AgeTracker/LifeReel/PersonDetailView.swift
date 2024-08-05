@@ -163,23 +163,18 @@ struct PersonDetailView: View {
                         ForEach(-1...1, id: \.self) { offset in
                             let index = safeIndex + offset
                             if index >= 0 && index < sortedPhotos.count {
-                                AsyncImage(url: URL(fileURLWithPath: Photo.getDocumentsDirectory().appendingPathComponent(sortedPhotos[index].fileName).path)) { phase in
-                                    switch phase {
-                                    case .success(let image):
-                                        image
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(height: geometry.size.height * 0.6)
-                                            .frame(width: geometry.size.width)
-                                    case .failure(_):
-                                        Color.gray
-                                    case .empty:
-                                        ProgressView()
-                                    @unknown default:
-                                        EmptyView()
-                                    }
+                                if let image = sortedPhotos[index].image {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: geometry.size.height * 0.6)
+                                        .frame(width: geometry.size.width)
+                                        .offset(x: CGFloat(offset) * geometry.size.width)
+                                } else {
+                                    Color.gray
+                                        .frame(width: geometry.size.width, height: geometry.size.height * 0.6)
+                                        .offset(x: CGFloat(offset) * geometry.size.width)
                                 }
-                                .offset(x: CGFloat(offset) * geometry.size.width)
                             }
                         }
                     }
@@ -409,23 +404,10 @@ struct PersonDetailView: View {
             return 
         }
         
-        for (index, asset) in selectedAssets.enumerated() {
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
-            
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                if let image = image {
-                    let dateTaken = asset.creationDate ?? Date()
-                    let uniqueIdentifier = asset.localIdentifier
-                    let newPhoto = Photo(image: image, dateTaken: dateTaken, uniqueIdentifier: uniqueIdentifier)
-                    self.viewModel.addPhoto(to: &self.person, photo: newPhoto)
-                    print("Added photo \(index + 1) with date: \(dateTaken) and identifier: \(uniqueIdentifier)")
-                } else {
-                    print("Failed to get image for asset \(index + 1)")
-                }
-            }
+        for asset in selectedAssets {
+            let newPhoto = Photo(asset: asset)
+            self.viewModel.addPhoto(to: &self.person, asset: asset)
+            print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
         }
     }
 

@@ -14,33 +14,43 @@ class PersonViewModel: ObservableObject {
     
     init() {
         loadPeople()
+        
+        // Check if photo migration is needed
+        if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
+            migratePhotos()
+            UserDefaults.standard.set(true, forKey: "photoMigrationCompleted")
+        }
     }
     
-    func addPerson(name: String, dateOfBirth: Date, image: UIImage, dateTaken: Date) {
+    func addPerson(name: String, dateOfBirth: Date, asset: PHAsset) {
         var newPerson = Person(name: name, dateOfBirth: dateOfBirth)
-        addPhoto(to: &newPerson, image: image, dateTaken: dateTaken)
+        addPhoto(to: &newPerson, asset: asset)
         people.append(newPerson)
         savePeople()
     }
     
-    func addPhoto(to person: inout Person, image: UIImage, dateTaken: Date) {
-        print("Adding photo to \(person.name) with date: \(dateTaken)")
-        let newPhoto = Photo(image: image, dateTaken: dateTaken)
-        person.photos.append(newPhoto)
-        person.photos.sort { $0.dateTaken < $1.dateTaken } // Sort photos by date
-        if let index = people.firstIndex(where: { $0.id == person.id }) {
-            people[index] = person
-            savePeople()
-            objectWillChange.send()  // Notify observers of the change
-            print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+    func addPhoto(to person: inout Person, asset: PHAsset) {
+        print("Adding photo to \(person.name) with date: \(asset.creationDate ?? Date())")
+        let newPhoto = Photo(asset: asset)
+        if !person.photos.contains(where: { $0.assetIdentifier == newPhoto.assetIdentifier }) {
+            person.photos.append(newPhoto)
+            person.photos.sort { $0.dateTaken < $1.dateTaken }
+            if let index = people.firstIndex(where: { $0.id == person.id }) {
+                people[index] = person
+                savePeople()
+                objectWillChange.send()
+                print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+            } else {
+                print("Failed to find person \(person.name) in people array")
+            }
         } else {
-            print("Failed to find person \(person.name) in people array")
+            print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
         }
     }
     
     func addPhoto(to person: inout Person, photo: Photo) {
         print("Adding photo to \(person.name) with date: \(photo.dateTaken)")
-        if !person.photos.contains(where: { $0.uniqueIdentifier == photo.uniqueIdentifier }) {
+        if !person.photos.contains(where: { $0.assetIdentifier == photo.assetIdentifier }) {
             person.photos.append(photo)
             person.photos.sort { $0.dateTaken < $1.dateTaken }
             if let index = people.firstIndex(where: { $0.id == person.id }) {
@@ -52,7 +62,7 @@ class PersonViewModel: ObservableObject {
                 print("Failed to find person \(person.name) in people array")
             }
         } else {
-            print("Photo with unique identifier \(photo.uniqueIdentifier) already exists for \(person.name)")
+            print("Photo with asset identifier \(photo.assetIdentifier) already exists for \(person.name)")
         }
     }
     
@@ -247,7 +257,7 @@ class PersonViewModel: ObservableObject {
             PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, _ in
                 if let image = image {
                     var updatedPerson = person
-                    self.addPhoto(to: &updatedPerson, image: image, dateTaken: asset.creationDate ?? Date())
+                    self.addPhoto(to: &updatedPerson, asset: asset)
                     self.updatePerson(updatedPerson)
                 } else {
                     success = false
@@ -300,6 +310,31 @@ class PersonViewModel: ObservableObject {
                 completion(.success(()))
             }
         }
+    }
+    
+    func migratePhotos() {
+        print("Starting photo migration...")
+        for personIndex in 0..<people.count {
+            var person = people[personIndex]
+            var newPhotos: [Photo] = []
+            
+            for oldPhoto in person.photos {
+                let assets = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+                if let asset = assets.firstObject {
+                    let newPhoto = Photo(asset: asset)
+                    newPhotos.append(newPhoto)
+                    print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
+                } else {
+                    print("Failed to migrate photo for \(person.name): \(oldPhoto.assetIdentifier)")
+                }
+            }
+            
+            person.photos = newPhotos
+            people[personIndex] = person
+        }
+        
+        savePeople()
+        print("Photo migration completed.")
     }
 }
 
