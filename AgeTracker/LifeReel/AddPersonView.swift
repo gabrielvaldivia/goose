@@ -20,13 +20,15 @@ struct AddPersonView: View {
     @State private var showAgeText = false
     @Environment(\.presentationMode) var presentationMode
     @State private var isLoading = false
+    @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    @State private var showingPermissionAlert = false
     
     let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
                     TextField("Name", text: $name)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 16)
@@ -54,7 +56,7 @@ struct AddPersonView: View {
                     }
                     
                     // Photo selection grid
-                    LazyVGrid(columns: columns, spacing: 10) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                         ForEach(selectedAssets, id: \.localIdentifier) { asset in
                             AssetThumbnail(asset: asset)
                                 .frame(width: 100, height: 100)
@@ -62,7 +64,7 @@ struct AddPersonView: View {
                         }
                         
                         Button(action: {
-                            showImagePicker = true
+                            requestPhotoLibraryAuthorization()
                         }) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 10)
@@ -75,7 +77,7 @@ struct AddPersonView: View {
                             }
                         }
                     }
-                    .padding(.top, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     
                     if showAgeText, let dob = dateOfBirth, !name.isEmpty, !selectedAssets.isEmpty {
                         let photoDate = extractDateTaken(from: imageMeta) ?? Date()
@@ -133,6 +135,7 @@ struct AddPersonView: View {
                 }
             }
         )
+        .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
     }
     
     private var dateFormatter: DateFormatter {
@@ -230,6 +233,43 @@ struct AddPersonView: View {
             print("New person created with \(newPerson.photos.count) photos")
             self.isLoading = false
             self.presentationMode.wrappedValue.dismiss()
+        }
+    }
+    
+    private func requestPhotoLibraryAuthorization() {
+        switch photoLibraryAuthorizationStatus {
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+                DispatchQueue.main.async {
+                    self.photoLibraryAuthorizationStatus = status
+                    if status == .authorized {
+                        self.showImagePicker = true
+                    }
+                }
+            }
+        case .restricted, .denied:
+            showingPermissionAlert = true
+        case .authorized, .limited:
+            showImagePicker = true
+        @unknown default:
+            break
+        }
+    }
+}
+
+extension AddPersonView {
+    var permissionAlert: Alert {
+        Alert(
+            title: Text("Photo Access Required"),
+            message: Text("Life Reel needs access to your photo library to select photos for age tracking. Please grant access in Settings."),
+            primaryButton: .default(Text("Open Settings"), action: openSettings),
+            secondaryButton: .cancel()
+        )
+    }
+
+    func openSettings() {
+        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsURL)
         }
     }
 }

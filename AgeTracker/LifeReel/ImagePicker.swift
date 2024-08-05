@@ -40,9 +40,12 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            let identifiers = results.compactMap(\.assetIdentifier)
-            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
-            parent.selectedAssets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
+            let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            if status == .authorized || status == .limited {
+                let identifiers = results.compactMap(\.assetIdentifier)
+                let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+                parent.selectedAssets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
+            }
             parent.isPresented = false
         }
     }
