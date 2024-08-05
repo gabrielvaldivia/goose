@@ -29,10 +29,30 @@ struct AgeCalculator {
             }
             
             var ageComponents: [String] = []
-            if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
-            if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-            if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
             
+            // Special case: If age is less than 1 year, show months regardless of format
+            if years == 0 {
+                if months > 0 {
+                    ageComponents.append("\(months) month\(months == 1 ? "" : "s")")
+                }
+                if ageComponents.isEmpty {
+                    ageComponents.append("Less than 1 month")
+                }
+            } else {
+                switch person.ageFormat {
+                case .full:
+                    if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
+                    if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
+                    if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
+                case .yearMonth:
+                    if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
+                    if months > 0 || ageComponents.isEmpty { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
+                case .yearOnly:
+                    ageComponents.append("\(years) year\(years == 1 ? "" : "s")")
+                }
+            }
+            
+            print("Calculating age with format: \(person.ageFormat), result: \(ageComponents.joined(separator: ", "))") // Debug print
             return ageComponents.joined(separator: ", ")
         } else {
             let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: date, to: birthDate).weekOfYear ?? 0

@@ -16,6 +16,7 @@ struct Person: Identifiable, Codable, Equatable {
     var dateOfBirth: Date
     var photos: [Photo]
     var syncedAlbumIdentifier: String?
+    var ageFormat: AgeFormat = .full
     
     init(name: String, dateOfBirth: Date) {
         self.id = UUID()
@@ -29,8 +30,15 @@ struct Person: Identifiable, Codable, Equatable {
                lhs.name == rhs.name &&
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
-               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier
+               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
+               lhs.ageFormat == rhs.ageFormat
     }
+}
+
+enum AgeFormat: String, Codable, CaseIterable {
+    case full = "YY, MM, DD"
+    case yearMonth = "YY, MM"
+    case yearOnly = "YY"
 }
 
 struct Photo: Identifiable, Codable, Equatable {

@@ -88,6 +88,7 @@ class PersonViewModel: ObservableObject {
         } else {
             people.append(updatedPerson)
         }
+        print("Updating person with age format: \(updatedPerson.ageFormat)") // Debug print
         savePeople()
         objectWillChange.send()
     }
@@ -100,8 +101,24 @@ class PersonViewModel: ObservableObject {
     
     private func loadPeople() {
         if let savedPeople = UserDefaults.standard.data(forKey: "SavedPeople") {
-            if let decodedPeople = try? JSONDecoder().decode([Person].self, from: savedPeople) {
-                people = decodedPeople
+            do {
+                let decoder = JSONDecoder()
+                if let decodedPeople = try? decoder.decode([Person].self, from: savedPeople) {
+                    people = decodedPeople
+                } else {
+                    // Migration: Handle the case where ageFormat is not present
+                    let oldPeople = try decoder.decode([OldPerson].self, from: savedPeople)
+                    people = oldPeople.map { oldPerson in
+                        var person = Person(name: oldPerson.name, dateOfBirth: oldPerson.dateOfBirth)
+                        person.photos = oldPerson.photos
+                        person.syncedAlbumIdentifier = oldPerson.syncedAlbumIdentifier
+                        person.ageFormat = .full // Set default ageFormat
+                        return person
+                    }
+                    savePeople() // Save the migrated data
+                }
+            } catch {
+                print("Error decoding people: \(error)")
             }
         }
     }
@@ -342,4 +359,12 @@ enum PhotoAccessError: Error {
     case denied
     case unknown
     case albumNotFound
+}
+
+private struct OldPerson: Codable {
+    let id: UUID
+    var name: String
+    var dateOfBirth: Date
+    var photos: [Photo]
+    var syncedAlbumIdentifier: String?
 }

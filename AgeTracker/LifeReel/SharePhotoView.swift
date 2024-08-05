@@ -148,12 +148,16 @@ struct LightTemplateView: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(titleText)
-                        .font(.headline)
-                        .foregroundColor(.black)
-                    Text(subtitleText)
-                        .font(.footnote)
-                        .foregroundColor(.gray)
+                    if !titleText.isEmpty {
+                        Text(titleText)
+                            .font(.headline)
+                            .foregroundColor(.black)
+                    }
+                    if !subtitleText.isEmpty {
+                        Text(subtitleText)
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                    }
                 }
                 Spacer()
                 if showAppIcon {
@@ -166,7 +170,8 @@ struct LightTemplateView: View {
             }
             .padding(.horizontal, 20)
         }
-        .frame(width: 320, height: 380)
+        .padding(.vertical, 20)
+        .frame(width: 320)
         .background(Color.white)
         .cornerRadius(10)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
@@ -216,12 +221,16 @@ struct DarkTemplateView: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(titleText)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    Text(subtitleText)
-                        .font(.footnote)
-                        .foregroundColor(.gray)
+                    if !titleText.isEmpty {
+                        Text(titleText)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                    if !subtitleText.isEmpty {
+                        Text(subtitleText)
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                    }
                 }
                 Spacer()
                 if showAppIcon {
@@ -234,7 +243,8 @@ struct DarkTemplateView: View {
             }
             .padding(.horizontal, 20)
         }
-        .frame(width: 320, height: 380)
+        .padding(.vertical, 20)
+        .frame(width: 320)
         .background(Color.black)
         .cornerRadius(10)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)

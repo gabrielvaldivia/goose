@@ -22,6 +22,7 @@ struct PersonSettingsView: View {
     @State private var onBulkImportComplete: ((String?) -> Void)?
     @State private var showingBirthDaySheet = false
     @State private var showingBulkImport = false
+    @State private var selectedAgeFormat: AgeFormat
 
     // Add this enum at the top of your struct
     enum AlertType {
@@ -37,6 +38,7 @@ struct PersonSettingsView: View {
         self._person = person
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
+        self._selectedAgeFormat = State(initialValue: person.wrappedValue.ageFormat)
     }
 
     var body: some View {
@@ -76,6 +78,15 @@ struct PersonSettingsView: View {
                 }) {
                     Text("Bulk Import")
                 }
+            }
+
+            Section(header: Text("Age Display")) {
+                Picker("Age Format", selection: $selectedAgeFormat) {
+                    ForEach(AgeFormat.allCases, id: \.self) { format in
+                        Text(format.rawValue).tag(format)
+                    }
+                }
+                .pickerStyle(DefaultPickerStyle())
             }
 
             Section(header: Text("Danger Zone")) {
@@ -172,7 +183,9 @@ struct PersonSettingsView: View {
         person.name = editedName
         person.dateOfBirth = editedDateOfBirth
         person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
+        person.ageFormat = selectedAgeFormat
         viewModel.updatePerson(person)
+        print("Saving age format: \(selectedAgeFormat)") // Debug print
         presentationMode.wrappedValue.dismiss()
     }
 
