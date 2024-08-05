@@ -49,7 +49,7 @@ struct ContentView: View {
                                             .frame(width: 24, height: 24)
                                             .foregroundColor(.blue)
                                     }
-                                    Text("Add Reel")
+                                    Text("Add Someone")
                                         .foregroundColor(.blue)
                                 }
                             }
@@ -62,7 +62,7 @@ struct ContentView: View {
                     .padding(.vertical)
                 }
             }
-            .navigationTitle("Reels")
+            .navigationTitle("Life Reels")
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showingAddPerson) {

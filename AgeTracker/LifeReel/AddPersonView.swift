@@ -92,7 +92,7 @@ struct AddPersonView: View {
             }
             .background(Color(UIColor.secondarySystemBackground))
             .ignoresSafeArea(.keyboard)
-            .navigationTitle("Add Person")
+            .navigationTitle("Add Someone")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(
                 leading: Button("Cancel") {

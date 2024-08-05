@@ -57,7 +57,7 @@ struct PersonDetailView: View {
             VStack {
                 // Segmented control for view selection
                 Picker("View", selection: $selectedView) {
-                    Text("All").tag(0)
+                    Text("Timeline").tag(0)
                     Text("Years").tag(1)
                 }
                 .pickerStyle(SegmentedPickerStyle())
@@ -87,12 +87,6 @@ struct PersonDetailView: View {
                             showingImagePicker = true 
                         }) {
                             Image(systemName: "plus")
-                        }
-                        Button(action: {
-                            activeSheet = .shareView
-                        }) {
-                            Image(systemName: "square.and.arrow.up")
-                                .foregroundColor(.accentColor)
                         }
                     }
                 }
@@ -186,7 +180,7 @@ struct PersonDetailView: View {
         }
     }
     
-    // All photos view
+    // Timeline view
     private var allPhotosView: some View {
         GeometryReader { geometry in
             VStack {
