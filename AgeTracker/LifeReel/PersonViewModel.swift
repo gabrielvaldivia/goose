@@ -69,9 +69,7 @@ class PersonViewModel: ObservableObject {
     }
     
     func calculateAge(for person: Person, at date: Date) -> (years: Int, months: Int, days: Int) {
-        let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
-        return (ageComponents.year ?? 0, ageComponents.month ?? 0, ageComponents.day ?? 0)
+        return AgeCalculator.calculateAge(for: person, at: date)
     }
     
     func updatePerson(_ updatedPerson: Person) {

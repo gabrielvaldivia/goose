@@ -212,9 +212,14 @@ struct PersonDetailView: View {
                     .onTapGesture {
                         selectedPhoto = sortedPhotos[safeIndex]
                     }
+                    .onChange(of: currentPhotoIndex) { _ in
+                        withAnimation {
+                            // This will trigger a UI update
+                        }
+                    }
                     
                     VStack {
-                        Text(formatAge())
+                        Text(calculateAge())
                             .font(.title3)
                         Text(formatDate(sortedPhotos[safeIndex].dateTaken))
                             .font(.caption)
@@ -456,45 +461,11 @@ struct PersonDetailView: View {
     }
     
     // Helper function to format age
-    private func formatAge() -> String {
-        let calendar = Calendar.current
-        let birthDate = person.dateOfBirth
-        
+    private func calculateAge() -> String {
         let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        guard currentPhotoIndex < sortedPhotos.count else {
-            return "No photo selected"
-        }
-        
-        let currentPhoto = sortedPhotos[currentPhotoIndex]
-        
-        if currentPhoto.dateTaken >= birthDate {
-            let components = calendar.dateComponents([.year, .month, .day], from: birthDate, to: currentPhoto.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-            let days = components.day ?? 0
-            
-            if years == 0 && months == 0 && days == 0 {
-                return "Newborn"
-            }
-            
-            var ageComponents: [String] = []
-            if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
-            if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-            if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
-            
-            return ageComponents.joined(separator: ", ")
-        } else {
-            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: currentPhoto.dateTaken, to: birthDate).weekOfYear ?? 0
-            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-            
-            if pregnancyWeek == 40 {
-                return "Newborn"
-            } else if pregnancyWeek > 0 {
-                return "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
-            } else {
-                return "Before pregnancy"
-            }
-        }
+        let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
+        let photoDate = sortedPhotos[safeIndex].dateTaken
+        return AgeCalculator.calculateAgeString(for: person, at: photoDate)
     }
 }
 

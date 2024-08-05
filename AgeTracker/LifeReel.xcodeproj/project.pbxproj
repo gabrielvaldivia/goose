@@ -25,6 +25,7 @@
 		4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */; };
 		4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */; };
 		4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */; };
+		40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B512C604C5E00C1B076 /* AgeCalculator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 		4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenPhotoView.swift; sourceTree = "<group>"; };
 		4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
 		4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirthDaySheet.swift; sourceTree = "<group>"; };
+		40C00B512C604C5E00C1B076 /* AgeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeCalculator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 				4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */,
 				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
+				40C00B512C604C5E00C1B076 /* AgeCalculator.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
@@ -299,6 +302,7 @@
 				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */,
+				40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
 				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,
 				4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */,
