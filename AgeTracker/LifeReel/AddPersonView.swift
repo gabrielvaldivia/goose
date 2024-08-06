@@ -205,10 +205,8 @@ struct AddPersonView: View {
             options.isSynchronous = false
             options.deliveryMode = .highQualityFormat
             
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                if let image = image {
-                    self.imageMeta = info as? [String: Any]
-                }
+            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { _, info in
+                self.imageMeta = info as? [String: Any]
             }
         }
     }

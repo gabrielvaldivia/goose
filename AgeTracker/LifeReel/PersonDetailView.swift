@@ -134,9 +134,9 @@ struct PersonDetailView: View {
                 ActivityViewController(activityItems: activityItems)
             }
             // Image selection handler
-            .onChange(of: selectedAssets) { newAssets in
-                if !newAssets.isEmpty {
-                    print("Assets selected: \(newAssets)")
+            .onChange(of: selectedAssets) { oldValue, newValue in
+                if !newValue.isEmpty {
+                    print("Assets selected: \(newValue)")
                     loadImage()
                 } else {
                     print("No assets selected")
@@ -239,7 +239,7 @@ struct PersonDetailView: View {
                     .onTapGesture {
                         selectedPhoto = sortedPhotos[safeIndex]
                     }
-                    .onChange(of: currentPhotoIndex) { _ in
+                    .onChange(of: currentPhotoIndex) { oldValue, newValue in
                         withAnimation {
                             // This will trigger a UI update
                         }
@@ -265,7 +265,7 @@ struct PersonDetailView: View {
                             }
                         ), in: 0...Double(sortedPhotos.count - 1), step: 1)
                         .padding()
-                        .onChange(of: currentPhotoIndex) { newValue in
+                        .onChange(of: currentPhotoIndex) { oldValue, newValue in
                             if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
                                 return
                             }

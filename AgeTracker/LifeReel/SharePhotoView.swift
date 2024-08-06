@@ -53,7 +53,7 @@ struct SharePhotoView: View {
                                 Text(option.rawValue).tag(option)
                             }
                         }
-                        .onChange(of: titleOption) { newValue in
+                        .onChange(of: titleOption) { oldValue, newValue in
                             if newValue == subtitleOption {
                                 subtitleOption = .none
                             }
@@ -64,7 +64,7 @@ struct SharePhotoView: View {
                                 Text(option.rawValue).tag(option)
                             }
                         }
-                        .onChange(of: subtitleOption) { newValue in
+                        .onChange(of: subtitleOption) { oldValue, newValue in
                             if newValue == titleOption {
                                 titleOption = .none
                             }
@@ -93,7 +93,11 @@ struct SharePhotoView: View {
     }
 
     private var shareButton: some View {
-        Button(action: prepareSharePhoto) {
+        Button(action: {
+            Task { @MainActor in
+                await prepareSharePhoto()
+            }
+        }) {
             if isPreparingImage {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: .blue))
@@ -105,7 +109,7 @@ struct SharePhotoView: View {
     }
 
     @MainActor
-    private func prepareSharePhoto() {
+    private func prepareSharePhoto() async {
         guard !isPreparingImage else { return }
         isPreparingImage = true
 
@@ -120,13 +124,11 @@ struct SharePhotoView: View {
         let renderer = ImageRenderer(content: templateView)
         renderer.scale = 3.0 // For better quality
         
-        Task {
-            if let uiImage = await renderer.uiImage {
-                renderedImage = uiImage
-                showingPolaroidSheet = true
-            }
-            isPreparingImage = false
+        if let uiImage = renderer.uiImage {
+            renderedImage = uiImage
+            showingPolaroidSheet = true
         }
+        isPreparingImage = false
     }
 }
 
