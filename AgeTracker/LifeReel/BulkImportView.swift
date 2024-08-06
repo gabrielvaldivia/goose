@@ -94,7 +94,7 @@ struct AlbumPhotosView: View {
             } else {
                 Toggle("Import All Photos", isOn: $importAll)
                     .padding()
-                    .onChange(of: importAll) { newValue in
+                    .onChange(of: importAll) { _, newValue in
                         selectedAssets = newValue ? Set(photos.map { $0.localIdentifier }) : []
                     }
                 
@@ -165,7 +165,7 @@ struct AlbumPhotosView: View {
                 options.isNetworkAccessAllowed = true
                 
                 PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-                    if let image = image {
+                    if image != nil {
                         print("Successfully retrieved image for asset: \(asset.localIdentifier)")
                         self.viewModel.addPhoto(to: &self.person, asset: asset)
                     } else {

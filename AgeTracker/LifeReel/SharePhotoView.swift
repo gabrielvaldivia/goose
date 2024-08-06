@@ -14,6 +14,7 @@ struct SharePhotoView: View {
     @State private var titleOption = TitleOption.name
     @State private var subtitleOption = TitleOption.age
     @State private var showAppIcon = true
+    @Environment(\.dismiss) private var dismiss
 
     enum TitleOption: String, CaseIterable {
         case none = "None"
@@ -44,7 +45,7 @@ struct SharePhotoView: View {
                         .tag(1)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-                .frame(height: 480)
+                .frame(height: 520)
 
                 Form {
                     Section(header: Text("Customization")) {
@@ -73,14 +74,17 @@ struct SharePhotoView: View {
                         Toggle("Show App Icon", isOn: $showAppIcon)
                     }
                 }
-                .frame(height: 200)
+                .frame(height: 220)
             }
             .padding()
         }
         .background(Color(UIColor.secondarySystemBackground))
-        .navigationTitle("Pick a share template")
+        .navigationTitle("Pick template")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(trailing: shareButton)
+        .navigationBarItems(
+            leading: cancelButton,
+            trailing: shareButton
+        )
         .sheet(isPresented: $showingPolaroidSheet) {
             if let uiImage = renderedImage {
                 ActivityViewController(activityItems: [uiImage])
@@ -106,6 +110,12 @@ struct SharePhotoView: View {
             }
         }
         .disabled(isPreparingImage)
+    }
+
+    private var cancelButton: some View {
+        Button("Cancel") {
+            dismiss()
+        }
     }
 
     @MainActor
