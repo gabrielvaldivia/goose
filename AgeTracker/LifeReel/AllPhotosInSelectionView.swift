@@ -15,21 +15,29 @@ struct AllPhotosInSectionView: View {
     @State private var selectedPhotoIndex: IdentifiableIndex?
     let person: Person
     
-    let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
+    @State private var columns = [GridItem]()
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                    photoThumbnail(photo)
-                        .onTapGesture {
-                            selectedPhotoIndex = IdentifiableIndex(index: index)
-                        }
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                        photoThumbnail(photo)
+                            .onTapGesture {
+                                selectedPhotoIndex = IdentifiableIndex(index: index)
+                            }
+                    }
                 }
+                .padding()
             }
-            .padding()
+            .navigationTitle(sectionTitle)
+            .onAppear {
+                updateGridColumns(width: geometry.size.width)
+            }
+            .onChange(of: geometry.size) { _, newSize in
+                updateGridColumns(width: newSize.width)
+            }
         }
-        .navigationTitle(sectionTitle)
         .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
             FullScreenPhotoView(
                 photo: photos[identifiableIndex.index],
@@ -39,6 +47,13 @@ struct AllPhotosInSectionView: View {
                 person: person
             )
         }
+    }
+    
+    private func updateGridColumns(width: CGFloat) {
+        let minItemWidth: CGFloat = 110
+        let spacing: CGFloat = 10
+        let numberOfColumns = max(1, Int(width / (minItemWidth + spacing)))
+        columns = Array(repeating: GridItem(.flexible(), spacing: spacing), count: numberOfColumns)
     }
     
     private func photoThumbnail(_ photo: Photo) -> some View {

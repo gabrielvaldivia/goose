@@ -160,7 +160,6 @@ struct PersonDetailView: View {
                     latestPhotoIndex = sortedPhotos.count - 1
                     currentPhotoIndex = latestPhotoIndex
                 }
-                print("PersonDetailView appeared with age format: \(person.ageFormat)") // Debug print
             }
             // Delete photo alert
             .alert(isPresented: $showingDeleteAlert) {

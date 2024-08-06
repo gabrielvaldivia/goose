@@ -52,7 +52,6 @@ struct AgeCalculator {
                 }
             }
             
-            print("Calculating age with format: \(person.ageFormat), result: \(ageComponents.joined(separator: ", "))") // Debug print
             return ageComponents.joined(separator: ", ")
         } else {
             let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: date, to: birthDate).weekOfYear ?? 0
