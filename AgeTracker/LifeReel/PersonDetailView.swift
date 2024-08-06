@@ -41,6 +41,9 @@ struct PersonDetailView: View {
     @State private var selectedPhoto: Photo? = nil // New state variable
     @State private var isShareSheetPresented = false
     @State private var activityItems: [Any] = []
+    @State private var isPlaying = false
+    @State private var playTimer: Timer?
+    @State private var playbackSpeed: Double = 1.0 // New state variable for playback speed
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -97,7 +100,8 @@ struct PersonDetailView: View {
                         showingImagePicker = true 
                     }) {
                         Image(systemName: "plus")
-                            // .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                            .font(.system(size: 16, weight: .bold))
                     }
                 }
             }
@@ -189,6 +193,9 @@ struct PersonDetailView: View {
                     removal: .opacity
                 ))
             }
+            .onDisappear {
+                stopPlayback()
+            }
         }
     }
     
@@ -220,13 +227,20 @@ struct PersonDetailView: View {
                     Spacer()
                     
                     if sortedPhotos.count > 1 {
-                        Slider(value: Binding(
-                            get: { Double(currentPhotoIndex) },
-                            set: { 
-                                currentPhotoIndex = Int($0)
-                                latestPhotoIndex = currentPhotoIndex
-                            }
-                        ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                        HStack {
+                            playButton
+                            
+                            Slider(value: Binding(
+                                get: { Double(currentPhotoIndex) },
+                                set: { 
+                                    currentPhotoIndex = Int($0)
+                                    latestPhotoIndex = currentPhotoIndex
+                                }
+                            ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                            .accentColor(.blue)
+                            
+                            speedControlButton
+                        }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                         .onChange(of: currentPhotoIndex) { oldValue, newValue in
@@ -474,6 +488,69 @@ struct PersonDetailView: View {
         let photoDate = sortedPhotos[safeIndex].dateTaken
         return AgeCalculator.calculateAgeString(for: person, at: photoDate)
     }
+
+    // Play button
+    private var playButton: some View {
+        Button(action: {
+            if currentPhotoIndex == person.photos.count - 1 {
+                currentPhotoIndex = 0
+            } else {
+                isPlaying.toggle()
+                if isPlaying {
+                    startPlayback()
+                } else {
+                    stopPlayback()
+                }
+            }
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 36, height: 36)
+                
+                Image(systemName: currentPhotoIndex == person.photos.count - 1 ? "arrow.counterclockwise" : (isPlaying ? "pause.fill" : "play.fill"))
+                    .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .bold))
+            }
+        }
+    }
+
+    private func startPlayback() {
+        playTimer = Timer.scheduledTimer(withTimeInterval: 2.0 / playbackSpeed, repeats: true) { timer in
+            if currentPhotoIndex < person.photos.count - 1 {
+                currentPhotoIndex += 1
+            } else {
+                stopPlayback()
+            }
+        }
+    }
+
+    private func stopPlayback() {
+        playTimer?.invalidate()
+        playTimer = nil
+        isPlaying = false
+    }
+
+    // Speed control button
+    private var speedControlButton: some View {
+        Button(action: {
+            playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
+            if isPlaying {
+                stopPlayback()
+                startPlayback()
+            }
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 36, height: 36)
+                
+                Text("\(Int(playbackSpeed))x")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 14, weight: .bold))
+            }
+        }
+    }
 }
 
 struct CustomBackButton: View {
@@ -485,6 +562,7 @@ struct CustomBackButton: View {
         }) {
             Image(systemName: "chevron.left")
                 .foregroundColor(.blue)
+                .font(.system(size: 16, weight: .bold))
         }
     }
 }
