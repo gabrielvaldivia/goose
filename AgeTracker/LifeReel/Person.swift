@@ -56,6 +56,9 @@ struct Photo: Identifiable, Codable, Equatable {
         var image: UIImage?
         let options = PHImageRequestOptions()
         options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+        options.resizeMode = .exact
         
         manager.requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { result, _ in
             image = result

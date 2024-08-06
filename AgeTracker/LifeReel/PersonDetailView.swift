@@ -65,7 +65,7 @@ struct PersonDetailView: View {
 
                 // Conditional view based on selection
                 if selectedView == 0 {
-                    allPhotosView
+                    TimelineView
                 } else {
                     yearsView
                 }
@@ -193,7 +193,7 @@ struct PersonDetailView: View {
     }
     
     // Timeline view
-    private var allPhotosView: some View {
+    private var TimelineView: some View {
         GeometryReader { geometry in
             VStack {
                 if !person.photos.isEmpty {
@@ -207,21 +207,27 @@ struct PersonDetailView: View {
                             let index = safeIndex + offset
                             if index >= 0 && index < sortedPhotos.count {
                                 if let image = sortedPhotos[index].image {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(height: geometry.size.height * 0.6)
-                                        .frame(width: geometry.size.width)
-                                        .offset(x: CGFloat(offset) * geometry.size.width)
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(Color.clear)
+                                        Image(uiImage: image)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .cornerRadius(10)
+                                    }
+                                    .frame(height: geometry.size.height * 0.72)
+                                    .frame(width: geometry.size.width)
+                                    .offset(x: CGFloat(offset) * geometry.size.width)
                                 } else {
-                                    Color.gray
-                                        .frame(width: geometry.size.width, height: geometry.size.height * 0.6)
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.gray)
+                                        .frame(width: geometry.size.width, height: geometry.size.height * 0.72)
                                         .offset(x: CGFloat(offset) * geometry.size.width)
                                 }
                             }
                         }
                     }
-                    .frame(width: geometry.size.width, height: geometry.size.height * 0.6)
+                    .frame(width: geometry.size.width, height: geometry.size.height * 0.72)
                     .clipped()
                     .gesture(
                         DragGesture()
@@ -364,9 +370,12 @@ struct PersonDetailView: View {
                         .matchedGeometryEffect(id: photo.id, in: namespace)
                         .padding(.bottom, 2)
                 } else {
-                    Color.gray
+                    ProgressView()
                         .frame(width: 110, height: 110)
+                        .background(Color.gray.opacity(0.2))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .matchedGeometryEffect(id: photo.id, in: namespace)
+                        .padding(.bottom, 2)
                 }
             }
         }
