@@ -198,74 +198,20 @@ struct PersonDetailView: View {
             VStack {
                 if !person.photos.isEmpty {
                     let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                    let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
                     
-                    Spacer()
-                    
-                    ZStack {
-                        ForEach(-1...1, id: \.self) { offset in
-                            let index = safeIndex + offset
-                            if index >= 0 && index < sortedPhotos.count {
-                                if let image = sortedPhotos[index].image {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .fill(Color.clear)
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .cornerRadius(10)
-                                    }
-                                    .frame(height: geometry.size.height * 0.72)
-                                    .frame(width: geometry.size.width)
-                                    .offset(x: CGFloat(offset) * geometry.size.width)
-                                } else {
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.gray)
-                                        .frame(width: geometry.size.width, height: geometry.size.height * 0.72)
-                                        .offset(x: CGFloat(offset) * geometry.size.width)
-                                }
-                            }
+                    TabView(selection: $currentPhotoIndex) {
+                        ForEach(Array(sortedPhotos.enumerated()), id: \.element.id) { index, photo in
+                            PhotoView(photo: photo, geometry: geometry, selectedPhoto: $selectedPhoto)
+                                .tag(index)
                         }
                     }
-                    .frame(width: geometry.size.width, height: geometry.size.height * 0.72)
-                    .clipped()
-                    .gesture(
-                        DragGesture()
-                            .onChanged { gesture in
-                                let offset = gesture.translation.width / geometry.size.width
-                                if (safeIndex > 0 || offset > 0) && (safeIndex < sortedPhotos.count - 1 || offset < 0) {
-                                    withAnimation(.interactiveSpring()) {
-                                        currentPhotoIndex = safeIndex - Int(offset)
-                                    }
-                                }
-                            }
-                            .onEnded { gesture in
-                                let predictedOffset = gesture.predictedEndTranslation.width / geometry.size.width
-                                withAnimation(.spring()) {
-                                    if predictedOffset > 0.5 && safeIndex > 0 {
-                                        currentPhotoIndex = safeIndex - 1
-                                    } else if predictedOffset < -0.5 && safeIndex < sortedPhotos.count - 1 {
-                                        currentPhotoIndex = safeIndex + 1
-                                    } else {
-                                        currentPhotoIndex = safeIndex
-                                    }
-                                }
-                                latestPhotoIndex = currentPhotoIndex
-                            }
-                    )
-                    .onTapGesture {
-                        selectedPhoto = sortedPhotos[safeIndex]
-                    }
-                    .onChange(of: currentPhotoIndex) { oldValue, newValue in
-                        withAnimation {
-                            // This will trigger a UI update
-                        }
-                    }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                    .frame(height: geometry.size.height * 0.8)
                     
                     VStack {
                         Text(calculateAge())
-                            .font(.title3)
-                        Text(formatDate(sortedPhotos[safeIndex].dateTaken))
+                            .font(.body)
+                        Text(formatDate(sortedPhotos[currentPhotoIndex].dateTaken))
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -275,13 +221,14 @@ struct PersonDetailView: View {
                     
                     if sortedPhotos.count > 1 {
                         Slider(value: Binding(
-                            get: { Double(safeIndex) },
+                            get: { Double(currentPhotoIndex) },
                             set: { 
                                 currentPhotoIndex = Int($0)
                                 latestPhotoIndex = currentPhotoIndex
                             }
                         ), in: 0...Double(sortedPhotos.count - 1), step: 1)
-                        .padding()
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 40)
                         .onChange(of: currentPhotoIndex) { oldValue, newValue in
                             if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
                                 return
@@ -301,6 +248,32 @@ struct PersonDetailView: View {
         }
         .onAppear {
             currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
+        }
+    }
+
+    private struct PhotoView: View {
+        let photo: Photo
+        let geometry: GeometryProxy
+        @Binding var selectedPhoto: Photo?
+        
+        var body: some View {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.clear)
+                if let image = photo.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .cornerRadius(10)
+                        .padding(20)
+                } else {
+                    ProgressView()
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height * 0.8)
+            .onTapGesture {
+                selectedPhoto = photo
+            }
         }
     }
 

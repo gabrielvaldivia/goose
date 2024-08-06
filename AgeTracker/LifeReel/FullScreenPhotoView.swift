@@ -27,6 +27,8 @@ struct FullScreenPhotoView: View {
     @State private var lastScale: CGFloat = 1.0
     @GestureState private var magnifyBy = CGFloat(1.0)
     @GestureState private var dragOffset: CGSize = .zero
+    @State private var showDeleteConfirmation = false
+    @State private var dismissProgress: CGFloat = 0.0
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -44,6 +46,7 @@ struct FullScreenPhotoView: View {
                 // Background
                 Color.black
                     .edgesIgnoringSafeArea(.all)
+                    .opacity(1 - dismissProgress)
                 
                 // Photo Display
                 if let image = photos[currentIndex].image {
@@ -69,13 +72,9 @@ struct FullScreenPhotoView: View {
                 }, onShare: {
                     activeSheet = .shareView
                 }, onDelete: {
-                    onDelete(photos[currentIndex])
-                    if currentIndex > 0 {
-                        currentIndex -= 1
-                    } else {
-                        presentationMode.wrappedValue.dismiss()
-                    }
+                    showDeleteConfirmation = true
                 })
+                .opacity(1 - dismissProgress)
             }
         }
         // Animation on Appear
@@ -103,6 +102,21 @@ struct FullScreenPhotoView: View {
                         self.activeSheet = nil
                     }
             }
+        }
+        .alert(isPresented: $showDeleteConfirmation) {
+            Alert(
+                title: Text("Delete Photo"),
+                message: Text("Are you sure you want to delete this photo?"),
+                primaryButton: .destructive(Text("Delete")) {
+                    onDelete(photos[currentIndex])
+                    if currentIndex > 0 {
+                        currentIndex -= 1
+                    } else {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                },
+                secondaryButton: .cancel()
+            )
         }
     }
     
@@ -141,6 +155,8 @@ struct FullScreenPhotoView: View {
                         height: value.translation.height / scale
                     )
                 }
+                // Update dismissProgress based on drag
+                dismissProgress = min(abs(value.translation.height) / 200, 1.0)
             }
             .onEnded { value in
                 if abs(value.translation.height) > 100 && scale <= 1.0 {
@@ -162,6 +178,10 @@ struct FullScreenPhotoView: View {
                     offset.height = min(max(offset.height + scaledTranslation.height, -excessHeight / 2), excessHeight / 2)
                 }
                 showControls = true
+                // Reset dismissProgress if not dismissing
+                withAnimation(.easeOut(duration: 0.2)) {
+                    dismissProgress = 0.0
+                }
             }
     }
 
@@ -213,37 +233,27 @@ struct ControlsOverlay: View {
                 VStack {
                     // Top Bar with Control Buttons
                     HStack {
-                        Button(action: onClose) {
-                            Image(systemName: "xmark")
-                                .foregroundColor(.white)
-                                .padding()
-                        }
+                        CircularIconButton(icon: "xmark", action: onClose)
                         Spacer()
-                        Button(action: onShare) {
-                            Image(systemName: "square.and.arrow.up")
+                        VStack(spacing: 4) {
+                            Text(person.name)
+                                .font(.headline)
                                 .foregroundColor(.white)
-                                .padding()
+                            Text(calculateAge(for: person, at: photo.dateTaken))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.5))
                         }
-                        Button(action: onDelete) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.white)
-                                .padding()
-                        }
+                        .padding(.top, 16)
+                        Spacer()
+                        CircularIconButton(icon: "trash", action: onDelete)
                     }
                     .padding(.top, 44)
-                    
+                    .padding(.horizontal, 8)
                     Spacer()
                     
                     // Bottom Bar
-                    VStack {
-                         Text(person.name)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Text(calculateAge(for: person, at: photo.dateTaken))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.5))
-                    }
-                    .padding(.bottom, 34)
+                    PillButton(icon: "square.and.arrow.up", label: "Share", action: onShare)
+                        .padding(.bottom, 34)
                 }
             }
         }
@@ -261,5 +271,65 @@ struct ControlsOverlay: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+}
+
+struct CircularIconButton: View {
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+        }
+        .background(
+            BlurEffectView()
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+        )
+        .padding(8)
+    }
+    
+    private struct BlurEffectView: UIViewRepresentable {
+        func makeUIView(context: Context) -> UIVisualEffectView {
+            return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+        }
+
+        func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+    }
+}
+
+struct PillButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                Text(label)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+        }
+        .background(
+            BlurEffectView()
+                .clipShape(Capsule())
+                .padding(.horizontal, -8)
+                .padding(.vertical, -4)
+        )
+    }
+    
+    private struct BlurEffectView: UIViewRepresentable {
+        func makeUIView(context: Context) -> UIVisualEffectView {
+            return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+        }
+
+        func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
     }
 }
