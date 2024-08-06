@@ -27,6 +27,17 @@ struct AddPersonView: View {
         GridItem(.adaptive(minimum: 111, maximum: 111), spacing: 10)
     ]
     
+    private var remainingPlaceholders: Int {
+        switch selectedAssets.count {
+        case 0:
+            return 3
+        case 1:
+            return 2
+        default:
+            return 1
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -80,19 +91,21 @@ struct AddPersonView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             
-                            Button(action: {
-                                requestPhotoLibraryAuthorization()
-                            }) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [5]))
-                                        .foregroundColor(Color.gray.opacity(0.5))
-                                        .aspectRatio(1, contentMode: .fit)
-                                        .frame(height: 111)
-                                    
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.gray)
+                            ForEach(0..<remainingPlaceholders, id: \.self) { _ in
+                                Button(action: {
+                                    requestPhotoLibraryAuthorization()
+                                }) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
+                                            .foregroundColor(Color(UIColor.placeholderText).opacity(0.5))
+                                            .aspectRatio(1, contentMode: .fit)
+                                            .frame(height: 111)
+                                        
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(Color(UIColor.placeholderText))
+                                    }
                                 }
                             }
                         }

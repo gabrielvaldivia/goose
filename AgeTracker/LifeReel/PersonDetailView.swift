@@ -74,20 +74,30 @@ struct PersonDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text(person.name).font(.headline)
+                    Button(action: {
+                        activeSheet = .settings
+                    }) {
+                        HStack(spacing: 4) {
+                            Text(person.name)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            ZStack {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 16, height: 16)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        Button(action: {
-                            activeSheet = .settings
-                        }) {
-                            Image(systemName: "gear")
-                        }
-                        Button(action: { 
-                            showingImagePicker = true 
-                        }) {
-                            Image(systemName: "plus")
-                        }
+                    Button(action: { 
+                        showingImagePicker = true 
+                    }) {
+                        Image(systemName: "plus")
+                            .fontWeight(.bold)
                     }
                 }
             }
@@ -354,7 +364,7 @@ struct PersonDetailView: View {
                         .padding(.bottom, 2)
                 } else {
                     Color.gray
-                        .frame(width: 100, height: 100)
+                        .frame(width: 110, height: 110)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
