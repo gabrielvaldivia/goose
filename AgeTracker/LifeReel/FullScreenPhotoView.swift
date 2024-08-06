@@ -17,13 +17,17 @@ struct FullScreenPhotoView: View {
     var onDelete: (Photo) -> Void
     @Environment(\.presentationMode) var presentationMode
     @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
     @State private var showControls = true
     @State private var scale: CGFloat = 1.0
     let person: Person
     @State private var activeSheet: ActiveSheet?
     @State private var activityItems: [Any] = []
     @State private var isShareSheetPresented = false
-    
+    @State private var lastScale: CGFloat = 1.0
+    @GestureState private var magnifyBy = CGFloat(1.0)
+    @GestureState private var dragOffset: CGSize = .zero
+
     enum ActiveSheet: Identifiable {
         case shareView
         case activityView
@@ -47,95 +51,33 @@ struct FullScreenPhotoView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: geometry.size.width, height: geometry.size.height)
-                        .offset(offset)
-                        .scaleEffect(scale)
-                        .gesture(
-                            // Drag Gesture
-                            DragGesture()
-                                .onChanged { value in
-                                    offset = value.translation
-                                    showControls = false
-                                }
-                                .onEnded { value in
-                                    if abs(value.translation.height) > 100 {
-                                        presentationMode.wrappedValue.dismiss()
-                                    } else {
-                                        withAnimation { offset = .zero }
-                                    }
-                                    showControls = true
-                                }
-                        )
+                        .offset(calculateImageOffset(geometry: geometry))
+                        .scaleEffect(scale * magnifyBy)
+                        .gesture(dragGesture(geometry: geometry))
+                        .gesture(magnificationGesture())
+                        .onTapGesture {
+                            showControls.toggle()
+                        }
                 } else {
                     Color.gray
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 
                 // Controls Overlay
-                if showControls {
-                    VStack {
-                        // Top Bar
-                        Text(person.name)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding()
-                        
-                        Spacer()
-                        
-                        // Bottom Bar
-                        VStack {
-                            Text(calculateAge(for: person, at: photos[currentIndex].dateTaken))
-                                .font(.body)
-                                .foregroundColor(.white)
-                            Text(formatDate(photos[currentIndex].dateTaken))
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
+                ControlsOverlay(showControls: showControls, person: person, photo: photos[currentIndex], onClose: {
+                    presentationMode.wrappedValue.dismiss()
+                }, onShare: {
+                    activeSheet = .shareView
+                }, onDelete: {
+                    onDelete(photos[currentIndex])
+                    if currentIndex > 0 {
+                        currentIndex -= 1
+                    } else {
+                        presentationMode.wrappedValue.dismiss()
                     }
-                    
-                    // Control Buttons
-                    VStack {
-                        HStack {
-                            Button(action: {
-                                presentationMode.wrappedValue.dismiss()
-                            }) {
-                                Image(systemName: "xmark")
-                                    .foregroundColor(.white)
-                                    .padding()
-                            }
-                            Spacer()
-                            Button(action: {
-                                activeSheet = .shareView
-                            }) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .foregroundColor(.white)
-                                    .padding()
-                            }
-                            Button(action: {
-                                onDelete(photos[currentIndex])
-                                if currentIndex > 0 {
-                                    currentIndex -= 1
-                                } else {
-                                    presentationMode.wrappedValue.dismiss()
-                                }
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.white)
-                                    .padding()
-                            }
-                        }
-                        Spacer()
-                    }
-                }
+                })
             }
         }
-        // Gesture to Toggle Controls
-        .gesture(
-            DragGesture()
-                .onChanged { _ in
-                    showControls.toggle()
-                }
-        )
         // Animation on Appear
         .onAppear {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -165,6 +107,151 @@ struct FullScreenPhotoView: View {
     }
     
     // Helper Functions
+    private func calculateAge(for person: Person, at date: Date) -> String {
+        return AgeCalculator.calculateAgeString(for: person, at: date)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+    
+    private func calculateImageOffset(geometry: GeometryProxy) -> CGSize {
+        let imageSize = CGSize(
+            width: geometry.size.width * scale,
+            height: geometry.size.height * scale
+        )
+        let excessWidth = max(0, imageSize.width - geometry.size.width)
+        let excessHeight = max(0, imageSize.height - geometry.size.height)
+
+        let newOffsetX = min(max(offset.width + dragOffset.width, -excessWidth / 2), excessWidth / 2)
+        let newOffsetY = min(max(offset.height + dragOffset.height, -excessHeight / 2), excessHeight / 2)
+        
+        return CGSize(width: newOffsetX, height: newOffsetY)
+    }
+
+    private func dragGesture(geometry: GeometryProxy) -> some Gesture {
+        DragGesture()
+            .updating($dragOffset) { value, state, _ in
+                if scale > 1.0 {
+                    state = CGSize(
+                        width: value.translation.width / scale,
+                        height: value.translation.height / scale
+                    )
+                }
+            }
+            .onEnded { value in
+                if abs(value.translation.height) > 100 && scale <= 1.0 {
+                    presentationMode.wrappedValue.dismiss()
+                } else if scale > 1.0 {
+                    let imageSize = CGSize(
+                        width: geometry.size.width * scale,
+                        height: geometry.size.height * scale
+                    )
+                    let excessWidth = max(0, imageSize.width - geometry.size.width)
+                    let excessHeight = max(0, imageSize.height - geometry.size.height)
+
+                    let scaledTranslation = CGSize(
+                        width: value.translation.width / scale,
+                        height: value.translation.height / scale
+                    )
+
+                    offset.width = min(max(offset.width + scaledTranslation.width, -excessWidth / 2), excessWidth / 2)
+                    offset.height = min(max(offset.height + scaledTranslation.height, -excessHeight / 2), excessHeight / 2)
+                }
+                showControls = true
+            }
+    }
+
+    private func magnificationGesture() -> some Gesture {
+        MagnificationGesture()
+            .updating($magnifyBy) { currentState, gestureState, _ in
+                gestureState = currentState
+            }
+            .onEnded { value in
+                scale = min(max(scale * value, 1), 4)
+                lastScale = scale
+            }
+    }
+}
+
+struct ControlsOverlay: View {
+    let showControls: Bool
+    let person: Person
+    let photo: Photo
+    let onClose: () -> Void
+    let onShare: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        ZStack {
+            if showControls {
+                VStack(spacing: 0) {
+                    // Top gradient
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.black.opacity(0.3), Color.clear]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 150)
+                    .edgesIgnoringSafeArea(.top)
+
+                    Spacer()
+
+                    // Bottom gradient
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.clear, Color.black.opacity(0.3)]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 150)
+                    .edgesIgnoringSafeArea(.bottom)
+                }
+
+                VStack {
+                    // Top Bar with Control Buttons
+                    HStack {
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                                .padding()
+                        }
+                        Spacer()
+                        Button(action: onShare) {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(.white)
+                                .padding()
+                        }
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .foregroundColor(.white)
+                                .padding()
+                        }
+                    }
+                    .padding(.top, 44)
+                    
+                    Spacer()
+                    
+                    // Bottom Bar
+                    VStack {
+                         Text(person.name)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        Text(calculateAge(for: person, at: photo.dateTaken))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .padding(.bottom, 34)
+                }
+            }
+        }
+        .edgesIgnoringSafeArea(.all)
+        .animation(.easeInOut, value: showControls)
+    }
+    
+    // Helper functions
     private func calculateAge(for person: Person, at date: Date) -> String {
         return AgeCalculator.calculateAgeString(for: person, at: date)
     }
