@@ -536,7 +536,8 @@ struct PersonDetailView: View {
         Button(action: {
             playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
             if isPlaying {
-                stopPlayback()
+                // Instead of stopping and starting, just update the timer interval
+                playTimer?.invalidate()
                 startPlayback()
             }
         }) {
