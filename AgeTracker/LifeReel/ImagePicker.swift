@@ -21,6 +21,10 @@ struct ImagePicker: UIViewControllerRepresentable {
         config.filter = .images
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
+        
+        // Set the preferredContentSize to use the full screen height
+        picker.preferredContentSize = CGSize(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+        
         return picker
     }
 

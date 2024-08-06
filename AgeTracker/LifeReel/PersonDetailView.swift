@@ -108,6 +108,8 @@ struct PersonDetailView: View {
                 loadImage()
             }) {
                 ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
+                    .edgesIgnoringSafeArea(.all)
+                    .presentationDetents([.large])
             }
             // Sheet presentation for bulk import
             .sheet(item: $activeSheet) { item in
