@@ -13,14 +13,12 @@ import Photos
 
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var selectedAssets: [PHAsset]
-    @Environment(\.presentationMode) private var presentationMode
     @Binding var isPresented: Bool
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
-        config.selectionLimit = 0 // 0 means no limit
+        config.selectionLimit = 0
         config.filter = .images
-        
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
         return picker
@@ -44,7 +42,8 @@ struct ImagePicker: UIViewControllerRepresentable {
             if status == .authorized || status == .limited {
                 let identifiers = results.compactMap(\.assetIdentifier)
                 let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
-                parent.selectedAssets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
+                let newAssets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
+                parent.selectedAssets.append(contentsOf: newAssets)
             }
             parent.isPresented = false
         }

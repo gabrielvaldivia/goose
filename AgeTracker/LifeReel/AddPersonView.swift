@@ -23,61 +23,81 @@ struct AddPersonView: View {
     @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     @State private var showingPermissionAlert = false
     
-    let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 3)
+    let columns: [GridItem] = [
+        GridItem(.adaptive(minimum: 111, maximum: 111), spacing: 10)
+    ]
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    TextField("Name", text: $name)
-                        .padding(.vertical, 10)
+                VStack(alignment: .leading, spacing: 30) { // Increased spacing between sections
+                    // Name section
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Name")
+                            .font(.headline)
+                        TextField("Name", text: $name)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
+                            .background(Color(UIColor.systemBackground))
+                            .cornerRadius(8)
+                    }
+                    
+                    // Date of Birth section
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Date of Birth")
+                            .font(.headline)
+                        HStack {
+                            if let dateOfBirth = dateOfBirth {
+                                Text(dateOfBirth, formatter: dateFormatter)
+                                    .foregroundColor(.primary)
+                            } else {
+                                Text("Select Date")
+                                    .foregroundColor(Color(UIColor.placeholderText))
+                            }
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                         .padding(.horizontal, 16)
                         .background(Color(UIColor.systemBackground))
                         .cornerRadius(8)
-                    
-                    HStack {
-                        Text("Date of Birth")
-                        Spacer()
-                        if let dateOfBirth = dateOfBirth {
-                            Text(dateOfBirth, formatter: dateFormatter)
-                                .foregroundColor(.gray)
-                        } else {
-                            Text("Select Date")
-                                .foregroundColor(.blue)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            showDatePickerSheet = true
                         }
                     }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .background(Color(UIColor.systemBackground))
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        showDatePickerSheet = true
-                    }
                     
-                    // Photo selection grid
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                        ForEach(selectedAssets, id: \.localIdentifier) { asset in
-                            AssetThumbnail(asset: asset)
-                                .frame(width: 100, height: 100)
+                    // Photos section
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Photos")
+                            .font(.headline)
+                        // Photo selection grid
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                            ForEach(selectedAssets, id: \.localIdentifier) { asset in
+                                AssetThumbnail(asset: asset) {
+                                    removeAsset(asset)
+                                }
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        
-                        Button(action: {
-                            requestPhotoLibraryAuthorization()
-                        }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.blue.opacity(0.2))
-                                    .frame(width: 100, height: 100)
-                                
-                                Image(systemName: "plus")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.blue)
+                            }
+                            
+                            Button(action: {
+                                requestPhotoLibraryAuthorization()
+                            }) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [5]))
+                                        .foregroundColor(Color.gray.opacity(0.5))
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .frame(height: 111)
+                                    
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.gray)
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     
                     if showAgeText, let dob = dateOfBirth, !name.isEmpty, !selectedAssets.isEmpty {
                         let photoDate = extractDateTaken(from: imageMeta) ?? Date()
@@ -104,9 +124,7 @@ struct AddPersonView: View {
                 .disabled(selectedAssets.isEmpty || name.isEmpty || dateOfBirth == nil)
             )
         }
-        .sheet(isPresented: $showImagePicker, onDismiss: {
-            loadImages(from: selectedAssets)
-        }) {
+        .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
         }
         .sheet(isPresented: $showDatePickerSheet) {
@@ -182,16 +200,15 @@ struct AddPersonView: View {
     }
     
     private func loadImages(from assets: [PHAsset]) {
-        guard !assets.isEmpty else { return }
-        
-        let asset = assets[0] // For now, we'll just use the first selected asset
-        let options = PHImageRequestOptions()
-        options.isSynchronous = false
-        options.deliveryMode = .highQualityFormat
-        
-        PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-            if let image = image {
-                self.imageMeta = info as? [String: Any]
+        for asset in assets {
+            let options = PHImageRequestOptions()
+            options.isSynchronous = false
+            options.deliveryMode = .highQualityFormat
+            
+            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+                if let image = image {
+                    self.imageMeta = info as? [String: Any]
+                }
             }
         }
     }
@@ -233,6 +250,10 @@ struct AddPersonView: View {
             break
         }
     }
+    
+    private func removeAsset(_ asset: PHAsset) {
+        selectedAssets.removeAll { $0.localIdentifier == asset.localIdentifier }
+    }
 }
 
 extension AddPersonView {
@@ -255,17 +276,32 @@ extension AddPersonView {
 struct AssetThumbnail: View {
     let asset: PHAsset
     @State private var image: UIImage?
+    var onRemove: () -> Void
     
     var body: some View {
-        Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Color.gray
+        ZStack(alignment: .topTrailing) {
+            Group {
+                if let image = image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 111, height: 111)
+                        .clipped()
+                } else {
+                    Color.gray
+                        .frame(width: 111, height: 111)
+                }
             }
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.white)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .padding(4)
         }
+        .frame(width: 111, height: 111)
         .onAppear(perform: loadImage)
     }
     
@@ -273,7 +309,7 @@ struct AssetThumbnail: View {
         let manager = PHImageManager.default()
         let option = PHImageRequestOptions()
         option.isSynchronous = true
-        manager.requestImage(for: asset, targetSize: CGSize(width: 100, height: 100), contentMode: .aspectFill, options: option) { result, info in
+        manager.requestImage(for: asset, targetSize: CGSize(width: 111, height: 111), contentMode: .aspectFill, options: option) { result, info in
             if let result = result {
                 image = result
             }
