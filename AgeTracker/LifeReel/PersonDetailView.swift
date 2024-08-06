@@ -97,7 +97,7 @@ struct PersonDetailView: View {
                         showingImagePicker = true 
                     }) {
                         Image(systemName: "plus")
-                            .fontWeight(.bold)
+                            // .fontWeight(.bold)
                     }
                 }
             }

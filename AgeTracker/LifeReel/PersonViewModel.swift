@@ -272,7 +272,7 @@ class PersonViewModel: ObservableObject {
             options.deliveryMode = .highQualityFormat
             
             PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, _ in
-                if let image = image {
+                if image != nil {
                     var updatedPerson = person
                     self.addPhoto(to: &updatedPerson, asset: asset)
                     self.updatePerson(updatedPerson)
