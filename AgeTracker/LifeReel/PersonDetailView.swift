@@ -48,6 +48,8 @@ struct PersonDetailView: View {
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
     @State private var isManualInteraction = true
+    @State private var scrubberPosition: Double = 0
+    @State private var lastUpdateTime: Date = Date()
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -251,20 +253,21 @@ struct PersonDetailView: View {
                             playButton
                             
                             Slider(value: Binding(
-                                get: { Double(currentPhotoIndex) },
+                                get: { scrubberPosition },
                                 set: { 
                                     isManualInteraction = true
+                                    scrubberPosition = $0
                                     currentPhotoIndex = Int($0)
                                     latestPhotoIndex = currentPhotoIndex
                                 }
-                            ), in: 0...Double(sortedPhotos.count - 1), step: 1)
+                            ), in: 0...Double(sortedPhotos.count - 1), step: 0.01)
                             .accentColor(.blue)
                             
                             speedControlButton
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
-                        .onChange(of: currentPhotoIndex) { oldValue, newValue in
+                        .onChange(of: scrubberPosition) { oldValue, newValue in
                             if isManualInteraction {
                                 if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
                                     return
@@ -285,6 +288,7 @@ struct PersonDetailView: View {
         }
         .onAppear {
             currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
+            scrubberPosition = Double(currentPhotoIndex)
         }
     }
 
@@ -516,7 +520,10 @@ struct PersonDetailView: View {
     private var playButton: some View {
         Button(action: {
             if currentPhotoIndex == person.photos.count - 1 {
+                // Move scrubber to the beginning
                 currentPhotoIndex = 0
+                scrubberPosition = 0
+                isManualInteraction = true
             } else {
                 isPlaying.toggle()
                 if isPlaying {
@@ -540,12 +547,20 @@ struct PersonDetailView: View {
 
     private func startPlayback() {
         isManualInteraction = false
-        playTimer = Timer.scheduledTimer(withTimeInterval: 2.0 / playbackSpeed, repeats: true) { timer in
-            if currentPhotoIndex < person.photos.count - 1 {
-                currentPhotoIndex += 1
-            } else {
+        lastUpdateTime = Date()
+        playTimer = Timer.scheduledTimer(withTimeInterval: 1/60, repeats: true) { timer in
+            let currentTime = Date()
+            let elapsedTime = currentTime.timeIntervalSince(lastUpdateTime)
+            lastUpdateTime = currentTime
+
+            scrubberPosition += elapsedTime * playbackSpeed / 2.0
+            
+            if scrubberPosition >= Double(person.photos.count - 1) {
                 stopPlayback()
+                scrubberPosition = Double(person.photos.count - 1)
             }
+
+            currentPhotoIndex = Int(scrubberPosition)
         }
     }
 
@@ -553,6 +568,7 @@ struct PersonDetailView: View {
         playTimer?.invalidate()
         playTimer = nil
         isPlaying = false
+        scrubberPosition = Double(currentPhotoIndex)
     }
 
     // Speed control button
