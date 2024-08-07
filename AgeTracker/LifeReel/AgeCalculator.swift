@@ -43,7 +43,7 @@ struct AgeCalculator {
                 case .full:
                     if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
                     if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-                    if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
+                    if days > 0 { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
                 case .yearMonth:
                     if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
                     if months > 0 || ageComponents.isEmpty { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
@@ -54,13 +54,21 @@ struct AgeCalculator {
             
             return ageComponents.joined(separator: ", ")
         } else {
-            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: date, to: birthDate).weekOfYear ?? 0
+            let componentsBeforeBirth = calendar.dateComponents([.day], from: date, to: birthDate)
+            let daysBeforeBirth = componentsBeforeBirth.day ?? 0
+            let weeksBeforeBirth = daysBeforeBirth / 7
+            let remainingDays = daysBeforeBirth % 7
             let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
             
             if pregnancyWeek == 40 {
                 return "Newborn"
             } else if pregnancyWeek > 0 {
-                return "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
+                let weekString = "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s")"
+                if remainingDays > 0 {
+                    return "\(weekString) and \(remainingDays) day\(remainingDays == 1 ? "" : "s") pregnant"
+                } else {
+                    return "\(weekString) pregnant"
+                }
             } else {
                 return "Before pregnancy"
             }

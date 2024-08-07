@@ -19,6 +19,7 @@ struct AllPhotosInSectionView: View {
     @State private var columns = [GridItem]()
     @State private var thumbnails: [String: UIImage] = [:]
     @State private var visibleRange: Range<Int>?
+    @State private var isLoading = true
     
     var body: some View {
         GeometryReader { geometry in
@@ -42,6 +43,7 @@ struct AllPhotosInSectionView: View {
             .navigationTitle(sectionTitle)
             .onAppear {
                 updateGridColumns(width: geometry.size.width)
+                loadAllThumbnails()
             }
             .onChange(of: geometry.size) { _, newSize in
                 updateGridColumns(width: newSize.width)
@@ -78,9 +80,13 @@ struct AllPhotosInSectionView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.bottom, 2)
             } else {
-                Color.gray
+                ProgressView()
                     .frame(width: 110, height: 110)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .onTapGesture {
+            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
+                selectedPhotoIndex = IdentifiableIndex(index: index)
             }
         }
     }
@@ -96,6 +102,12 @@ struct AllPhotosInSectionView: View {
         guard let range = visibleRange else { return }
         for index in range {
             let photo = photos[index]
+            loadThumbnail(for: photo)
+        }
+    }
+
+    private func loadAllThumbnails() {
+        for photo in photos {
             loadThumbnail(for: photo)
         }
     }
@@ -124,6 +136,9 @@ struct AllPhotosInSectionView: View {
             if let image = result {
                 DispatchQueue.main.async {
                     self.thumbnails[photo.assetIdentifier] = image
+                    if self.thumbnails.count == self.photos.count {
+                        self.isLoading = false
+                    }
                 }
             }
         }

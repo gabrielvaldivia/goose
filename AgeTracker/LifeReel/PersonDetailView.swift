@@ -413,9 +413,10 @@ struct PersonDetailView: View {
         var groupedPhotos: [(String, [Photo])] = []
 
         for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month, .weekOfYear], from: person.dateOfBirth, to: photo.dateTaken)
+            let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: photo.dateTaken)
             let years = components.year ?? 0
             let months = components.month ?? 0
+            let days = components.day ?? 0
 
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
@@ -432,12 +433,22 @@ struct PersonDetailView: View {
                     sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
             } else {
-                let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
+                let componentsBeforeBirth = calendar.dateComponents([.day], from: photo.dateTaken, to: person.dateOfBirth)
+                let daysBeforeBirth = componentsBeforeBirth.day ?? 0
+                let weeksBeforeBirth = daysBeforeBirth / 7
+                let remainingDays = daysBeforeBirth % 7
                 let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+                
                 if pregnancyWeek == 40 {
                     sectionTitle = "Birth Month"
+                } else if pregnancyWeek > 0 {
+                    if remainingDays > 0 {
+                        sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") and \(remainingDays) Day\(remainingDays == 1 ? "" : "s") Pregnant"
+                    } else {
+                        sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
+                    }
                 } else {
-                    sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
+                    sectionTitle = "Before Pregnancy"
                 }
             }
 
