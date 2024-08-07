@@ -44,7 +44,7 @@ enum AgeFormat: String, Codable, CaseIterable {
 struct Photo: Identifiable, Codable, Equatable {
     let id: UUID
     let assetIdentifier: String
-    let dateTaken: Date
+    var dateTaken: Date
     let isVideo: Bool
 
     var image: UIImage? {
@@ -85,8 +85,8 @@ struct Photo: Identifiable, Codable, Equatable {
         return videoURL
     }
 
-    init(id: UUID = UUID(), asset: PHAsset) {
-        self.id = id
+    init(asset: PHAsset) {
+        self.id = UUID()
         self.assetIdentifier = asset.localIdentifier
         self.dateTaken = asset.creationDate ?? Date()
         self.isVideo = asset.mediaType == .video

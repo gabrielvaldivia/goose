@@ -18,6 +18,7 @@ class PersonViewModel: ObservableObject {
         // Check if photo migration is needed
         if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
             migratePhotos()
+            migratePhotoStructure()
             UserDefaults.standard.set(true, forKey: "photoMigrationCompleted")
         }
     }
@@ -352,6 +353,24 @@ class PersonViewModel: ObservableObject {
         
         savePeople()
         print("Photo migration completed.")
+    }
+    
+    private func migratePhotoStructure() {
+        for personIndex in 0..<people.count {
+            var person = people[personIndex]
+            person.photos = person.photos.map { oldPhoto in
+                // Fetch the asset using the assetIdentifier
+                let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+                if let asset = fetchResult.firstObject {
+                    return Photo(asset: asset)
+                } else {
+                    // If the asset can't be found, return the old photo
+                    return oldPhoto
+                }
+            }
+            people[personIndex] = person
+        }
+        savePeople()
     }
 }
 

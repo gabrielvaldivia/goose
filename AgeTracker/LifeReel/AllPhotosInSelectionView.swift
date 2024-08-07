@@ -35,6 +35,8 @@ struct AllPhotosInSectionView: View {
                 }
                 .padding()
             }
+            .navigationBarBackButtonHidden(true)
+            .navigationBarItems(leading: CustomBackButton())
             .navigationTitle(sectionTitle)
             .onAppear {
                 updateGridColumns(width: geometry.size.width)

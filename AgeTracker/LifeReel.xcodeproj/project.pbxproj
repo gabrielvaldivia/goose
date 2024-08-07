@@ -28,6 +28,7 @@
 		40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B512C604C5E00C1B076 /* AgeCalculator.swift */; };
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
+		40C00B5A2C630B3E00C1B076 /* PhotoDatePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B592C630B3E00C1B076 /* PhotoDatePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 		40C00B512C604C5E00C1B076 /* AgeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeCalculator.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
+		40C00B592C630B3E00C1B076 /* PhotoDatePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoDatePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +136,7 @@
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
+				40C00B592C630B3E00C1B076 /* PhotoDatePicker.swift */,
 				4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */,
 				4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */,
 				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
@@ -312,6 +315,7 @@
 				40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,
 				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,
+				40C00B5A2C630B3E00C1B076 /* PhotoDatePicker.swift in Sources */,
 				4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */,
 				4015B7592C5C5663001FA4E4 /* PersonViewModel.swift in Sources */,
 				4015B7682C5D7DFB001FA4E4 /* AllPhotosInSelectionView.swift in Sources */,

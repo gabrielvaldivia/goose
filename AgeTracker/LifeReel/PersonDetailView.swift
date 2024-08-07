@@ -44,6 +44,9 @@ struct PersonDetailView: View {
     @State private var isPlaying = false
     @State private var playTimer: Timer?
     @State private var playbackSpeed: Double = 1.0 // New state variable for playback speed
+    @State private var showingDatePicker = false
+    @State private var selectedPhotoForDateEdit: Photo?
+    @State private var editedDate: Date = Date()
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -196,6 +199,14 @@ struct PersonDetailView: View {
             .onDisappear {
                 stopPlayback()
             }
+            .sheet(isPresented: $showingDatePicker) {
+                PhotoDatePickerSheet(date: $editedDate, isPresented: $showingDatePicker) {
+                    if let photoToUpdate = selectedPhotoForDateEdit {
+                        updatePhotoDate(photoToUpdate, newDate: editedDate)
+                    }
+                }
+                .presentationDetents([.height(300)])
+            }
         }
     }
     
@@ -221,6 +232,11 @@ struct PersonDetailView: View {
                         Text(formatDate(sortedPhotos[currentPhotoIndex].dateTaken))
                             .font(.caption)
                             .foregroundColor(.gray)
+                            .onTapGesture {
+                                selectedPhotoForDateEdit = sortedPhotos[currentPhotoIndex]
+                                editedDate = sortedPhotos[currentPhotoIndex].dateTaken
+                                showingDatePicker = true
+                            }
                     }
                     .padding()
                     
@@ -550,6 +566,13 @@ struct PersonDetailView: View {
                     .foregroundColor(.secondary)
                     .font(.system(size: 14, weight: .bold))
             }
+        }
+    }
+
+    private func updatePhotoDate(_ photo: Photo, newDate: Date) {
+        if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
+            person.photos[index].dateTaken = newDate
+            viewModel.updatePerson(person)
         }
     }
 }
