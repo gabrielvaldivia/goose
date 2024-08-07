@@ -34,6 +34,8 @@ struct PhotoDatePickerSheet: View {
             DatePicker("", selection: $date, displayedComponents: .date)
                 .datePickerStyle(.wheel)
                 .labelsHidden()
+
+            Spacer()
         }
         .background(Color(UIColor.systemBackground))
     }
