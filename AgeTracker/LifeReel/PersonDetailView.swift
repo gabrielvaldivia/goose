@@ -47,6 +47,7 @@ struct PersonDetailView: View {
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
+    @State private var isManualInteraction = true
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -225,6 +226,9 @@ struct PersonDetailView: View {
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                     .frame(height: geometry.size.height * 0.8)
+                    .gesture(DragGesture().onChanged { _ in
+                        isManualInteraction = true
+                    })
                     
                     VStack {
                         Text(calculateAge())
@@ -249,6 +253,7 @@ struct PersonDetailView: View {
                             Slider(value: Binding(
                                 get: { Double(currentPhotoIndex) },
                                 set: { 
+                                    isManualInteraction = true
                                     currentPhotoIndex = Int($0)
                                     latestPhotoIndex = currentPhotoIndex
                                 }
@@ -260,12 +265,14 @@ struct PersonDetailView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                         .onChange(of: currentPhotoIndex) { oldValue, newValue in
-                            if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
-                                return
+                            if isManualInteraction {
+                                if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
+                                    return
+                                }
+                                lastFeedbackDate = Date()
+                                impact.prepare()
+                                impact.impactOccurred()
                             }
-                            lastFeedbackDate = Date()
-                            impact.prepare()
-                            impact.impactOccurred()
                         }
                     }
                 } else {
@@ -532,6 +539,7 @@ struct PersonDetailView: View {
     }
 
     private func startPlayback() {
+        isManualInteraction = false
         playTimer = Timer.scheduledTimer(withTimeInterval: 2.0 / playbackSpeed, repeats: true) { timer in
             if currentPhotoIndex < person.photos.count - 1 {
                 currentPhotoIndex += 1

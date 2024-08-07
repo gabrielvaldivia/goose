@@ -18,6 +18,7 @@ struct AllPhotosInSectionView: View {
     
     @State private var columns = [GridItem]()
     @State private var thumbnails: [String: UIImage] = [:]
+    @State private var visibleRange: Range<Int>?
     
     var body: some View {
         GeometryReader { geometry in
@@ -25,11 +26,12 @@ struct AllPhotosInSectionView: View {
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                         photoThumbnail(photo)
+                            .id(index)
                             .onAppear {
-                                loadThumbnail(for: photo)
+                                updateVisibleRange(index: index)
                             }
-                            .onTapGesture {
-                                selectedPhotoIndex = IdentifiableIndex(index: index)
+                            .onDisappear {
+                                updateVisibleRange(index: index)
                             }
                     }
                 }
@@ -53,6 +55,9 @@ struct AllPhotosInSectionView: View {
                 onDelete: onDelete,
                 person: person
             )
+        }
+        .onChange(of: visibleRange) { _, _ in
+            loadVisibleThumbnails()
         }
     }
     
@@ -80,6 +85,21 @@ struct AllPhotosInSectionView: View {
         }
     }
     
+    private func updateVisibleRange(index: Int) {
+        let bufferSize = 10 // Load 10 items before and after visible range
+        let lowerBound = max(0, index - bufferSize)
+        let upperBound = min(photos.count, index + bufferSize + 1)
+        visibleRange = lowerBound..<upperBound
+    }
+
+    private func loadVisibleThumbnails() {
+        guard let range = visibleRange else { return }
+        for index in range {
+            let photo = photos[index]
+            loadThumbnail(for: photo)
+        }
+    }
+
     private func loadThumbnail(for photo: Photo) {
         guard thumbnails[photo.assetIdentifier] == nil else { return }
         
