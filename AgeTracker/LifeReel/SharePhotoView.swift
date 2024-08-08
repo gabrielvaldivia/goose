@@ -78,7 +78,6 @@ struct SharePhotoView: View {
             }
             .padding()
         }
-        .background(Color(UIColor.secondarySystemBackground))
         .navigationTitle("Pick template")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(

@@ -231,6 +231,11 @@ struct PersonDetailView: View {
                     .gesture(DragGesture().onChanged { _ in
                         isManualInteraction = true
                     })
+                    .onChange(of: currentPhotoIndex) { oldValue, newValue in
+                        if isManualInteraction {
+                            scrubberPosition = Double(newValue)
+                        }
+                    }
                     
                     VStack {
                         Text(calculateAge())
