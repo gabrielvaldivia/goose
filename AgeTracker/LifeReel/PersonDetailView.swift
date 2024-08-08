@@ -268,20 +268,14 @@ struct PersonDetailView: View {
                             ), in: 0...Double(sortedPhotos.count - 1), step: 0.01)
                             .accentColor(.blue)
                             
-                            speedControlButton
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
-                        .onChange(of: scrubberPosition) { oldValue, newValue in
-                            if isManualInteraction {
-                                if let lastFeedbackDate = lastFeedbackDate, Date().timeIntervalSince(lastFeedbackDate) < 0.5 {
-                                    return
-                                }
-                                lastFeedbackDate = Date()
-                                impact.prepare()
-                                impact.impactOccurred()
+                            if isPlaying {
+                                speedControlButton
+                            } else {
+                                shareButton
                             }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 30)
                     }
                 } else {
                     Spacer ()
@@ -603,8 +597,25 @@ struct PersonDetailView: View {
                     .frame(width: 36, height: 36)
                 
                 Text("\(Int(playbackSpeed))x")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.blue)
                     .font(.system(size: 14, weight: .bold))
+            }
+        }
+    }
+
+    // New share button
+    private var shareButton: some View {
+        Button(action: {
+            activeSheet = .shareView
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 36, height: 36)
+                
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .bold))
             }
         }
     }
