@@ -14,13 +14,22 @@ struct SharePhotoView: View {
     @State private var titleOption = TitleOption.name
     @State private var subtitleOption = TitleOption.age
     @State private var showAppIcon = true
+    @State private var isRendering = false
+    @State private var aspectRatio: AspectRatio = .original
     @Environment(\.dismiss) private var dismiss
+    @State private var templateHeight: CGFloat = 520 // Default height
+    @State private var expandedButton: String?
 
     enum TitleOption: String, CaseIterable {
         case none = "None"
         case name = "Name"
         case age = "Age"
         case date = "Date"
+    }
+
+    enum AspectRatio: String, CaseIterable {
+        case original = "Original"
+        case square = "Square"
     }
 
     init(image: UIImage, name: String, age: String, isShareSheetPresented: Binding<Bool>, activityItems: Binding<[Any]>) {
@@ -36,61 +45,134 @@ struct SharePhotoView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                TabView(selection: $selectedTemplate) {
-                    LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
-                        .tag(0)
-                    DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
-                        .tag(1)
-                    OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
-                        .tag(2)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-                .frame(height: 520)
+        GeometryReader { geometry in
+            VStack {
+                // Header
+                headerView
+                    .frame(height: 52)
+                    
 
-                Form {
-                    Section(header: Text("Customization")) {
-                        Picker("Title", selection: $titleOption) {
-                            ForEach(TitleOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
-                            }
+                // Canvas
+                VStack {
+                    Spacer()
+                    VStack {
+                        TabView(selection: $selectedTemplate) {
+                            LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                                .tag(0)
+                                .background(GeometryReader { innerGeometry in
+                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
+                                })
+                            DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                                .tag(1)
+                                .background(GeometryReader { innerGeometry in
+                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
+                                })
+                            OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                                .tag(2)
+                                .background(GeometryReader { innerGeometry in
+                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
+                                })
                         }
-                        .onChange(of: titleOption) { oldValue, newValue in
-                            if newValue == subtitleOption {
-                                subtitleOption = .none
-                            }
-                        }
+                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                        .frame(height: templateHeight)
                         
-                        Picker("Subtitle", selection: $subtitleOption) {
-                            ForEach(availableSubtitleOptions, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
+                        // Custom page indicator
+                        HStack(spacing: 8) {
+                            ForEach(0..<3) { index in
+                                Circle()
+                                    .fill(selectedTemplate == index ? Color.secondary : Color.secondary.opacity(0.5))
+                                    .frame(width: 8, height: 8)
                             }
                         }
-                        .onChange(of: subtitleOption) { oldValue, newValue in
-                            if newValue == titleOption {
-                                titleOption = .none
-                            }
-                        }
-                        
-                        Toggle("Show App Icon", isOn: $showAppIcon)
+                        .padding(.vertical, 20)
                     }
+                    .onPreferenceChange(ViewHeightKey.self) { height in
+                        self.templateHeight = height
+                    }
+
+                    Spacer()
                 }
-                .frame(height: 220)
+                .frame(height: geometry.size.height - 44 - 80) 
+
+                // Controls
+                controlsView
+                    .frame(height: 60)
             }
-            .padding()
         }
-        .navigationTitle("Pick template")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(
-            leading: cancelButton,
-            trailing: shareButton
-        )
+        .background(Color(UIColor.secondarySystemBackground))
+        .navigationBarHidden(true) 
         .sheet(isPresented: $showingPolaroidSheet) {
             if let uiImage = renderedImage {
                 ActivityViewController(activityItems: [uiImage])
             }
         }
+    }
+
+    // Header View
+    private var headerView: some View {
+        HStack {
+            cancelButton
+            Spacer()
+            Text("Pick template")
+                .font(.headline)
+            Spacer()
+            shareButton
+        }
+        .padding(.horizontal)
+    }
+
+    // Controls View
+    private var controlsView: some View {
+        VStack {
+            Divider()
+            HStack(spacing: 40) {
+                CustomizationButton(
+                    icon: "textformat",
+                    title: "Title",
+                    options: TitleOption.allCases,
+                    selection: $titleOption,
+                    expandedButton: $expandedButton,
+                    buttonId: "title"
+                )
+
+                CustomizationButton(
+                    icon: "text.alignleft",
+                    title: "Subtitle",
+                    options: availableSubtitleOptions,
+                    selection: $subtitleOption,
+                    expandedButton: $expandedButton,
+                    buttonId: "subtitle"
+                )
+
+                CustomizationButton(
+                    icon: "aspectratio",
+                    title: "Aspect Ratio",
+                    options: AspectRatio.allCases,
+                    selection: $aspectRatio,
+                    expandedButton: $expandedButton,
+                    buttonId: "aspectRatio"
+                )
+
+                // Updated App Icon toggle with fixed height
+                VStack(spacing: 8) {
+                    Button(action: { showAppIcon.toggle() }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                                .font(.system(size: 24))
+                                .frame(height: 24) // Fixed height for the icon
+                            Text("App Icon")
+                                .font(.caption)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                }
+                .frame(height: 50) // Fixed height for the entire button
+            }
+            .padding(.horizontal, 30)
+            .padding(.vertical, 8)
+            
+        }
+        .background(Color(UIColor.systemBackground))
     }
 
     private var availableSubtitleOptions: [TitleOption] {
@@ -123,15 +205,16 @@ struct SharePhotoView: View {
     private func prepareSharePhoto() async {
         guard !isPreparingImage else { return }
         isPreparingImage = true
+        isRendering = true
 
         let templateView: some View = Group {
             switch selectedTemplate {
             case 0:
-                LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+                LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
             case 1:
-                DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+                DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
             case 2:
-                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
             default:
                 EmptyView()
             }
@@ -144,6 +227,7 @@ struct SharePhotoView: View {
             renderedImage = uiImage
             showingPolaroidSheet = true
         }
+        isRendering = false
         isPreparingImage = false
     }
 }
@@ -155,13 +239,15 @@ struct LightTemplateView: View {
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
     let showAppIcon: Bool
+    let isRendering: Bool
+    let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
         VStack(spacing: 20) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 280, height: 280)
+                .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
                 .clipped()
             
             HStack {
@@ -191,6 +277,7 @@ struct LightTemplateView: View {
         .padding(.vertical, 20)
         .frame(width: 320)
         .background(Color.white)
+        .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
     
@@ -227,13 +314,15 @@ struct DarkTemplateView: View {
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
     let showAppIcon: Bool
+    let isRendering: Bool
+    let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
         VStack(spacing: 20) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 280, height: 280)
+                .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
                 .clipped()
             
             HStack {
@@ -263,6 +352,7 @@ struct DarkTemplateView: View {
         .padding(.vertical, 20)
         .frame(width: 320)
         .background(Color.black)
+        .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
     
@@ -299,13 +389,15 @@ struct OverlayTemplateView: View {
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
     let showAppIcon: Bool
+    let isRendering: Bool
+    let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 320, height: 320)
+                .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
                 .clipped()
             
             VStack(alignment: .leading, spacing: 4) {
@@ -340,7 +432,8 @@ struct OverlayTemplateView: View {
                 .padding(16)
             }
         }
-        .frame(width: 320, height: 320)
+        .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
+        .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
     
@@ -367,5 +460,107 @@ struct OverlayTemplateView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+}
+
+struct CustomizationButton<T: Hashable>: View {
+    let icon: String
+    let title: String
+    let options: [T]
+    @Binding var selection: T
+    @Binding var expandedButton: String?
+    let buttonId: String
+
+    private let optionHeight: CGFloat = 32
+    private let dropdownPadding: CGFloat = 16
+
+    var body: some View {
+        VStack {
+            Button(action: {
+                if expandedButton == buttonId {
+                    expandedButton = nil
+                } else {
+                    expandedButton = buttonId
+                }
+            }) {
+                VStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 24))
+                    Text(title)
+                        .font(.caption)
+                }
+            }
+            .foregroundColor(.primary)
+            .overlay(
+                GeometryReader { geometry in
+                    if expandedButton == buttonId {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(options, id: \.self) { option in
+                                Button(action: {
+                                    selection = option
+                                    expandedButton = nil
+                                }) {
+                                    Text(String(describing: option))
+                                        .foregroundColor(selection == option ? .blue : .primary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .frame(height: optionHeight)
+                                }
+                            }
+                        }
+                        .padding(dropdownPadding)
+                        .background(Color(UIColor.systemBackground))
+                        .cornerRadius(8)
+                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
+                        .frame(width: 150)
+                        .position(x: calculateXPosition(geometry: geometry),
+                                  y: calculateYPosition(geometry: geometry))
+                    }
+                }
+            )
+        }
+    }
+    
+    private func calculateXPosition(geometry: GeometryProxy) -> CGFloat {
+        let globalX = geometry.frame(in: .global).minX
+        let screenWidth = UIScreen.main.bounds.width
+        let dropdownWidth: CGFloat = 150
+        
+        if globalX + dropdownWidth > screenWidth {
+            // Align right edge of dropdown with right edge of button
+            return geometry.size.width - (dropdownWidth / 2)
+        } else if globalX < dropdownWidth / 2 {
+            // Align left edge of dropdown with left edge of button
+            return dropdownWidth / 2
+        } else {
+            // Center dropdown on button
+            return geometry.size.width / 2
+        }
+    }
+    
+    private func calculateYPosition(geometry: GeometryProxy) -> CGFloat {
+        let dropdownHeight = CGFloat(options.count) * optionHeight + dropdownPadding * 2
+        let spaceBelowButton = UIScreen.main.bounds.height - geometry.frame(in: .global).maxY
+        
+        if spaceBelowButton >= dropdownHeight + 10 {
+            // Position below if there's enough space
+            return geometry.size.height + dropdownHeight / 2 + 5
+        } else {
+            // Position above if there's not enough space below
+            return -dropdownHeight / 2 - 5
+        }
+    }
+}
+
+struct ContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct ViewHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
