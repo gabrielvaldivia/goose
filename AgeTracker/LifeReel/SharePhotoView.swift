@@ -47,6 +47,15 @@ struct SharePhotoView: View {
         UIPageControl.appearance().pageIndicatorTintColor = .tertiaryLabel
     }
 
+    private var calculatedTemplateHeight: CGFloat {
+        let baseHeight: CGFloat = 380 // Base height for square aspect ratio
+        if aspectRatio == .original {
+            let imageAspectRatio = image.size.height / image.size.width
+            return baseHeight + (280 * (imageAspectRatio - 1))
+        }
+        return baseHeight
+    }
+
     var body: some View {
         GeometryReader { geometry in
             VStack {
@@ -62,22 +71,13 @@ struct SharePhotoView: View {
                         TabView(selection: $selectedTemplate) {
                             LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(0)
-                                .background(GeometryReader { innerGeometry in
-                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
-                                })
                             DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(1)
-                                .background(GeometryReader { innerGeometry in
-                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
-                                })
                             OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(2)
-                                .background(GeometryReader { innerGeometry in
-                                    Color.clear.preference(key: ViewHeightKey.self, value: innerGeometry.size.height)
-                                })
                         }
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                        .frame(height: templateHeight)
+                        .frame(height: calculatedTemplateHeight)
                         
                         // Custom page indicator
                         HStack(spacing: 8) {
@@ -88,9 +88,6 @@ struct SharePhotoView: View {
                             }
                         }
                         .padding(.vertical, 20)
-                    }
-                    .onPreferenceChange(ViewHeightKey.self) { height in
-                        self.templateHeight = height
                     }
 
                     Spacer()
@@ -273,6 +270,7 @@ struct LightTemplateView: View {
         }
         .padding(.vertical, 20)
         .frame(width: 320)
+        .frame(minHeight: 320)
         .background(Color.white)
         .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
@@ -348,6 +346,7 @@ struct DarkTemplateView: View {
         }
         .padding(.vertical, 20)
         .frame(width: 320)
+        .frame(minHeight: 320)
         .background(Color.black)
         .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
@@ -429,7 +428,8 @@ struct OverlayTemplateView: View {
                 .padding(16)
             }
         }
-        .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
+        .frame(width: 320)
+        .frame(minHeight: 320)
         .cornerRadius(isRendering ? 0 : 10)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
