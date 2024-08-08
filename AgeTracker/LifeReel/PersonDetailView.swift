@@ -36,7 +36,7 @@ struct PersonDetailView: View {
     @State private var latestPhotoIndex = 0 // New state variable
     @State private var lastFeedbackDate: Date?
     let impact = UIImpactFeedbackGenerator(style: .light)
-    @State private var selectedView = 0 // 0 for All, 1 for Years
+    @State private var selectedView = 0 // 0 for Slideshow, 1 for Grid, 2 for Stacks
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil // New state variable
     @State private var isShareSheetPresented = false
@@ -66,17 +66,20 @@ struct PersonDetailView: View {
             VStack {
                 // Segmented control for view selection
                 Picker("View", selection: $selectedView) {
-                    Text("Timeline").tag(0)
-                    Text("Years").tag(1)
+                    Text("Slideshow").tag(0)
+                    Text("Grid").tag(1)
+                    Text("Stacks").tag(2)
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
 
                 // Conditional view based on selection
                 if selectedView == 0 {
-                    TimelineView
+                    SlideshowView
+                } else if selectedView == 1 {
+                    GridView
                 } else {
-                    yearsView
+                    StacksView
                 }
             }
             // Navigation and toolbar setup
@@ -213,8 +216,8 @@ struct PersonDetailView: View {
         }
     }
     
-    // Timeline view
-    private var TimelineView: some View {
+    // Slideshow view
+    private var SlideshowView: some View {
         GeometryReader { geometry in
             VStack {
                 if !person.photos.isEmpty {
@@ -317,8 +320,8 @@ struct PersonDetailView: View {
         }
     }
 
-    // Years view
-    private var yearsView: some View {
+    // Grid view
+    private var GridView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(groupPhotosByAgeForYearView(), id: \.0) { section, photos in
@@ -686,6 +689,95 @@ struct PersonDetailView: View {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
             person.photos[index].dateTaken = newDate
             viewModel.updatePerson(person)
+        }
+    }
+
+    // New Stacks view
+    private var StacksView: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVStack(spacing: 15) {
+                    ForEach(groupPhotosByAgeForYearView(), id: \.0) { section, photos in
+                        StackSectionView(
+                            section: section,
+                            photos: photos,
+                            selectedPhoto: $selectedPhoto,
+                            person: person,
+                            cardHeight: 200,
+                            maxWidth: geometry.size.width - 30
+                        )
+                    }
+                }
+                .padding()
+            }
+        }
+    }
+}
+
+// New StackSectionView
+private struct StackSectionView: View {
+    let section: String
+    let photos: [Photo]
+    @Binding var selectedPhoto: Photo?
+    let person: Person
+    let cardHeight: CGFloat
+    let maxWidth: CGFloat
+    
+    var body: some View {
+        NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: { _ in }, person: person)) {
+            if let randomPhoto = photos.randomElement() {
+                ZStack(alignment: .bottom) {
+                    if let image = randomPhoto.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: cardHeight)
+                            .frame(maxWidth: maxWidth)
+                            .clipped()
+                            .cornerRadius(10)
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: cardHeight)
+                            .frame(maxWidth: maxWidth)
+                            .cornerRadius(10)
+                    }
+                    
+                    // Add the gradient overlay
+                    LinearGradient(
+                        gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: cardHeight / 3)
+                    .frame(maxWidth: maxWidth)
+                    .cornerRadius(10)
+                    
+                    HStack {
+                        Text(section)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(8)
+                        
+                        Spacer()
+                        
+                        Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(6)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(5)
+                    }
+                    .padding(8)
+                }
+            } else {
+                Text("No photos available")
+                    .italic()
+                    .foregroundColor(.gray)
+                    .frame(height: cardHeight)
+                    .frame(maxWidth: maxWidth)
+            }
         }
     }
 }
