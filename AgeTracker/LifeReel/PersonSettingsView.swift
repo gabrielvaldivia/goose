@@ -76,8 +76,15 @@ struct PersonSettingsView: View {
                 Button(action: {
                     showingBulkImport = true
                 }) {
-                    Text("Bulk Import")
+                    HStack {
+                        Text("Bulk Import")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("Select Album")
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .foregroundColor(.primary)
             }
 
             Section(header: Text("Age Display")) {
