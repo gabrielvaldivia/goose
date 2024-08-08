@@ -222,12 +222,12 @@ struct PersonDetailView: View {
                     
                     TabView(selection: $currentPhotoIndex) {
                         ForEach(Array(sortedPhotos.enumerated()), id: \.element.id) { index, photo in
-                            PhotoView(photo: photo, geometry: geometry, selectedPhoto: $selectedPhoto)
+                            PhotoView(photo: photo, containerWidth: geometry.size.width, selectedPhoto: $selectedPhoto)
                                 .tag(index)
                         }
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .frame(height: geometry.size.height * 0.8)
+                    .frame(height: 500) 
                     .gesture(DragGesture().onChanged { _ in
                         isManualInteraction = true
                     })
@@ -249,7 +249,7 @@ struct PersonDetailView: View {
                                 showingDatePicker = true
                             }
                     }
-                    .padding()
+                    // .padding(.horizontal)
                     
                     Spacer()
                     
@@ -293,7 +293,7 @@ struct PersonDetailView: View {
 
     private struct PhotoView: View {
         let photo: Photo
-        let geometry: GeometryProxy
+        let containerWidth: CGFloat
         @Binding var selectedPhoto: Photo?
         
         var body: some View {
@@ -310,7 +310,7 @@ struct PersonDetailView: View {
                     ProgressView()
                 }
             }
-            .frame(width: geometry.size.width, height: geometry.size.height * 0.8)
+            .frame(width: containerWidth) 
             .onTapGesture {
                 selectedPhoto = photo
             }
@@ -321,7 +321,7 @@ struct PersonDetailView: View {
     private var yearsView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(groupPhotosByAge(), id: \.0) { section, photos in
+                ForEach(groupPhotosByAgeForYearView(), id: \.0) { section, photos in
                     YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                 }
             }
@@ -446,6 +446,68 @@ struct PersonDetailView: View {
                     } else {
                         sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
                     }
+                } else {
+                    sectionTitle = "Before Pregnancy"
+                }
+            }
+
+            if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
+                groupedPhotos[index].1.append(photo)
+            } else {
+                groupedPhotos.append((sectionTitle, [photo]))
+            }
+        }
+
+        // Create the order array
+        let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
+        let monthOrder = (1...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
+        let pregnancyOrder = (1...39).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
+        
+        let order = yearOrder + monthOrder + ["Birth Month"] + pregnancyOrder
+
+        // Sort the grouped photos
+        return groupedPhotos.sorted { (group1, group2) -> Bool in
+            let index1 = order.firstIndex(of: group1.0) ?? Int.max
+            let index2 = order.firstIndex(of: group2.0) ?? Int.max
+            return index1 < index2
+        }
+    }
+    
+    // New function for grouping photos in the year view
+    private func groupPhotosByAgeForYearView() -> [(String, [Photo])] {
+        let calendar = Calendar.current
+        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+        var groupedPhotos: [(String, [Photo])] = []
+
+        for photo in sortedPhotos {
+            let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: photo.dateTaken)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
+
+            let sectionTitle: String
+            if photo.dateTaken >= person.dateOfBirth {
+                if years == 0 {
+                    switch months {
+                    case 0:
+                        sectionTitle = "Birth Month"
+                    case 1...11:
+                        sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
+                    default:
+                        sectionTitle = "1 Year"
+                    }
+                } else {
+                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                }
+            } else {
+                let componentsBeforeBirth = calendar.dateComponents([.day], from: photo.dateTaken, to: person.dateOfBirth)
+                let daysBeforeBirth = componentsBeforeBirth.day ?? 0
+                let weeksBeforeBirth = daysBeforeBirth / 7
+                let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+                
+                if pregnancyWeek == 40 {
+                    sectionTitle = "Birth Month"
+                } else if pregnancyWeek > 0 {
+                    sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
                 } else {
                     sectionTitle = "Before Pregnancy"
                 }

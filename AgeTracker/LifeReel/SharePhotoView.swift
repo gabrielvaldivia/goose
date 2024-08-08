@@ -43,6 +43,8 @@ struct SharePhotoView: View {
                         .tag(0)
                     DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
                         .tag(1)
+                    OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+                        .tag(2)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
                 .frame(height: 520)
@@ -123,10 +125,15 @@ struct SharePhotoView: View {
         isPreparingImage = true
 
         let templateView: some View = Group {
-            if selectedTemplate == 0 {
+            switch selectedTemplate {
+            case 0:
                 LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
-            } else {
+            case 1:
                 DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+            case 2:
+                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon)
+            default:
+                EmptyView()
             }
         }
         
@@ -184,7 +191,6 @@ struct LightTemplateView: View {
         .padding(.vertical, 20)
         .frame(width: 320)
         .background(Color.white)
-        .cornerRadius(10)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
     
@@ -257,7 +263,84 @@ struct DarkTemplateView: View {
         .padding(.vertical, 20)
         .frame(width: 320)
         .background(Color.black)
-        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+    }
+    
+    private var titleText: String {
+        switch titleOption {
+        case .none: return ""
+        case .name: return name
+        case .age: return age
+        case .date: return formatDate(Date())
+        }
+    }
+    
+    private var subtitleText: String {
+        switch subtitleOption {
+        case .none: return ""
+        case .name: return name
+        case .age: return age
+        case .date: return formatDate(Date())
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+}
+
+struct OverlayTemplateView: View {
+    let image: UIImage
+    let name: String
+    let age: String
+    let titleOption: SharePhotoView.TitleOption
+    let subtitleOption: SharePhotoView.TitleOption
+    let showAppIcon: Bool
+    
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 320, height: 320)
+                .clipped()
+            
+            VStack(alignment: .leading, spacing: 4) {
+                if !titleText.isEmpty {
+                    Text(titleText)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .shadow(color: .black, radius: 1, x: 0, y: 1)
+                }
+                if !subtitleText.isEmpty {
+                    Text(subtitleText)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .shadow(color: .black, radius: 1, x: 0, y: 1)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            
+            if showAppIcon {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 40, height: 40)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .frame(width: 320, height: 320)
         .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
     
