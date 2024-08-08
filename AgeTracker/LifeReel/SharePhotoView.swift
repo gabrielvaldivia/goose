@@ -18,18 +18,21 @@ struct SharePhotoView: View {
     @State private var aspectRatio: AspectRatio = .original
     @Environment(\.dismiss) private var dismiss
     @State private var templateHeight: CGFloat = 520 // Default height
-    @State private var expandedButton: String?
 
-    enum TitleOption: String, CaseIterable {
+    enum TitleOption: String, CaseIterable, CustomStringConvertible {
         case none = "None"
         case name = "Name"
         case age = "Age"
         case date = "Date"
+        
+        var description: String { self.rawValue }
     }
 
-    enum AspectRatio: String, CaseIterable {
+    enum AspectRatio: String, CaseIterable, CustomStringConvertible {
         case original = "Original"
         case square = "Square"
+        
+        var description: String { self.rawValue }
     }
 
     init(image: UIImage, name: String, age: String, isShareSheetPresented: Binding<Bool>, activityItems: Binding<[Any]>) {
@@ -126,47 +129,41 @@ struct SharePhotoView: View {
         VStack {
             Divider()
             HStack(spacing: 40) {
-                CustomizationButton(
+                SimplifiedCustomizationButton(
                     icon: "textformat",
                     title: "Title",
                     options: TitleOption.allCases,
-                    selection: $titleOption,
-                    expandedButton: $expandedButton,
-                    buttonId: "title"
+                    selection: $titleOption
                 )
 
-                CustomizationButton(
+                SimplifiedCustomizationButton(
                     icon: "text.alignleft",
                     title: "Subtitle",
                     options: availableSubtitleOptions,
-                    selection: $subtitleOption,
-                    expandedButton: $expandedButton,
-                    buttonId: "subtitle"
+                    selection: $subtitleOption
                 )
 
-                CustomizationButton(
+                SimplifiedCustomizationButton(
                     icon: "aspectratio",
                     title: "Aspect Ratio",
                     options: AspectRatio.allCases,
-                    selection: $aspectRatio,
-                    expandedButton: $expandedButton,
-                    buttonId: "aspectRatio"
+                    selection: $aspectRatio
                 )
 
-                // Updated App Icon toggle with fixed height
+                // App Icon toggle
                 VStack(spacing: 8) {
                     Button(action: { showAppIcon.toggle() }) {
                         VStack(spacing: 8) {
                             Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
                                 .font(.system(size: 24))
-                                .frame(height: 24) // Fixed height for the icon
+                                .frame(height: 24)
                             Text("App Icon")
                                 .font(.caption)
                         }
                     }
                     .foregroundColor(.primary)
                 }
-                .frame(height: 50) // Fixed height for the entire button
+                .frame(height: 50)
             }
             .padding(.horizontal, 30)
             .padding(.vertical, 8)
@@ -246,7 +243,7 @@ struct LightTemplateView: View {
         VStack(spacing: 20) {
             Image(uiImage: image)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
                 .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
                 .clipped()
             
@@ -321,7 +318,7 @@ struct DarkTemplateView: View {
         VStack(spacing: 20) {
             Image(uiImage: image)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
                 .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
                 .clipped()
             
@@ -396,7 +393,7 @@ struct OverlayTemplateView: View {
         ZStack(alignment: .bottomLeading) {
             Image(uiImage: image)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
                 .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
                 .clipped()
             
@@ -463,91 +460,28 @@ struct OverlayTemplateView: View {
     }
 }
 
-struct CustomizationButton<T: Hashable>: View {
+struct SimplifiedCustomizationButton<T: Hashable & CustomStringConvertible>: View {
     let icon: String
     let title: String
     let options: [T]
     @Binding var selection: T
-    @Binding var expandedButton: String?
-    let buttonId: String
-
-    private let optionHeight: CGFloat = 32
-    private let dropdownPadding: CGFloat = 16
 
     var body: some View {
-        VStack {
-            Button(action: {
-                if expandedButton == buttonId {
-                    expandedButton = nil
-                } else {
-                    expandedButton = buttonId
-                }
-            }) {
-                VStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 24))
-                    Text(title)
-                        .font(.caption)
+        Menu {
+            Picker(selection: $selection, label: EmptyView()) {
+                ForEach(options, id: \.self) { option in
+                    Text(option.description).tag(option)
                 }
             }
-            .foregroundColor(.primary)
-            .overlay(
-                GeometryReader { geometry in
-                    if expandedButton == buttonId {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(options, id: \.self) { option in
-                                Button(action: {
-                                    selection = option
-                                    expandedButton = nil
-                                }) {
-                                    Text(String(describing: option))
-                                        .foregroundColor(selection == option ? .blue : .primary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .frame(height: optionHeight)
-                                }
-                            }
-                        }
-                        .padding(dropdownPadding)
-                        .background(Color(UIColor.systemBackground))
-                        .cornerRadius(8)
-                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
-                        .frame(width: 150)
-                        .position(x: calculateXPosition(geometry: geometry),
-                                  y: calculateYPosition(geometry: geometry))
-                    }
-                }
-            )
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                Text(title)
+                    .font(.caption)
+            }
         }
-    }
-    
-    private func calculateXPosition(geometry: GeometryProxy) -> CGFloat {
-        let globalX = geometry.frame(in: .global).minX
-        let screenWidth = UIScreen.main.bounds.width
-        let dropdownWidth: CGFloat = 150
-        
-        if globalX + dropdownWidth > screenWidth {
-            // Align right edge of dropdown with right edge of button
-            return geometry.size.width - (dropdownWidth / 2)
-        } else if globalX < dropdownWidth / 2 {
-            // Align left edge of dropdown with left edge of button
-            return dropdownWidth / 2
-        } else {
-            // Center dropdown on button
-            return geometry.size.width / 2
-        }
-    }
-    
-    private func calculateYPosition(geometry: GeometryProxy) -> CGFloat {
-        let dropdownHeight = CGFloat(options.count) * optionHeight + dropdownPadding * 2
-        let spaceBelowButton = UIScreen.main.bounds.height - geometry.frame(in: .global).maxY
-        
-        if spaceBelowButton >= dropdownHeight + 10 {
-            // Position below if there's enough space
-            return geometry.size.height + dropdownHeight / 2 + 5
-        } else {
-            // Position above if there's not enough space below
-            return -dropdownHeight / 2 - 5
-        }
+        .foregroundColor(.primary)
     }
 }
 
