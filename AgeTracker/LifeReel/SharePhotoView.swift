@@ -273,8 +273,7 @@ struct LightTemplateView: View {
         .frame(minHeight: 320)
         .background(Color.white)
         .cornerRadius(isRendering ? 0 : 10)
-        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-    }
+}
     
     private var titleText: String {
         switch titleOption {
@@ -349,7 +348,6 @@ struct DarkTemplateView: View {
         .frame(minHeight: 320)
         .background(Color.black)
         .cornerRadius(isRendering ? 0 : 10)
-        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
     
     private var titleText: String {
@@ -389,49 +387,67 @@ struct OverlayTemplateView: View {
     let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
-                .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
-                .clipped()
-            
-            VStack(alignment: .leading, spacing: 4) {
-                if !titleText.isEmpty {
-                    Text(titleText)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 1, x: 0, y: 1)
-                }
-                if !subtitleText.isEmpty {
-                    Text(subtitleText)
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 1, x: 0, y: 1)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-            
-            if showAppIcon {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+        GeometryReader { geometry in
+            ZStack(alignment: .bottomLeading) {
+                let imageSize = calculateImageSize(for: geometry.size)
+                
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    if !titleText.isEmpty {
+                        Text(titleText)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 1, x: 0, y: 1)
+                    }
+                    if !subtitleText.isEmpty {
+                        Text(subtitleText)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 1, x: 0, y: 1)
                     }
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                
+                if showAppIcon {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 40, height: 40)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                    .padding(16)
+                }
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .frame(width: 320)
-        .frame(minHeight: 320)
+        .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
         .cornerRadius(isRendering ? 0 : 10)
-        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+    }
+    
+    private func calculateImageSize(for size: CGSize) -> CGSize {
+        let imageAspectRatio = image.size.width / image.size.height
+        let viewAspectRatio = size.width / size.height
+        
+        if aspectRatio == .square {
+            return CGSize(width: size.width, height: size.width)
+        } else if imageAspectRatio > viewAspectRatio {
+            let height = size.width / imageAspectRatio
+            return CGSize(width: size.width, height: height)
+        } else {
+            let width = size.height * imageAspectRatio
+            return CGSize(width: width, height: size.height)
+        }
     }
     
     private var titleText: String {
