@@ -188,9 +188,7 @@ struct PersonDetailView: View {
                     Spacer()
                     
                     if sortedPhotos.count > 1 {
-                        HStack {
-                            playButton
-                            
+                        VStack(spacing: 10) {
                             Slider(value: Binding(
                                 get: { scrubberPosition },
                                 set: { 
@@ -202,9 +200,7 @@ struct PersonDetailView: View {
                             ), in: 0...Double(sortedPhotos.count - 1), step: 0.01)
                             .accentColor(.blue)
                             
-                            if isPlaying {
-                                speedControlButton
-                            }
+                            playbackControls
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 30)
@@ -525,7 +521,19 @@ struct PersonDetailView: View {
         return AgeCalculator.calculateAgeString(for: person, at: photoDate)
     }
 
-    // Play button
+    // New playback controls view
+    private var playbackControls: some View {
+        HStack(spacing: 40) {
+            speedControlButton
+            
+            playButton
+            
+            volumeButton
+        }
+        .frame(height: 40)
+    }
+
+    // Updated play button
     private var playButton: some View {
         Button(action: {
             if currentPhotoIndex == person.photos.count - 1 {
@@ -533,6 +541,8 @@ struct PersonDetailView: View {
                 currentPhotoIndex = 0
                 scrubberPosition = 0
                 isManualInteraction = true
+                isPlaying = true
+                startPlayback()
             } else {
                 isPlaying.toggle()
                 if isPlaying {
@@ -542,15 +552,9 @@ struct PersonDetailView: View {
                 }
             }
         }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Image(systemName: currentPhotoIndex == person.photos.count - 1 ? "arrow.counterclockwise" : (isPlaying ? "pause.fill" : "play.fill"))
-                    .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
-            }
+            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                .foregroundColor(.blue)
+                .font(.system(size: 24, weight: .bold))
         }
     }
 
@@ -567,6 +571,7 @@ struct PersonDetailView: View {
             if scrubberPosition >= Double(person.photos.count - 1) {
                 stopPlayback()
                 scrubberPosition = Double(person.photos.count - 1)
+                currentPhotoIndex = person.photos.count - 1
             }
 
             currentPhotoIndex = Int(scrubberPosition)
@@ -585,20 +590,26 @@ struct PersonDetailView: View {
         Button(action: {
             playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
             if isPlaying {
-                // Instead of stopping and starting, just update the timer interval
                 playTimer?.invalidate()
                 startPlayback()
             }
         }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Text("\(Int(playbackSpeed))x")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold))
-            }
+            Text("\(Int(playbackSpeed))x")
+                .foregroundColor(.blue)
+                .font(.system(size: 18, weight: .bold))
+        }
+    }
+
+    // New volume button
+    @State private var isMuted = false
+    private var volumeButton: some View {
+        Button(action: {
+            isMuted.toggle()
+            // Implement mute/unmute functionality here
+        }) {
+            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                .foregroundColor(.blue)
+                .font(.system(size: 20, weight: .bold))
         }
     }
 
