@@ -208,13 +208,13 @@ struct SharePhotoView: View {
         // Calculate the height based on the aspect ratio
         let imageHeight: CGFloat
         if aspectRatio == .square {
-            imageHeight = baseWidth - (padding * 1.5)
+            imageHeight = baseWidth - (padding * 1.6)
         } else {
             let imageAspectRatio = image.size.height / image.size.width
-            imageHeight = (baseWidth - (padding * 1.5)) * imageAspectRatio
+            imageHeight = (baseWidth - (padding * 1.6)) * imageAspectRatio
         }
 
-        let baseHeight: CGFloat = imageHeight + (padding * 1.5) + bottomAreaHeight
+        let baseHeight: CGFloat = imageHeight + (padding * 1.6) + bottomAreaHeight
 
         UIGraphicsBeginImageContextWithOptions(CGSize(width: baseWidth, height: baseHeight), false, 1.0)
         defer { UIGraphicsEndImageContext() }
@@ -307,8 +307,8 @@ struct SharePhotoView: View {
     }
 
     private func drawTextAndIcon(at point: CGPoint, maxWidth: CGFloat, baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat) {
-        let titleFont = UIFont.systemFont(ofSize: baseWidth * 0.045, weight: .bold)
-        let subtitleFont = UIFont.systemFont(ofSize: baseWidth * 0.03)
+        let titleFont = UIFont.systemFont(ofSize: baseWidth * 0.05, weight: .bold)
+        let subtitleFont = UIFont.systemFont(ofSize: baseWidth * 0.04)
         let textColor: UIColor = selectedTemplate == 0 ? .black : .white
 
         let titleAttributes: [NSAttributedString.Key: Any] = [
@@ -329,10 +329,10 @@ struct SharePhotoView: View {
 
         // Draw text in VStack
         titleText.draw(at: point)
-        subtitleText.draw(at: CGPoint(x: point.x, y: point.y + titleSize.height + 2))
+        subtitleText.draw(at: CGPoint(x: point.x, y: point.y + titleSize.height + 5))
 
         if showAppIcon, let appIcon = UIImage(named: "AppIcon") {
-            let iconSize = baseWidth * 0.09
+            let iconSize = baseWidth * 0.11
             let iconX = baseWidth - iconSize - padding
             let iconY = point.y + (max(titleSize.height + subtitleSize.height, iconSize) - iconSize) / 2
             appIcon.draw(in: CGRect(x: iconX, y: iconY, width: iconSize, height: iconSize))
