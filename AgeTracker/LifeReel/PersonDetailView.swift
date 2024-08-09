@@ -180,7 +180,7 @@ struct PersonDetailView: View {
                 }
             }
             .padding(.top, 20)
-            .padding(.bottom, 20)
+            .padding(.bottom, 80) // Increased bottom padding
         }
     }
 
@@ -198,6 +198,7 @@ struct PersonDetailView: View {
             Spacer()
         }
         .padding(.top, 8)
+        .background(Color(UIColor.systemBackground))
     }
 
     private struct TimelineItemView: View {
@@ -244,32 +245,15 @@ struct PersonDetailView: View {
     // Grid view
     private var GridView: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
+            LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
                 ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
-                    YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
+                    Section(header: stickyHeader(for: section)) {
+                        PhotoGridView(photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
+                    }
                 }
             }
-            .padding(.top, 20) 
-            .padding(.bottom, 20) 
-        }
-    }
-
-    private struct YearSectionView: View {
-        let section: String
-        let photos: [Photo]
-        let onDelete: (Photo) -> Void
-        @Binding var selectedPhoto: Photo?
-        let person: Person
-        
-        var body: some View {
-            VStack(alignment: .leading) {
-                Text(section)
-                    .font(.headline)
-                    .padding(.leading)
-                
-                PhotoGridView(photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto, person: person)
-            }
-            .padding(.bottom, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 80) // Increased bottom padding
         }
     }
 
@@ -424,7 +408,7 @@ struct PersonDetailView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 40) // Add 40 padding at the bottom
+                    .padding(.bottom, 80) // Increased bottom padding
                 }
             }
         }
