@@ -68,11 +68,26 @@ struct ShareSlideshowView: View {
     }
     
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
-        if date >= person.dateOfBirth {
-            return AgeCalculator.calculateAgeString(for: person, at: date)
-        } else {
+        if date < person.dateOfBirth {
             return "Pregnancy"
         }
+        
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: date)
+        
+        if let year = components.year, let month = components.month {
+            if year == 0 {
+                if month == 0 {
+                    return "Newborn"
+                } else {
+                    return "\(month) month\(month == 1 ? "" : "s")"
+                }
+            } else {
+                return "\(year) year\(year == 1 ? "" : "s")"
+            }
+        }
+        
+        return "Unknown"
     }
 }
 
