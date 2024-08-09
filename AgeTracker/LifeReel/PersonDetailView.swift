@@ -420,30 +420,12 @@ struct PersonDetailView: View {
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
                 if years == 0 {
-                    switch months {
-                    case 0:
-                        sectionTitle = "Birth Month"
-                    case 1...11:
-                        sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                    default:
-                        sectionTitle = "1 Year"
-                    }
+                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
                 } else {
                     sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
             } else {
-                let componentsBeforeBirth = calendar.dateComponents([.day], from: photo.dateTaken, to: person.dateOfBirth)
-                let daysBeforeBirth = componentsBeforeBirth.day ?? 0
-                let weeksBeforeBirth = daysBeforeBirth / 7
-                let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-                
-                if pregnancyWeek == 40 {
-                    sectionTitle = "Birth Month"
-                } else if pregnancyWeek > 0 {
-                    sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
-                } else {
-                    sectionTitle = "Before Pregnancy"
-                }
+                sectionTitle = "Pregnancy"
             }
 
             if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
@@ -455,10 +437,9 @@ struct PersonDetailView: View {
 
         // Create the order array
         let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
-        let monthOrder = (1...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        let pregnancyOrder = (1...39).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
+        let monthOrder = (0...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
         
-        let order = yearOrder + monthOrder + ["Birth Month"] + pregnancyOrder
+        let order = yearOrder + monthOrder + ["Pregnancy"]
 
         // Sort the grouped photos
         return groupedPhotos.sorted { (group1, group2) -> Bool in
