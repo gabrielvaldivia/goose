@@ -22,10 +22,27 @@ struct ShareSlideshowView: View {
     @State private var loadedImages: [Int: UIImage] = [:]
     @State private var timer: Timer?
     @State private var scrubberPosition: Double = 0
+    @Environment(\.presentationMode) var presentationMode
 
     // Body
     var body: some View {   
         VStack(alignment: .center, spacing: 10) {
+            // Navigation bar
+            HStack {
+                Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                }
+                Spacer()
+                Text("Share Slideshow")
+                    .font(.headline)
+                Spacer()
+                Button("Share") {
+                    isSharePresented = true
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 10)
+
             // Photo TabView
             TabView(selection: $currentPhotoIndex) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
@@ -73,16 +90,11 @@ struct ShareSlideshowView: View {
             // Playback Controls
             PlaybackControls(isPlaying: $isPlaying, playbackSpeed: $playbackSpeed)
 
-            // Share Button
-            Button("Share") {
-                isSharePresented = true
-            }
-            .padding(.bottom, 10)
-
             Spacer()
         }
         // View Modifiers
         .frame(maxHeight: .infinity, alignment: .top)
+        .background(Color(UIColor.secondarySystemBackground))
         .onAppear {
             loadImagesAround(index: currentPhotoIndex)
         }

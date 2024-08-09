@@ -32,7 +32,7 @@ struct PersonDetailView: View {
     @State private var selectedAssets: [PHAsset] = []
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
-    @State private var selectedView = 0 
+    @State private var selectedView = 2 
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil 
     @State private var isShareSheetPresented = false
@@ -40,7 +40,7 @@ struct PersonDetailView: View {
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
-    @State private var stacksSortOrder: SortOrder = .oldestToLatest
+    @State private var stacksSortOrder: SortOrder = .latestToOldest
     @State private var timelineSortOrder: SortOrder = .latestToOldest
     @State private var showingSharingComingSoon = false
 
@@ -267,43 +267,25 @@ struct PersonDetailView: View {
                     .font(.headline)
                     .padding(.leading)
                 
-                PhotoGridView(section: section, photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto, person: person)
+                PhotoGridView(photos: photos, onDelete: onDelete, selectedPhoto: $selectedPhoto, person: person)
             }
             .padding(.bottom, 20)
         }
     }
 
     private struct PhotoGridView: View {
-        let section: String
         let photos: [Photo]
         let onDelete: (Photo) -> Void
         @Binding var selectedPhoto: Photo?
-        @Namespace private var namespace
         let person: Person
         
         var body: some View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], spacing: 10) {
-                ForEach(photos.prefix(5)) { photo in
+                ForEach(photos) { photo in
                     PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto)
-                }
-                if photos.count > 5 {
-                    NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete, person: person)) {
-                        remainingPhotosCount(photos.count - 5)
-                    }
                 }
             }
             .padding(.horizontal)
-        }
-        
-        private func remainingPhotosCount(_ count: Int) -> some View {
-            ZStack {
-                Color.gray.opacity(0.3)
-                Text("+\(count)")
-                    .font(.title2)
-                    .foregroundColor(.white)
-            }
-            .frame(width: 110, height: 110)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -334,16 +316,7 @@ struct PersonDetailView: View {
             groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
-        let yearOrder = (0...100).map { "\($0) Year\($0 == 1 ? "" : "s")" }
-        let monthOrder = (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        let order = ["Pregnancy", "Birth Month"] + monthOrder + yearOrder
-
-        return order.compactMap { title in
-            if let photos = groupedPhotos[title] {
-                return (title, photos)
-            }
-            return nil
-        }
+        return groupedPhotos.map { ($0.key, $0.value) }
     }
 
     private func calculatePregnancyWeek(_ date: Date) -> String {
@@ -461,12 +434,27 @@ struct PersonDetailView: View {
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
         let groupedPhotos = groupAndSortPhotos(forYearView: true, sortOrder: stacksSortOrder)
         
-        switch stacksSortOrder {
-        case .latestToOldest:
-            return groupedPhotos.reversed()
-        case .oldestToLatest:
-            return groupedPhotos
+        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
+            let order1 = orderFromSectionTitle(group1.0)
+            let order2 = orderFromSectionTitle(group2.0)
+            return stacksSortOrder == .latestToOldest ? order1 > order2 : order1 < order2
         }
+        
+        return sortedGroups
+    }
+
+    private func orderFromSectionTitle(_ title: String) -> Int {
+        if title == "Pregnancy" { return -1 }
+        if title == "Newborn" { return 0 }
+        if title.contains("Month") {
+            let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
+            return months
+        }
+        if title.contains("Year") {
+            let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
+            return years * 12 + 1000 // Add 1000 to ensure years come after months
+        }
+        return 0
     }
 
     // Circular buttonn
@@ -555,11 +543,13 @@ struct PersonDetailView: View {
 
     // Add this new function to sort photos
     private func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
-        switch order {
-        case .latestToOldest:
-            return photos.sorted(by: { $0.dateTaken > $1.dateTaken })
-        case .oldestToLatest:
-            return photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+        photos.sorted { photo1, photo2 in
+            switch order {
+            case .latestToOldest:
+                return photo1.dateTaken > photo2.dateTaken
+            case .oldestToLatest:
+                return photo1.dateTaken < photo2.dateTaken
+            }
         }
     }
 }
@@ -736,10 +726,12 @@ private struct StackSectionView: View {
 
 struct CustomBackButton: View {
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var viewModel: PersonViewModel
 
     var body: some View {
         Button(action: {
-            presentationMode.wrappedValue.dismiss()
+            // This will pop to the root view (ContentView)
+            self.presentationMode.wrappedValue.dismiss()
         }) {
             Image(systemName: "chevron.left")
                 .foregroundColor(.blue)

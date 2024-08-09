@@ -7,16 +7,23 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             Group {
-                if let firstPerson = viewModel.people.first {
-                    PersonDetailView(person: firstPerson, viewModel: viewModel)
+                if !viewModel.people.isEmpty {
+                    List(viewModel.people) { person in
+                        NavigationLink(destination: PersonDetailView(person: person, viewModel: viewModel)) {
+                            Text(person.name)
+                        }
+                    }
+                    .listStyle(InsetGroupedListStyle())
                 } else {
                     WelcomeView(showingAddPerson: $showingAddPerson)
                 }
             }
+            .navigationTitle("Life Reels")
             .navigationBarItems(trailing: Button(action: { showingAddPerson = true }) {
                 Image(systemName: "plus")
             })
         }
+        .environmentObject(viewModel)
         .sheet(isPresented: $showingAddPerson) {
             AddPersonView(viewModel: viewModel)
         }
