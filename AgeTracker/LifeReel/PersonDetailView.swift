@@ -207,9 +207,6 @@ struct PersonDetailView: View {
                         }
                     }
                     
-                    // Text(calculateAge())
-                    //     .font(.body)
-                    
                     Spacer()
                     
                     if sortedPhotos.count > 1 {
@@ -268,19 +265,22 @@ struct PersonDetailView: View {
                             .background(Color.gray.opacity(0.2))
                     }
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(formatDate(photo.dateTaken))
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 2, x: 0, y: 2)
-                        Text(AgeCalculator.calculateAgeString(for: person, at: photo.dateTaken))
-                            .font(.subheadline)
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 2, x: 0, y: 2)
+                    if !isGridView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(formatDate(photo.dateTaken))
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .shadow(color: .black, radius: 2, x: 0, y: 2)
+                            Text(AgeCalculator.calculateAgeString(for: person, at: photo.dateTaken))
+                                .font(.subheadline)
+                                .foregroundColor(.white)
+                                .shadow(color: .black, radius: 2, x: 0, y: 2)
+                        }
+                        .padding(16)
                     }
-                    .padding(16)
                 }
                 .frame(width: geometry.size.width, height: geometry.size.width)
+                .clipShape(RoundedRectangle(cornerRadius: isGridView ? 10 : 0))
             }
             .aspectRatio(1, contentMode: .fit)
             .onTapGesture {
