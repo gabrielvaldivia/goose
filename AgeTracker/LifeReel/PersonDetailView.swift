@@ -16,6 +16,7 @@ enum ActiveSheet: Identifiable {
     case settings
     case bulkImport
     case shareView
+    case sharingComingSoon
     
     var id: Int {
         hashValue
@@ -33,23 +34,25 @@ struct PersonDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
     @State private var currentPhotoIndex: Int = 0
-    @State private var latestPhotoIndex = 0 // New state variable
+    @State private var latestPhotoIndex = 0 
     @State private var lastFeedbackDate: Date?
     let impact = UIImpactFeedbackGenerator(style: .light)
-    @State private var selectedView = 0 // 0 for Slideshow, 1 for Grid, 2 for Stacks
+    @State private var selectedView = 0 
     @State private var activeSheet: ActiveSheet?
-    @State private var selectedPhoto: Photo? = nil // New state variable
+    @State private var selectedPhoto: Photo? = nil 
     @State private var isShareSheetPresented = false
     @State private var activityItems: [Any] = []
     @State private var isPlaying = false
     @State private var playTimer: Timer?
-    @State private var playbackSpeed: Double = 1.0 // New state variable for playback speed
+    @State private var playbackSpeed: Double = 1.0 
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
     @State private var isManualInteraction = true
     @State private var scrubberPosition: Double = 0
     @State private var lastUpdateTime: Date = Date()
+    @State private var stacksSortOrder: SortOrder = .oldestToLatest
+    @State private var showingSharingComingSoon = false
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -63,159 +66,88 @@ struct PersonDetailView: View {
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
-            VStack {
-                // Segmented control for view selection
-                Picker("View", selection: $selectedView) {
-                    Text("Slideshow").tag(0)
-                    Text("Grid").tag(1)
-                    Text("Stacks").tag(2)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-
-                // Conditional view based on selection
-                if selectedView == 0 {
-                    SlideshowView
-                } else if selectedView == 1 {
-                    GridView
-                } else {
-                    StacksView
-                }
+            ZStack {
+                mainContent(geometry)
+                bottomControls
             }
-            // Navigation and toolbar setup
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Button(action: {
-                        activeSheet = .settings
-                    }) {
-                        HStack(spacing: 4) {
-                            Text(person.name)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            ZStack {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 16, height: 16)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.gray)
-                            }
-                        }
+                    VStack(spacing: 2) {
+                        Text(person.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text("All photos")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { 
-                        showingImagePicker = true 
-                    }) {
-                        Image(systemName: "plus")
-                            .foregroundColor(.blue)
-                            .font(.system(size: 16, weight: .bold))
-                    }
+                    shareButton
                 }
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarItems(leading: CustomBackButton())
-            // Sheet presentation for image picker
-            .sheet(isPresented: $showingImagePicker, onDismiss: {
-                loadImage()
-            }) {
+            .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
                 ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
                     .edgesIgnoringSafeArea(.all)
                     .presentationDetents([.large])
             }
-            // Sheet presentation for bulk import
-            .sheet(item: $activeSheet) { item in
-                switch item {
-                case .settings:
-                    NavigationView {
-                        PersonSettingsView(viewModel: viewModel, person: $person)
-                    }
-                case .bulkImport:
-                    BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                            person = updatedPerson
-                        }
-                    })
-                case .shareView:
-                    NavigationView {
-                        if !person.photos.isEmpty {
-                            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                            let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
-                            SharePhotoView(
-                                image: sortedPhotos[safeIndex].image ?? UIImage(),
-                                name: person.name,
-                                age: calculateAge(),
-                                isShareSheetPresented: $isShareSheetPresented,
-                                activityItems: $activityItems
-                            )
-                        } else {
-                            Text("No photos available to share")
-                        }
-                    }
-                }
-            }
+            .sheet(item: $activeSheet, content: sheetContent)
             .sheet(isPresented: $isShareSheetPresented) {
                 ActivityViewController(activityItems: activityItems)
             }
-            // Image selection handler
             .onChange(of: selectedAssets) { oldValue, newValue in
-                if !newValue.isEmpty {
-                    print("Assets selected: \(newValue)")
-                    loadImage()
-                } else {
-                    print("No assets selected")
-                }
+                handleSelectedAssetsChange(oldValue: oldValue, newValue: newValue)
             }
-            // View appearance handler
-            .onAppear {
-                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                    person = updatedPerson
-                    let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                    latestPhotoIndex = sortedPhotos.count - 1
-                    currentPhotoIndex = latestPhotoIndex
-                }
-            }
-            // Delete photo alert
-            .alert(isPresented: $showingDeleteAlert) {
-                Alert(
-                    title: Text("Delete Photo"),
-                    message: Text("Are you sure you want to delete this photo?"),
-                    primaryButton: .destructive(Text("Delete")) {
-                        if let photoToDelete = photoToDelete {
-                            deletePhoto(photoToDelete)
-                        }
-                    },
-                    secondaryButton: .cancel()
-                )
-            }
-            .fullScreenCover(item: $selectedPhoto) { photo in
-                FullScreenPhotoView(
-                    photo: photo,
-                    currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
-                    photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
-                    onDelete: deletePhoto,
-                    person: person
-                )
-                .transition(.asymmetric(
-                    insertion: AnyTransition.opacity.combined(with: .scale),
-                    removal: .opacity
-                ))
-            }
-            .onDisappear {
-                stopPlayback()
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                PhotoDatePickerSheet(date: $editedDate, isPresented: $showingDatePicker) {
-                    if let photoToUpdate = selectedPhotoForDateEdit {
-                        updatePhotoDate(photoToUpdate, newDate: editedDate)
-                    }
-                }
-                .presentationDetents([.height(300)])
-            }
+            .onAppear(perform: handleOnAppear)
+            .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
+            .fullScreenCover(item: $selectedPhoto, content: fullScreenPhotoView)
+            .onDisappear(perform: stopPlayback)
+            .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
         }
     }
     
+    // Break down the main content into a separate function
+    private func mainContent(_ geometry: GeometryProxy) -> some View {
+        VStack {
+            if selectedView == 0 {
+                StacksView
+                    .transition(.opacity)
+            } else if selectedView == 1 {
+                GridView
+                    .transition(.opacity)
+            } else {
+                SlideshowView
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: selectedView)
+    }
+
+    // Bottom controls
+    private var bottomControls: some View {
+        VStack {
+            Spacer()
+            HStack {
+                CircularButton(systemName: "arrow.up.arrow.down") {
+                    stacksSortOrder = stacksSortOrder == .oldestToLatest ? .latestToOldest : .oldestToLatest
+                }
+
+                Spacer()
+
+                SegmentedControlView(selectedView: $selectedView)
+
+                Spacer()
+
+                CircularButton(systemName: "plus") {
+                    showingImagePicker = true
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
     // Slideshow view
     private var SlideshowView: some View {
         GeometryReader { geometry in
@@ -252,7 +184,6 @@ struct PersonDetailView: View {
                                 showingDatePicker = true
                             }
                     }
-                    // .padding(.horizontal)
                     
                     Spacer()
                     
@@ -273,18 +204,19 @@ struct PersonDetailView: View {
                             
                             if isPlaying {
                                 speedControlButton
-                            } else {
-                                shareButton
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 30)
+
+                        Spacer()
                     }
                 } else {
                     Spacer ()
                     Text("No photos available")
                     Spacer ()
                 }
+                
             }
             .frame(width: geometry.size.width)
         }
@@ -328,6 +260,8 @@ struct PersonDetailView: View {
                     YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                 }
             }
+            .padding(.top, 20) 
+            .padding(.bottom, 20) 
         }
     }
 
@@ -671,7 +605,7 @@ struct PersonDetailView: View {
     // New share button
     private var shareButton: some View {
         Button(action: {
-            activeSheet = .shareView
+            activeSheet = .sharingComingSoon
         }) {
             ZStack {
                 Circle()
@@ -695,23 +629,250 @@ struct PersonDetailView: View {
     // New Stacks view
     private var StacksView: some View {
         GeometryReader { geometry in
-            ScrollView {
-                LazyVStack(spacing: 15) {
-                    ForEach(groupPhotosByAgeForYearView(), id: \.0) { section, photos in
-                        StackSectionView(
-                            section: section,
-                            photos: photos,
-                            selectedPhoto: $selectedPhoto,
-                            person: person,
-                            cardHeight: 200,
-                            maxWidth: geometry.size.width - 30
-                        )
+            VStack {
+                ScrollView {
+                    LazyVStack(spacing: 15) {
+                        ForEach(sortedGroupedPhotos(), id: \.0) { section, photos in
+                            StackSectionView(
+                                section: section,
+                                photos: photos,
+                                selectedPhoto: $selectedPhoto,
+                                person: person,
+                                cardHeight: 300,
+                                maxWidth: geometry.size.width - 30
+                            )
+                        }
                     }
+                    .padding()
+                    .padding(.bottom, 40) // Add 40 padding at the bottom
                 }
-                .padding()
             }
         }
     }
+
+    // Sort grouped photos based on stacksSortOrder
+    private func sortedGroupedPhotos() -> [(String, [Photo])] {
+        let groupedPhotos = groupPhotosByAgeForYearView()
+        return stacksSortOrder == .oldestToLatest ? groupedPhotos : groupedPhotos.reversed()
+    }
+
+    // Circular buttonn
+    struct CircularButton: View {
+        let systemName: String
+        let action: () -> Void
+        @Environment(\.colorScheme) var colorScheme
+
+        var body: some View {
+            Button(action: action) {
+                Image(systemName: systemName)
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                    .font(.system(size: 14, weight: .bold))
+                    .frame(width: 40, height: 40)
+            }
+            .background(
+                ZStack {
+                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                    if colorScheme == .light {
+                        Color.black.opacity(0.1)
+                    }
+                }
+            )
+            .clipShape(Circle())
+        }
+    }
+
+    // Functions to handle various aspects of the view
+    private func handleSelectedAssetsChange(oldValue: [PHAsset], newValue: [PHAsset]) {
+        if !newValue.isEmpty {
+            print("Assets selected: \(newValue)")
+            loadImage()
+        } else {
+            print("No assets selected")
+        }
+    }
+
+    private func handleOnAppear() {
+        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+            person = updatedPerson
+            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+            latestPhotoIndex = sortedPhotos.count - 1
+            currentPhotoIndex = latestPhotoIndex
+        }
+    }
+
+    private func deletePhotoAlert() -> Alert {
+        Alert(
+            title: Text("Delete Photo"),
+            message: Text("Are you sure you want to delete this photo?"),
+            primaryButton: .destructive(Text("Delete")) {
+                if let photoToDelete = photoToDelete {
+                    deletePhoto(photoToDelete)
+                }
+            },
+            secondaryButton: .cancel()
+        )
+    }
+
+    private func fullScreenPhotoView(photo: Photo) -> some View {
+        FullScreenPhotoView(
+            photo: photo,
+            currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
+            photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
+            onDelete: deletePhoto,
+            person: person
+        )
+        .transition(.asymmetric(
+            insertion: AnyTransition.opacity.combined(with: .scale),
+            removal: .opacity
+        ))
+    }
+
+    private func photoDatePickerSheet() -> some View {
+        PhotoDatePickerSheet(date: $editedDate, isPresented: $showingDatePicker) {
+            if let photoToUpdate = selectedPhotoForDateEdit {
+                updatePhotoDate(photoToUpdate, newDate: editedDate)
+            }
+        }
+        .presentationDetents([.height(300)])
+    }
+
+    private func sheetContent(item: ActiveSheet) -> some View {
+        switch item {
+        case .settings:
+            return AnyView(
+                NavigationView {
+                    PersonSettingsView(viewModel: viewModel, person: $person)
+                }
+            )
+        case .bulkImport:
+            return AnyView(
+                BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                    if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                        person = updatedPerson
+                    }
+                })
+            )
+        case .shareView:
+            return AnyView(
+                NavigationView {
+                    if !person.photos.isEmpty {
+                        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                        let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
+                        SharePhotoView(
+                            image: sortedPhotos[safeIndex].image ?? UIImage(),
+                            name: person.name,
+                            age: calculateAge(),
+                            isShareSheetPresented: $isShareSheetPresented,
+                            activityItems: $activityItems
+                        )
+                    } else {
+                        Text("No photos available to share")
+                    }
+                }
+            )
+        case .sharingComingSoon:
+            return AnyView(
+                SharingComingSoonView()
+            )
+        }
+    }
+}
+
+// Add this new view
+struct SharingComingSoonView: View {
+    @Environment(\.presentationMode) var presentationMode
+
+    var body: some View {
+        VStack {
+            Text("Sharing multiple photos is coming soon")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .padding()
+            
+            Button("Dismiss") {
+                presentationMode.wrappedValue.dismiss()
+            }
+            .padding()
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// New SegmentedControlView
+struct SegmentedControlView: View {
+    @Binding var selectedView: Int
+    @Namespace private var animation
+    @Environment(\.colorScheme) var colorScheme
+    
+    let options = ["Stacks", "Grid", "Slideshow"]
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options.indices, id: \.self) { index in
+                Button(action: {
+                    withAnimation(.spring(response: 0.15)) {
+                        selectedView = index
+                    }
+                }) {
+                    Text(options[index])
+                        .font(.system(size: 14, weight: .bold))
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(
+                            ZStack {
+                                if selectedView == index {
+                                    Capsule()
+                                        .fill(Color.primary.opacity(0.3))
+                                        .matchedGeometryEffect(id: "SelectedSegment", in: animation)
+                                }
+                            }
+                        )
+                        .foregroundColor(colorScheme == .dark ? (selectedView == index ? .white : .white.opacity(0.5)) : (selectedView == index ? .white : .black.opacity(0.5)))
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                if colorScheme == .light {
+                    Color.black.opacity(0.1)
+                }
+            }
+        )
+        .clipShape(Capsule())
+    }
+}
+
+// Circular Button
+struct CircularButton: View {
+    let systemName: String
+    let action: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .bold))
+                .frame(width: 40, height: 40)
+        }
+        .background(
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                if colorScheme == .light {
+                    Color.black.opacity(0.1)
+                }
+            }
+        )
+        .clipShape(Circle())
+    }
+}
+
+struct VisualEffectView: UIViewRepresentable {
+    var effect: UIVisualEffect?
+    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
+    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
 }
 
 // New StackSectionView
@@ -734,16 +895,16 @@ private struct StackSectionView: View {
                             .frame(height: cardHeight)
                             .frame(maxWidth: maxWidth)
                             .clipped()
-                            .cornerRadius(10)
+                            .cornerRadius(20)
                     } else {
                         Rectangle()
                             .fill(Color.gray.opacity(0.2))
                             .frame(height: cardHeight)
                             .frame(maxWidth: maxWidth)
-                            .cornerRadius(10)
+                            .cornerRadius(20)
                     }
                     
-                    // Add the gradient overlay
+                    // Gradient overlay
                     LinearGradient(
                         gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
                         startPoint: .top,
@@ -751,25 +912,30 @@ private struct StackSectionView: View {
                     )
                     .frame(height: cardHeight / 3)
                     .frame(maxWidth: maxWidth)
-                    .cornerRadius(10)
+                    .cornerRadius(20)
                     
                     HStack {
-                        Text(section)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(8)
+                        HStack(spacing: 8) {
+                            Text(section)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.white.opacity(0.7))
+                                .font(.system(size: 18, weight: .bold))
+                        }
                         
                         Spacer()
                         
                         Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundColor(.white)
-                            .padding(6)
+                            .padding(8)
                             .background(Color.black.opacity(0.6))
-                            .cornerRadius(5)
+                            .cornerRadius(8)
                     }
-                    .padding(8)
+                    .padding()
                 }
             } else {
                 Text("No photos available")
@@ -794,4 +960,10 @@ struct CustomBackButton: View {
                 .font(.system(size: 16, weight: .bold))
         }
     }
+}
+
+// Add this enum outside the PersonDetailView struct
+enum SortOrder {
+    case oldestToLatest
+    case latestToOldest
 }
