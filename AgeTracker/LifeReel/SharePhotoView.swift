@@ -57,16 +57,18 @@ struct SharePhotoView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack {
-                // Header
-                headerView
-                    .frame(height: 52)
-                    
-                // Canvas
-                VStack {
-                    Spacer()
+        VStack(spacing: 0) {
+            // Header
+            headerView
+                .frame(height: 52)
+            
+            // Scrollable content
+            GeometryReader { geometry in
+                ScrollView {
                     VStack {
+                        Spacer(minLength: 20)
+                        
+                        // Template views
                         TabView(selection: $selectedTemplate) {
                             LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(0)
@@ -76,7 +78,7 @@ struct SharePhotoView: View {
                                 .tag(2)
                         }
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                        .frame(height: calculatedTemplateHeight)
+                        .frame(width: geometry.size.width, height: geometry.size.height - 100)
                         
                         // Custom page indicator
                         HStack(spacing: 8) {
@@ -87,15 +89,15 @@ struct SharePhotoView: View {
                             }
                         }
                         .padding(.vertical, 20)
+                        
+                        Spacer(minLength: 20)
                     }
-                    Spacer()
                 }
-                .frame(height: geometry.size.height - 44 - 80) 
-
-                // Controls
-                controlsView
-                    .frame(height: 60)
             }
+            
+            // Controls
+            controlsView
+                .frame(height: 60)
         }
         .background(Color(UIColor.secondarySystemBackground))
         .navigationBarHidden(true) 
@@ -199,28 +201,53 @@ struct SharePhotoView: View {
         isPreparingImage = true
         isRendering = true
 
+        // Calculate the render size based on the aspect ratio
+        let renderWidth: CGFloat = 335 // Fixed width
+        let renderHeight = calculateRenderHeight(for: renderWidth)
+        let renderSize = CGSize(width: renderWidth, height: renderHeight)
+
         let templateView: some View = Group {
             switch selectedTemplate {
             case 0:
-                LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
             case 1:
-                DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
             case 2:
-                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
             default:
                 EmptyView()
             }
         }
-        
+        .frame(width: renderSize.width, height: renderSize.height)
+        .clipped()
+
         let renderer = ImageRenderer(content: templateView)
         renderer.scale = 3.0 // For better quality
-        
+        renderer.proposedSize = ProposedViewSize(renderSize)
+
         if let uiImage = renderer.uiImage {
             renderedImage = uiImage
             showingPolaroidSheet = true
         }
+        
         isRendering = false
         isPreparingImage = false
+    }
+
+    // Update this function to account for text and padding
+    private func calculateRenderHeight(for width: CGFloat) -> CGFloat {
+        let imageAspectRatio = image.size.height / image.size.width
+        let height: CGFloat
+        
+        switch aspectRatio {
+        case .original:
+            height = width * imageAspectRatio
+        case .square:
+            height = width
+        }
+        
+        // Add extra height for the text and padding
+        return height + 120 // Adjust this value based on your template's layout
     }
 }
 
@@ -235,43 +262,52 @@ struct LightTemplateView: View {
     let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
-                .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
-                .clipped()
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
+            let imageWidth = availableWidth - 40 // 20 points padding on each side of the image
+            let imageHeight = calculateImageHeight(for: imageWidth)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    if !titleText.isEmpty {
-                        Text(titleText)
-                            .font(.headline)
-                            .foregroundColor(.black)
+            VStack(spacing: 20) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: imageWidth, height: imageHeight)
+                    .clipped()
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !titleText.isEmpty {
+                            Text(titleText)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(.black)
+                        }
+                        if !subtitleText.isEmpty {
+                            Text(subtitleText)
+                                .font(.footnote)
+                                .foregroundColor(.gray)
+                        }
                     }
-                    if !subtitleText.isEmpty {
-                        Text(subtitleText)
-                            .font(.footnote)
-                            .foregroundColor(.gray)
+                    Spacer()
+                    if showAppIcon {
+                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 40, height: 40)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
-                Spacer()
-                if showAppIcon {
-                    Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
+            .padding(.vertical, 20)
+            .frame(width: availableWidth)
+            .background(Color.white)
+            .cornerRadius(isRendering ? 0 : 20)
+            .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 5)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-        .padding(.vertical, 20)
-        .frame(width: 320)
-        .frame(minHeight: 320)
-        .background(Color.white)
-        .cornerRadius(isRendering ? 0 : 10)
-}
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
     
     private var titleText: String {
         switch titleOption {
@@ -296,6 +332,15 @@ struct LightTemplateView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+    
+    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+        switch aspectRatio {
+        case .original:
+            return image.size.height * (width / image.size.width)
+        case .square:
+            return width
+        }
     }
 }
 
@@ -310,42 +355,51 @@ struct DarkTemplateView: View {
     let aspectRatio: SharePhotoView.AspectRatio
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: aspectRatio == .square ? .fill : .fit)
-                .frame(width: 280, height: aspectRatio == .square ? 280 : nil)
-                .clipped()
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
+            let imageWidth = availableWidth - 40 // 20 points padding on each side of the image
+            let imageHeight = calculateImageHeight(for: imageWidth)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    if !titleText.isEmpty {
-                        Text(titleText)
-                            .font(.headline)
-                            .foregroundColor(.white)
+            VStack(spacing: 20) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: imageWidth, height: imageHeight)
+                    .clipped()
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !titleText.isEmpty {
+                            Text(titleText)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                        }
+                        if !subtitleText.isEmpty {
+                            Text(subtitleText)
+                                .font(.footnote)
+                                .foregroundColor(.gray)
+                        }
                     }
-                    if !subtitleText.isEmpty {
-                        Text(subtitleText)
-                            .font(.footnote)
-                            .foregroundColor(.gray)
+                    Spacer()
+                    if showAppIcon {
+                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 40, height: 40)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
-                Spacer()
-                if showAppIcon {
-                    Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
+            .padding(.vertical, 20)
+            .frame(width: availableWidth)
+            .background(Color.black)
+            .cornerRadius(isRendering ? 0 : 20)
+            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-        .padding(.vertical, 20)
-        .frame(width: 320)
-        .frame(minHeight: 320)
-        .background(Color.black)
-        .cornerRadius(isRendering ? 0 : 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var titleText: String {
@@ -371,6 +425,15 @@ struct DarkTemplateView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+    
+    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+        switch aspectRatio {
+        case .original:
+            return image.size.height * (width / image.size.width)
+        case .square:
+            return width
+        }
     }
 }
 
@@ -386,35 +449,43 @@ struct OverlayTemplateView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .bottomLeading) {
+            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
+            let imageWidth = availableWidth
+            let imageHeight = calculateImageHeight(for: imageWidth)
+            
+            ZStack {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(width: imageWidth, height: imageHeight)
                     .clipped()
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    if !titleText.isEmpty {
-                        Text(titleText)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 1, x: 0, y: 1)
-                    }
-                    if !subtitleText.isEmpty {
-                        Text(subtitleText)
-                            .font(.subheadline)
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 1, x: 0, y: 1)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                // Add the subtle gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.3), Color.black.opacity(0.1)]),
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
                 
-                if showAppIcon {
-                    VStack {
+                VStack {
+                    Spacer()
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if !titleText.isEmpty {
+                                Text(titleText)
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                            }
+                            if !subtitleText.isEmpty {
+                                Text(subtitleText)
+                                    .font(.subheadline)
+                                    .foregroundColor(.white)
+                                    .opacity(0.7) 
+                            }
+                        }
                         Spacer()
-                        HStack {
-                            Spacer()
+                        if showAppIcon {
                             Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
@@ -425,10 +496,12 @@ struct OverlayTemplateView: View {
                     .padding(16)
                 }
             }
-            .frame(width: geometry.size.width, height: geometry.size.height)
+            .frame(width: imageWidth, height: imageHeight)
+            .cornerRadius(isRendering ? 0 : 20)
+            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-        .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
-        .cornerRadius(isRendering ? 0 : 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var titleText: String {
@@ -454,6 +527,15 @@ struct OverlayTemplateView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+    
+    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+        switch aspectRatio {
+        case .original:
+            return image.size.height * (width / image.size.width)
+        case .square:
+            return width
+        }
     }
 }
 

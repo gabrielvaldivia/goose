@@ -44,7 +44,18 @@ struct AllPhotosInSectionView: View {
                 leading: CustomBackButton(),
                 trailing: shareButton
             )
-            .navigationTitle(sectionTitle)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(person.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text(sectionTitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
             .onAppear {
                 updateGridColumns(width: geometry.size.width)
                 loadAllThumbnails()
@@ -174,9 +185,15 @@ struct AllPhotosInSectionView: View {
         Button(action: {
             isShowingShareSheet = true
         }) {
-            Image(systemName: "square.and.arrow.up")
-                .foregroundColor(.blue)
-                .font(.system(size: 20, weight: .bold))
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 36, height: 36)
+                
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .bold))
+            }
         }
     }
     
