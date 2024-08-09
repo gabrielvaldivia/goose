@@ -201,53 +201,167 @@ struct SharePhotoView: View {
         isPreparingImage = true
         isRendering = true
 
-        // Calculate the render size based on the aspect ratio
-        let renderWidth: CGFloat = 335 // Fixed width
-        let renderHeight = calculateRenderHeight(for: renderWidth)
-        let renderSize = CGSize(width: renderWidth, height: renderHeight)
+        let baseWidth: CGFloat = 1080 // High-resolution base width
+        let padding: CGFloat = baseWidth * 0.05 // 5% padding
+        let bottomAreaHeight: CGFloat = baseWidth * 0.15 // Reduced height for text and icon area
 
-        let templateView: some View = Group {
-            switch selectedTemplate {
-            case 0:
-                LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
-            case 1:
-                DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
-            case 2:
-                OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: true, aspectRatio: aspectRatio)
-            default:
-                EmptyView()
-            }
+        // Calculate the height based on the aspect ratio
+        let imageHeight: CGFloat
+        if aspectRatio == .square {
+            imageHeight = baseWidth - (padding * 1.5)
+        } else {
+            let imageAspectRatio = image.size.height / image.size.width
+            imageHeight = (baseWidth - (padding * 1.5)) * imageAspectRatio
         }
-        .frame(width: renderSize.width, height: renderSize.height)
-        .clipped()
 
-        let renderer = ImageRenderer(content: templateView)
-        renderer.scale = 3.0 // For better quality
-        renderer.proposedSize = ProposedViewSize(renderSize)
+        let baseHeight: CGFloat = imageHeight + (padding * 1.5) + bottomAreaHeight
 
-        if let uiImage = renderer.uiImage {
-            renderedImage = uiImage
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: baseWidth, height: baseHeight), false, 1.0)
+        defer { UIGraphicsEndImageContext() }
+
+        // Handle different templates
+        switch selectedTemplate {
+        case 0, 1: // Light and Dark templates
+            renderStandardTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
+        case 2: // Overlay template
+            renderOverlayTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
+        default:
+            break
+        }
+
+        if let finalImage = UIGraphicsGetImageFromCurrentImageContext() {
+            renderedImage = finalImage
             showingPolaroidSheet = true
         }
-        
+
         isRendering = false
         isPreparingImage = false
     }
 
-    // Update this function to account for text and padding
-    private func calculateRenderHeight(for width: CGFloat) -> CGFloat {
-        let imageAspectRatio = image.size.height / image.size.width
-        let height: CGFloat
-        
-        switch aspectRatio {
-        case .original:
-            height = width * imageAspectRatio
-        case .square:
-            height = width
+    private func renderStandardTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat, imageHeight: CGFloat) {
+    // Draw background
+    let backgroundColor: UIColor = selectedTemplate == 1 ? .black : .white
+    backgroundColor.setFill()
+    UIRectFill(CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+
+    // Calculate image size and position
+    let imageWidth = baseWidth - (padding * 2)
+    let imageY = padding
+
+    // Draw image
+    if aspectRatio == .square {
+        // For square aspect ratio, crop the image to fit
+        if let cgImage = image.cgImage {
+            let sourceSize = CGSize(width: cgImage.width, height: cgImage.height)
+            let sourceSide = min(sourceSize.width, sourceSize.height)
+            let sourceX = (sourceSize.width - sourceSide) / 2
+            let sourceY = (sourceSize.height - sourceSide) / 2
+            let sourceRect = CGRect(x: sourceX, y: sourceY, width: sourceSide, height: sourceSide)
+            
+            if let croppedImage = cgImage.cropping(to: sourceRect) {
+                let destRect = CGRect(x: padding, y: imageY, width: imageWidth, height: imageWidth)
+                UIImage(cgImage: croppedImage).draw(in: destRect)
+            }
         }
-        
-        // Add extra height for the text and padding
-        return height + 120 // Adjust this value based on your template's layout
+    } else {
+        // For other aspect ratios, draw normally
+        image.draw(in: CGRect(x: padding, y: imageY, width: imageWidth, height: imageHeight))
+    }
+
+    // Calculate text position
+    let textY = imageY + (aspectRatio == .square ? imageWidth : imageHeight) + (padding * 0.5)
+
+    // Draw text and app icon
+    drawTextAndIcon(at: CGPoint(x: padding, y: textY), maxWidth: imageWidth, baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
+}
+
+    private func renderOverlayTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat) {
+        // Draw image to fill the entire frame
+        if aspectRatio == .square {
+            // Crop the image to a square
+            let squareSize = min(image.size.width, image.size.height)
+            let sourceRect = CGRect(
+                x: (image.size.width - squareSize) / 2,
+                y: (image.size.height - squareSize) / 2,
+                width: squareSize,
+                height: squareSize
+            )
+            if let cgImage = image.cgImage?.cropping(to: sourceRect) {
+                let croppedImage = UIImage(cgImage: cgImage)
+                croppedImage.draw(in: CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+            }
+        } else {
+            // Original aspect ratio
+            image.draw(in: CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+        }
+
+        // Add overlay gradient
+        let context = UIGraphicsGetCurrentContext()!
+        let colors = [UIColor.black.withAlphaComponent(0.5).cgColor, UIColor.clear.cgColor]
+        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
+        context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: baseHeight), end: CGPoint(x: 0, y: baseHeight * 0.7), options: [])
+
+        // Draw text and app icon
+        let textY = baseHeight - padding - (baseWidth * 0.05) - (baseWidth * 0.035) - 5
+        drawTextAndIcon(at: CGPoint(x: padding, y: textY), maxWidth: baseWidth - (padding * 2), baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
+    }
+
+    private func drawTextAndIcon(at point: CGPoint, maxWidth: CGFloat, baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat) {
+        let titleFont = UIFont.systemFont(ofSize: baseWidth * 0.045, weight: .bold)
+        let subtitleFont = UIFont.systemFont(ofSize: baseWidth * 0.03)
+        let textColor: UIColor = selectedTemplate == 0 ? .black : .white
+
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: titleFont,
+            .foregroundColor: textColor
+        ]
+        let subtitleAttributes: [NSAttributedString.Key: Any] = [
+            .font: subtitleFont,
+            .foregroundColor: textColor.withAlphaComponent(0.7)
+        ]
+
+        let titleText = NSAttributedString(string: getTitleText(), attributes: titleAttributes)
+        let subtitleText = NSAttributedString(string: getSubtitleText(), attributes: subtitleAttributes)
+
+        // Calculate text sizes
+        let titleSize = titleText.size()
+        let subtitleSize = subtitleText.size()
+
+        // Draw text in VStack
+        titleText.draw(at: point)
+        subtitleText.draw(at: CGPoint(x: point.x, y: point.y + titleSize.height + 2))
+
+        if showAppIcon, let appIcon = UIImage(named: "AppIcon") {
+            let iconSize = baseWidth * 0.09
+            let iconX = baseWidth - iconSize - padding
+            let iconY = point.y + (max(titleSize.height + subtitleSize.height, iconSize) - iconSize) / 2
+            appIcon.draw(in: CGRect(x: iconX, y: iconY, width: iconSize, height: iconSize))
+        }
+    }
+
+    private func getTitleText() -> String {
+        switch titleOption {
+        case .none: return ""
+        case .name: return name
+        case .age: return age
+        case .date: return formatDate(Date())
+        }
+    }
+
+    private func getSubtitleText() -> String {
+        switch subtitleOption {
+        case .none: return ""
+        case .name: return name
+        case .age: return age
+        case .date: return formatDate(Date())
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 
