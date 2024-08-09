@@ -67,9 +67,9 @@ struct AgeCalculator {
                 let dayString = "\(remainingDays) day\(remainingDays == 1 ? "" : "s")"
                 
                 if remainingDays > 0 {
-                    return "\(weekString) and \(dayString) pregnant"
+                    return "\(weekString) and \(dayString)"
                 } else {
-                    return "\(weekString) pregnant"
+                    return weekString
                 }
             } else {
                 return "Before pregnancy"

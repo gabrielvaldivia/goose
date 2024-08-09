@@ -79,8 +79,8 @@ class PersonViewModel: ObservableObject {
         }
     }
     
-    func calculateAge(for person: Person, at date: Date) -> (years: Int, months: Int, days: Int) {
-        return AgeCalculator.calculateAge(for: person, at: date)
+    func calculateAge(for person: Person, at date: Date) -> String {
+        return AgeCalculator.calculateAgeString(for: person, at: date)
     }
     
     func updatePerson(_ updatedPerson: Person) {

@@ -20,7 +20,7 @@ struct AllPhotosInSectionView: View {
     @State private var thumbnails: [String: UIImage] = [:]
     @State private var visibleRange: Range<Int>?
     @State private var isLoading = true
-    @State private var selectedView = 0 // 0 for Grid, 1 for Slideshow
+    @State private var isShowingShareSheet = false
     
     @State private var currentPhotoIndex: Int = 0
     @State private var isPlaying = false
@@ -37,22 +37,13 @@ struct AllPhotosInSectionView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack {
-                // Segmented control for view selection
-                Picker("View", selection: $selectedView) {
-                    Text("Grid").tag(0)
-                    Text("Slideshow").tag(1)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-
-                if selectedView == 0 {
-                    GridView(geometry: geometry)
-                } else {
-                    SlideshowView(geometry: geometry)
-                }
+                GridView(geometry: geometry)
             }
             .navigationBarBackButtonHidden(true)
-            .navigationBarItems(leading: CustomBackButton())
+            .navigationBarItems(
+                leading: CustomBackButton(),
+                trailing: shareButton
+            )
             .navigationTitle(sectionTitle)
             .onAppear {
                 updateGridColumns(width: geometry.size.width)
@@ -60,6 +51,9 @@ struct AllPhotosInSectionView: View {
             }
             .onChange(of: geometry.size) { _, newSize in
                 updateGridColumns(width: newSize.width)
+            }
+            .sheet(isPresented: $isShowingShareSheet) {
+                ShareSlideshowView(photos: photos, person: person)
             }
         }
         .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
@@ -74,26 +68,8 @@ struct AllPhotosInSectionView: View {
         .onChange(of: visibleRange) { _, _ in
             loadVisibleThumbnails()
         }
-        .onDisappear {
-            stopPlayback()
-        }
-        .sheet(item: $activeSheet) { item in
-            switch item {
-            case .shareView:
-                NavigationView {
-                    SharePhotoView(
-                        image: photos[currentPhotoIndex].image ?? UIImage(),
-                        name: person.name,
-                        age: calculateAge(for: person, at: photos[currentPhotoIndex].dateTaken),
-                        isShareSheetPresented: $isShareSheetPresented,
-                        activityItems: $activityItems
-                    )
-                }
-            @unknown default:
-                EmptyView()
-            }
-        }
     }
+    
     
     private func updateGridColumns(width: CGFloat) {
         let minItemWidth: CGFloat = 110
@@ -107,13 +83,13 @@ struct AllPhotosInSectionView: View {
             if let thumbnailImage = thumbnails[photo.assetIdentifier] {
                 Image(uiImage: thumbnailImage)
                     .resizable()
-                    .aspectRatio(contentMode: selectedView == 0 ? .fill : .fit)
-                    .frame(width: selectedView == 0 ? 110 : nil, height: selectedView == 0 ? 110 : nil)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 110, height: 110)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.bottom, 2)
             } else {
                 ProgressView()
-                    .frame(width: selectedView == 0 ? 110 : nil, height: selectedView == 0 ? 110 : nil)
+                    .frame(width: 110, height: 110)
             }
         }
         .onTapGesture {
@@ -194,155 +170,14 @@ struct AllPhotosInSectionView: View {
         }
     }
     
-    private func SlideshowView(geometry: GeometryProxy) -> some View {
-        let reversedPhotos = Array(photos.reversed())
-        
-        return VStack(spacing: 0) {
-            TabView(selection: $currentPhotoIndex) {
-                ForEach(Array(reversedPhotos.enumerated()), id: \.element.id) { index, photo in
-                    PhotoView(photo: photo, containerWidth: geometry.size.width, selectedPhotoIndex: $selectedPhotoIndex, photos: photos)
-                        .tag(index)
-                }
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-            .frame(height: geometry.size.height * 0.7)
-            .gesture(DragGesture().onChanged { _ in
-                isManualInteraction = true
-            })
-            .onChange(of: currentPhotoIndex) { oldValue, newValue in
-                if isManualInteraction {
-                    scrubberPosition = Double(newValue)
-                }
-            }
-            
-            VStack(spacing: 4) {
-                Text(calculateAge(for: person, at: reversedPhotos[currentPhotoIndex].dateTaken))
-                    .font(.body)
-                    .foregroundColor(.primary)
-                Text(formatDate(reversedPhotos[currentPhotoIndex].dateTaken))
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .padding(.top, 10)
-            
-            Spacer()
-            
-            if photos.count > 1 {
-                HStack {
-                    playButton
-                    
-                    Slider(value: Binding(
-                        get: { scrubberPosition },
-                        set: { 
-                            isManualInteraction = true
-                            scrubberPosition = $0
-                            currentPhotoIndex = Int($0)
-                        }
-                    ), in: 0...Double(photos.count - 1), step: 0.01)
-                    .accentColor(.blue)
-                    
-                    if isPlaying {
-                        speedControlButton
-                    } else {
-                        shareButton
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 30)
-            }
-        }
-        .onAppear {
-            currentPhotoIndex = 0
-            scrubberPosition = Double(currentPhotoIndex)
-        }
-    }
-    
-    private var playButton: some View {
-        Button(action: {
-            if currentPhotoIndex == photos.count - 1 {
-                currentPhotoIndex = 0
-                scrubberPosition = 0
-                isManualInteraction = true
-            } else {
-                isPlaying.toggle()
-                if isPlaying {
-                    startPlayback()
-                } else {
-                    stopPlayback()
-                }
-            }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Image(systemName: currentPhotoIndex == photos.count - 1 ? "arrow.counterclockwise" : (isPlaying ? "pause.fill" : "play.fill"))
-                    .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
-            }
-        }
-    }
-    
-    private var speedControlButton: some View {
-        Button(action: {
-            playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
-            if isPlaying {
-                playTimer?.invalidate()
-                startPlayback()
-            }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Text("\(Int(playbackSpeed))x")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold))
-            }
-        }
-    }
-    
     private var shareButton: some View {
         Button(action: {
-            activeSheet = .shareView
+            isShowingShareSheet = true
         }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Image(systemName: "square.and.arrow.up")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
-            }
+            Image(systemName: "square.and.arrow.up")
+                .foregroundColor(.blue)
+                .font(.system(size: 20, weight: .bold))
         }
-    }
-    
-    private func startPlayback() {
-        isManualInteraction = false
-        lastUpdateTime = Date()
-        playTimer = Timer.scheduledTimer(withTimeInterval: 1/60, repeats: true) { timer in
-            let currentTime = Date()
-            let elapsedTime = currentTime.timeIntervalSince(lastUpdateTime)
-            lastUpdateTime = currentTime
-
-            scrubberPosition += elapsedTime * playbackSpeed / 2.0
-            
-            if scrubberPosition >= Double(photos.count - 1) {
-                stopPlayback()
-                scrubberPosition = Double(photos.count - 1)
-            }
-
-            currentPhotoIndex = Int(scrubberPosition)
-        }
-    }
-    
-    private func stopPlayback() {
-        isPlaying = false
-        playTimer?.invalidate()
-        playTimer = nil
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -354,35 +189,6 @@ struct AllPhotosInSectionView: View {
     
     private func calculateAge(for person: Person, at date: Date) -> String {
         return AgeCalculator.calculateAgeString(for: person, at: date)
-    }
-}
-
-private struct PhotoView: View {
-    let photo: Photo
-    let containerWidth: CGFloat
-    @Binding var selectedPhotoIndex: IdentifiableIndex?
-    let photos: [Photo]
-    
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.clear)
-            if let image = photo.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .cornerRadius(10)
-                    .padding(20)
-            } else {
-                ProgressView()
-            }
-        }
-        .frame(width: containerWidth) 
-        .onTapGesture {
-            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                selectedPhotoIndex = IdentifiableIndex(index: index)
-            }
-        }
     }
 }
 

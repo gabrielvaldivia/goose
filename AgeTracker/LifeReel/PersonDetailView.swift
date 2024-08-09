@@ -23,14 +23,6 @@ enum ActiveSheet: Identifiable {
     }
 }
 
-// Add this function outside of any struct, at the top of the file
-private func formatDate(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .medium
-    formatter.timeStyle = .none
-    return formatter.string(from: date)
-}
-
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -40,32 +32,22 @@ struct PersonDetailView: View {
     @State private var selectedAssets: [PHAsset] = []
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
-    @State private var currentPhotoIndex: Int = 0
-    @State private var latestPhotoIndex = 0 
     @State private var selectedView = 0 
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil 
     @State private var isShareSheetPresented = false
     @State private var activityItems: [Any] = []
-    @State private var isPlaying = false
-    @State private var playTimer: Timer?
-    @State private var playbackSpeed: Double = 1.0 
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
-    @State private var isManualInteraction = true
-    @State private var scrubberPosition: Double = 0
-    @State private var lastUpdateTime: Date = Date()
     @State private var stacksSortOrder: SortOrder = .oldestToLatest
+    @State private var timelineSortOrder: SortOrder = .latestToOldest
     @State private var showingSharingComingSoon = false
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
         _person = State(initialValue: person)
         self.viewModel = viewModel
-        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        _latestPhotoIndex = State(initialValue: sortedPhotos.count - 1)
-        _currentPhotoIndex = State(initialValue: sortedPhotos.count - 1)
     }
     
     // Main body of the view
@@ -114,14 +96,17 @@ struct PersonDetailView: View {
                     NavigationView {
                         if !person.photos.isEmpty {
                             let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                            let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
-                            SharePhotoView(
-                                image: sortedPhotos[safeIndex].image ?? UIImage(),
-                                name: person.name,
-                                age: calculateAge(),
-                                isShareSheetPresented: $isShareSheetPresented,
-                                activityItems: $activityItems
-                            )
+                            if let firstPhoto = sortedPhotos.first {
+                                SharePhotoView(
+                                    image: firstPhoto.image ?? UIImage(),
+                                    name: person.name,
+                                    age: AgeCalculator.calculateAgeString(for: person, at: firstPhoto.dateTaken),
+                                    isShareSheetPresented: $isShareSheetPresented,
+                                    activityItems: $activityItems
+                                )
+                            } else {
+                                Text("No photos available to share")
+                            }
                         } else {
                             Text("No photos available to share")
                         }
@@ -139,7 +124,6 @@ struct PersonDetailView: View {
             .onAppear(perform: handleOnAppear)
             .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
             .fullScreenCover(item: $selectedPhoto, content: fullScreenPhotoView)
-            .onDisappear(perform: stopPlayback)
             .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
         }
     }
@@ -155,7 +139,7 @@ struct PersonDetailView: View {
             GridView
                 .transition(.opacity)
         default:
-            SlideshowView
+            TimelineView
                 .transition(.opacity)
         }
     }
@@ -166,7 +150,7 @@ struct PersonDetailView: View {
             Spacer()
             HStack {
                 CircularButton(systemName: "arrow.up.arrow.down") {
-                    stacksSortOrder = stacksSortOrder == .oldestToLatest ? .latestToOldest : .oldestToLatest
+                    toggleSortOrder()
                 }
 
                 Spacer()
@@ -183,63 +167,50 @@ struct PersonDetailView: View {
         }
     }
 
-    // Slideshow view
-    private var SlideshowView: some View {
-        GeometryReader { geometry in
-            VStack {
-                if !person.photos.isEmpty {
-                    let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                    
-                    TabView(selection: $currentPhotoIndex) {
-                        ForEach(Array(sortedPhotos.enumerated()), id: \.element.id) { index, photo in
-                            PhotoView(photo: photo, containerWidth: geometry.size.width, isGridView: false, selectedPhoto: $selectedPhoto, person: person)
-                                .tag(index)
+    // New Timeline view
+    private var TimelineView: some View {
+        ScrollView {
+            LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
+                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
+                    Section(header: stickyHeader(for: section)) {
+                        ForEach(sortPhotos(photos, order: timelineSortOrder), id: \.id) { photo in
+                            TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
                         }
                     }
-                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .frame(height: geometry.size.width) // Make it square
-                    .gesture(DragGesture().onChanged { _ in
-                        isManualInteraction = true
-                    })
-                    .onChange(of: currentPhotoIndex) { oldValue, newValue in
-                        if isManualInteraction {
-                            scrubberPosition = Double(newValue)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    if sortedPhotos.count > 1 {
-                        VStack(spacing: 10) {
-                            Slider(value: Binding(
-                                get: { scrubberPosition },
-                                set: { 
-                                    isManualInteraction = true
-                                    scrubberPosition = $0
-                                    currentPhotoIndex = Int($0)
-                                    latestPhotoIndex = currentPhotoIndex
-                                }
-                            ), in: 0...Double(sortedPhotos.count - 1), step: 0.01)
-                            .accentColor(.blue)
-                            
-                            playbackControls
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 30)
-
-                        Spacer()
-                    }
-                } else {
-                    Spacer()
-                    Text("No photos available")
-                    Spacer()
                 }
             }
-            .frame(width: geometry.size.width)
+            .padding(.top, 20)
+            .padding(.bottom, 20)
         }
-        .onAppear {
-            currentPhotoIndex = min(latestPhotoIndex, person.photos.count - 1)
-            scrubberPosition = Double(currentPhotoIndex)
+    }
+
+    private func stickyHeader(for section: String) -> some View {
+        HStack {
+            Spacer()
+            Text(section)
+                .font(.headline)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    VisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+                        .clipShape(Capsule())
+                )
+            Spacer()
+        }
+        .padding(.top, 8)
+    }
+
+    private struct TimelineItemView: View {
+        let photo: Photo
+        let person: Person
+        @Binding var selectedPhoto: Photo?
+        
+        var body: some View {
+            PhotoView(photo: photo, containerWidth: UIScreen.main.bounds.width - 40, isGridView: false, selectedPhoto: $selectedPhoto)
+                .aspectRatio(contentMode: .fit)
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                .padding(.horizontal)
         }
     }
 
@@ -248,41 +219,22 @@ struct PersonDetailView: View {
         let containerWidth: CGFloat
         let isGridView: Bool
         @Binding var selectedPhoto: Photo?
-        let person: Person
         
         var body: some View {
-            GeometryReader { geometry in
-                ZStack(alignment: .bottomLeading) {
-                    if let image = photo.image {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: geometry.size.width, height: geometry.size.width)
-                            .clipped()
-                    } else {
-                        ProgressView()
-                            .frame(width: geometry.size.width, height: geometry.size.width)
-                            .background(Color.gray.opacity(0.2))
-                    }
-                    
-                    if !isGridView {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(formatDate(photo.dateTaken))
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .shadow(color: .black, radius: 2, x: 0, y: 2)
-                            Text(AgeCalculator.calculateAgeString(for: person, at: photo.dateTaken))
-                                .font(.subheadline)
-                                .foregroundColor(.white)
-                                .shadow(color: .black, radius: 2, x: 0, y: 2)
-                        }
-                        .padding(16)
-                    }
+            Group {
+                if let image = photo.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: isGridView ? .fill : .fit)
+                        .frame(width: isGridView ? containerWidth : nil, height: isGridView ? containerWidth : nil)
+                        .clipped()
+                } else {
+                    ProgressView()
+                        .frame(width: isGridView ? containerWidth : nil, height: isGridView ? containerWidth : 200)
+                        .background(Color.gray.opacity(0.2))
                 }
-                .frame(width: geometry.size.width, height: geometry.size.width)
-                .clipShape(RoundedRectangle(cornerRadius: isGridView ? 10 : 0))
             }
-            .aspectRatio(1, contentMode: .fit)
+            .cornerRadius(isGridView ? 10 : 0)
             .onTapGesture {
                 selectedPhoto = photo
             }
@@ -293,7 +245,7 @@ struct PersonDetailView: View {
     private var GridView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(sortedGroupedPhotos(), id: \.0) { section, photos in
+                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
                     YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                 }
             }
@@ -330,9 +282,9 @@ struct PersonDetailView: View {
         let person: Person
         
         var body: some View {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], spacing: 10) {
                 ForEach(photos.prefix(5)) { photo in
-                    PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto, person: person)
+                    PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto)
                 }
                 if photos.count > 5 {
                     NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete, person: person)) {
@@ -356,9 +308,9 @@ struct PersonDetailView: View {
     }
 
     // Function to group photos by age
-    private func groupAndSortPhotos(forYearView: Bool = false) -> [(String, [Photo])] {
+    private func groupAndSortPhotos(forYearView: Bool = false, sortOrder: SortOrder = .latestToOldest) -> [(String, [Photo])] {
         let calendar = Calendar.current
-        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+        let sortedPhotos = sortPhotos(person.photos, order: sortOrder)
         var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
@@ -368,8 +320,10 @@ struct PersonDetailView: View {
 
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
-                if years == 0 {
-                    sectionTitle = forYearView ? "\(months) Month\(months == 1 ? "" : "s")" : (months == 0 ? "Birth Month" : "\(months) Month\(months == 1 ? "" : "s")")
+                if years == 0 && months == 0 {
+                    sectionTitle = "Birth Month"
+                } else if years == 0 {
+                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
                 } else {
                     sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
@@ -380,9 +334,9 @@ struct PersonDetailView: View {
             groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
-        let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
-        let monthOrder = (0...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        let order = yearOrder + monthOrder + (forYearView ? ["Pregnancy"] : ["Birth Month"])
+        let yearOrder = (0...100).map { "\($0) Year\($0 == 1 ? "" : "s")" }
+        let monthOrder = (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" }
+        let order = ["Pregnancy", "Birth Month"] + monthOrder + yearOrder
 
         return order.compactMap { title in
             if let photos = groupedPhotos[title] {
@@ -435,109 +389,30 @@ struct PersonDetailView: View {
         }
     }
     
-    // Helper function to format age
-    private func calculateAge() -> String {
-        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        let photoDate = sortedPhotos.indices.contains(currentPhotoIndex) ? sortedPhotos[currentPhotoIndex].dateTaken : Date()
-        return AgeCalculator.calculateAgeString(for: person, at: photoDate)
+    // Helper function to format date
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
-
-    // New playback controls view
-    private var playbackControls: some View {
-        HStack(spacing: 40) {
-            speedControlButton
-            
-            playButton
-            
-            volumeButton
-        }
-        .frame(height: 40)
-    }
-
-    // Updated play button
-    private var playButton: some View {
-        Button(action: {
-            if currentPhotoIndex == person.photos.count - 1 {
-                // Move scrubber to the beginning
-                currentPhotoIndex = 0
-                scrubberPosition = 0
-                isManualInteraction = true
-                isPlaying = true
-                startPlayback()
-            } else {
-                isPlaying.toggle()
-                if isPlaying {
-                    startPlayback()
-                } else {
-                    stopPlayback()
-                }
-            }
-        }) {
-            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                .foregroundColor(.blue)
-                .font(.system(size: 24, weight: .bold))
-        }
-    }
-
-    private func startPlayback() {
-        isManualInteraction = false
-        lastUpdateTime = Date()
-        playTimer = Timer.scheduledTimer(withTimeInterval: 1/60, repeats: true) { timer in
-            let currentTime = Date()
-            let elapsedTime = currentTime.timeIntervalSince(lastUpdateTime)
-            lastUpdateTime = currentTime
-
-            scrubberPosition += elapsedTime * playbackSpeed / 2.0
-            
-            if scrubberPosition >= Double(person.photos.count - 1) {
-                stopPlayback()
-                scrubberPosition = Double(person.photos.count - 1)
-                currentPhotoIndex = person.photos.count - 1
-            }
-
-            currentPhotoIndex = Int(scrubberPosition)
-        }
-    }
-
-    private func stopPlayback() {
-        playTimer?.invalidate()
-        playTimer = nil
-        isPlaying = false
-        scrubberPosition = Double(currentPhotoIndex)
-    }
-
-    // Speed control button
-    private var speedControlButton: some View {
-        Button(action: {
-            playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
-            if isPlaying {
-                playTimer?.invalidate()
-                startPlayback()
-            }
-        }) {
-            Text("\(Int(playbackSpeed))x")
-                .foregroundColor(.blue)
-                .font(.system(size: 18, weight: .bold))
-        }
-    }
-
-    // New volume button
-    @State private var isMuted = false
-    private var volumeButton: some View {
-        Button(action: {
-            isMuted.toggle()
-            // Implement mute/unmute functionality here
-        }) {
-            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                .foregroundColor(.blue)
-                .font(.system(size: 20, weight: .bold))
-        }
-    }
-
+    
     // New share button
     private var shareButton: some View {
         Button(action: {
-            activeSheet = .sharingComingSoon
+            if !person.photos.isEmpty {
+                let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                let slideshow = ShareSlideshowView(photos: sortedPhotos, person: person)
+                let hostingController = UIHostingController(rootView: slideshow)
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootViewController = window.rootViewController {
+                    rootViewController.present(hostingController, animated: true, completion: nil)
+                }
+            } else {
+                // Show an alert or message when there are no photos
+                print("No photos available to share")
+            }
         }) {
             ZStack {
                 Circle()
@@ -564,7 +439,7 @@ struct PersonDetailView: View {
             VStack {
                 ScrollView {
                     LazyVStack(spacing: 15) {
-                        ForEach(sortedGroupedPhotos(), id: \.0) { section, photos in
+                        ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
                             StackSectionView(
                                 section: section,
                                 photos: photos,
@@ -583,9 +458,15 @@ struct PersonDetailView: View {
     }
 
     // Sort grouped photos based on stacksSortOrder
-    private func sortedGroupedPhotos() -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(forYearView: true)
-        return stacksSortOrder == .oldestToLatest ? groupedPhotos : groupedPhotos.reversed()
+    private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
+        let groupedPhotos = groupAndSortPhotos(forYearView: true, sortOrder: stacksSortOrder)
+        
+        switch stacksSortOrder {
+        case .latestToOldest:
+            return groupedPhotos.reversed()
+        case .oldestToLatest:
+            return groupedPhotos
+        }
     }
 
     // Circular buttonn
@@ -626,9 +507,6 @@ struct PersonDetailView: View {
     private func handleOnAppear() {
         if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
             person = updatedPerson
-            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-            latestPhotoIndex = sortedPhotos.count - 1
-            currentPhotoIndex = latestPhotoIndex
         }
     }
 
@@ -667,6 +545,23 @@ struct PersonDetailView: View {
         }
         .presentationDetents([.height(300)])
     }
+
+    // Add this new function to toggle sort order
+    private func toggleSortOrder() {
+        let newOrder = stacksSortOrder == .oldestToLatest ? SortOrder.latestToOldest : SortOrder.oldestToLatest
+        stacksSortOrder = newOrder
+        timelineSortOrder = newOrder
+    }
+
+    // Add this new function to sort photos
+    private func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
+        switch order {
+        case .latestToOldest:
+            return photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+        case .oldestToLatest:
+            return photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+        }
+    }
 }
 
 // Add this new view
@@ -695,7 +590,7 @@ struct SegmentedControlView: View {
     @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
     
-    let options = ["Stacks", "Grid", "Slideshow"]
+    let options = ["Stacks", "Grid", "Timeline"]
     
     var body: some View {
         HStack(spacing: 0) {

@@ -29,6 +29,7 @@ struct FullScreenPhotoView: View {
     @GestureState private var dragOffset: CGSize = .zero
     @State private var showDeleteConfirmation = false
     @State private var dismissProgress: CGFloat = 0.0
+    @State private var showActionSheet = false
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -58,6 +59,12 @@ struct FullScreenPhotoView: View {
                         .scaleEffect(scale * magnifyBy)
                         .gesture(dragGesture(geometry: geometry))
                         .gesture(magnificationGesture())
+                        .gesture(
+                            LongPressGesture(minimumDuration: 0.5)
+                                .onEnded { _ in
+                                    showActionSheet = true
+                                }
+                        )
                         .onTapGesture {
                             showControls.toggle()
                         }
@@ -71,8 +78,6 @@ struct FullScreenPhotoView: View {
                     presentationMode.wrappedValue.dismiss()
                 }, onShare: {
                     activeSheet = .shareView
-                }, onDelete: {
-                    showDeleteConfirmation = true
                 })
                 .opacity(1 - dismissProgress)
             }
@@ -116,6 +121,17 @@ struct FullScreenPhotoView: View {
                     }
                 },
                 secondaryButton: .cancel()
+            )
+        }
+        .actionSheet(isPresented: $showActionSheet) {
+            ActionSheet(
+                title: Text("Photo Options"),
+                buttons: [
+                    .destructive(Text("Delete Photo")) {
+                        showDeleteConfirmation = true
+                    },
+                    .cancel()
+                ]
             )
         }
     }
@@ -203,7 +219,6 @@ struct ControlsOverlay: View {
     let photo: Photo
     let onClose: () -> Void
     let onShare: () -> Void
-    let onDelete: () -> Void
 
     var body: some View {
         ZStack {
@@ -245,15 +260,11 @@ struct ControlsOverlay: View {
                         }
                         .padding(.top, 16)
                         Spacer()
-                        CircularIconButton(icon: "trash", action: onDelete)
+                        CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     }
                     .padding(.top, 44)
                     .padding(.horizontal, 8)
                     Spacer()
-                    
-                    // Bottom Bar
-                    PillButton(icon: "square.and.arrow.up", label: "Share", action: onShare)
-                        .padding(.bottom, 34)
                 }
             }
         }
