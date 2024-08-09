@@ -63,7 +63,6 @@ struct SharePhotoView: View {
                 headerView
                     .frame(height: 52)
                     
-
                 // Canvas
                 VStack {
                     Spacer()
@@ -89,7 +88,6 @@ struct SharePhotoView: View {
                         }
                         .padding(.vertical, 20)
                     }
-
                     Spacer()
                 }
                 .frame(height: geometry.size.height - 44 - 80) 
@@ -389,8 +387,6 @@ struct OverlayTemplateView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottomLeading) {
-                let imageSize = calculateImageSize(for: geometry.size)
-                
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -433,21 +429,6 @@ struct OverlayTemplateView: View {
         }
         .frame(width: 320, height: aspectRatio == .square ? 320 : nil)
         .cornerRadius(isRendering ? 0 : 10)
-    }
-    
-    private func calculateImageSize(for size: CGSize) -> CGSize {
-        let imageAspectRatio = image.size.width / image.size.height
-        let viewAspectRatio = size.width / size.height
-        
-        if aspectRatio == .square {
-            return CGSize(width: size.width, height: size.width)
-        } else if imageAspectRatio > viewAspectRatio {
-            let height = size.width / imageAspectRatio
-            return CGSize(width: size.width, height: height)
-        } else {
-            let width = size.height * imageAspectRatio
-            return CGSize(width: width, height: size.height)
-        }
     }
     
     private var titleText: String {

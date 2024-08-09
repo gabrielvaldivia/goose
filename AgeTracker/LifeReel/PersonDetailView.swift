@@ -23,6 +23,14 @@ enum ActiveSheet: Identifiable {
     }
 }
 
+// Add this function outside of any struct, at the top of the file
+private func formatDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return formatter.string(from: date)
+}
+
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -30,13 +38,10 @@ struct PersonDetailView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingImagePicker = false
     @State private var selectedAssets: [PHAsset] = []
-    @State private var imageMeta: [String: Any]?
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
     @State private var currentPhotoIndex: Int = 0
     @State private var latestPhotoIndex = 0 
-    @State private var lastFeedbackDate: Date?
-    let impact = UIImpactFeedbackGenerator(style: .light)
     @State private var selectedView = 0 
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil 
@@ -93,7 +98,38 @@ struct PersonDetailView: View {
                     .edgesIgnoringSafeArea(.all)
                     .presentationDetents([.large])
             }
-            .sheet(item: $activeSheet, content: sheetContent)
+            .sheet(item: $activeSheet) { item in
+                switch item {
+                case .settings:
+                    NavigationView {
+                        PersonSettingsView(viewModel: viewModel, person: $person)
+                    }
+                case .bulkImport:
+                    BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                            person = updatedPerson
+                        }
+                    })
+                case .shareView:
+                    NavigationView {
+                        if !person.photos.isEmpty {
+                            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                            let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
+                            SharePhotoView(
+                                image: sortedPhotos[safeIndex].image ?? UIImage(),
+                                name: person.name,
+                                age: calculateAge(),
+                                isShareSheetPresented: $isShareSheetPresented,
+                                activityItems: $activityItems
+                            )
+                        } else {
+                            Text("No photos available to share")
+                        }
+                    }
+                case .sharingComingSoon:
+                    SharingComingSoonView()
+                }
+            }
             .sheet(isPresented: $isShareSheetPresented) {
                 ActivityViewController(activityItems: activityItems)
             }
@@ -109,20 +145,19 @@ struct PersonDetailView: View {
     }
     
     // Break down the main content into a separate function
+    @ViewBuilder
     private func mainContent(_ geometry: GeometryProxy) -> some View {
-        VStack {
-            if selectedView == 0 {
-                StacksView
-                    .transition(.opacity)
-            } else if selectedView == 1 {
-                GridView
-                    .transition(.opacity)
-            } else {
-                SlideshowView
-                    .transition(.opacity)
-            }
+        switch selectedView {
+        case 0:
+            StacksView
+                .transition(.opacity)
+        case 1:
+            GridView
+                .transition(.opacity)
+        default:
+            SlideshowView
+                .transition(.opacity)
         }
-        .animation(.easeInOut(duration: 0.15), value: selectedView)
     }
 
     // Bottom controls
@@ -157,12 +192,12 @@ struct PersonDetailView: View {
                     
                     TabView(selection: $currentPhotoIndex) {
                         ForEach(Array(sortedPhotos.enumerated()), id: \.element.id) { index, photo in
-                            PhotoView(photo: photo, containerWidth: geometry.size.width, selectedPhoto: $selectedPhoto)
+                            PhotoView(photo: photo, containerWidth: geometry.size.width, isGridView: false, selectedPhoto: $selectedPhoto, person: person)
                                 .tag(index)
                         }
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .frame(height: 500) 
+                    .frame(height: geometry.size.width) // Make it square
                     .gesture(DragGesture().onChanged { _ in
                         isManualInteraction = true
                     })
@@ -172,18 +207,8 @@ struct PersonDetailView: View {
                         }
                     }
                     
-                    VStack {
-                        Text(calculateAge())
-                            .font(.body)
-                        Text(formatDate(sortedPhotos[currentPhotoIndex].dateTaken))
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .onTapGesture {
-                                selectedPhotoForDateEdit = sortedPhotos[currentPhotoIndex]
-                                editedDate = sortedPhotos[currentPhotoIndex].dateTaken
-                                showingDatePicker = true
-                            }
-                    }
+                    // Text(calculateAge())
+                    //     .font(.body)
                     
                     Spacer()
                     
@@ -208,11 +233,10 @@ struct PersonDetailView: View {
                         Spacer()
                     }
                 } else {
-                    Spacer ()
+                    Spacer()
                     Text("No photos available")
-                    Spacer ()
+                    Spacer()
                 }
-                
             }
             .frame(width: geometry.size.width)
         }
@@ -225,23 +249,40 @@ struct PersonDetailView: View {
     private struct PhotoView: View {
         let photo: Photo
         let containerWidth: CGFloat
+        let isGridView: Bool
         @Binding var selectedPhoto: Photo?
+        let person: Person
         
         var body: some View {
-            ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.clear)
-                if let image = photo.image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .cornerRadius(10)
-                        .padding(20)
-                } else {
-                    ProgressView()
+            GeometryReader { geometry in
+                ZStack(alignment: .bottomLeading) {
+                    if let image = photo.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geometry.size.width, height: geometry.size.width)
+                            .clipped()
+                    } else {
+                        ProgressView()
+                            .frame(width: geometry.size.width, height: geometry.size.width)
+                            .background(Color.gray.opacity(0.2))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(formatDate(photo.dateTaken))
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 2, x: 0, y: 2)
+                        Text(AgeCalculator.calculateAgeString(for: person, at: photo.dateTaken))
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 2, x: 0, y: 2)
+                    }
+                    .padding(16)
                 }
+                .frame(width: geometry.size.width, height: geometry.size.width)
             }
-            .frame(width: containerWidth) 
+            .aspectRatio(1, contentMode: .fit)
             .onTapGesture {
                 selectedPhoto = photo
             }
@@ -252,7 +293,7 @@ struct PersonDetailView: View {
     private var GridView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(groupPhotosByAgeForYearView(), id: \.0) { section, photos in
+                ForEach(sortedGroupedPhotos(), id: \.0) { section, photos in
                     YearSectionView(section: section, photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                 }
             }
@@ -291,10 +332,7 @@ struct PersonDetailView: View {
         var body: some View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 10) {
                 ForEach(photos.prefix(5)) { photo in
-                    photoThumbnail(photo)
-                        .onTapGesture {
-                            selectedPhoto = photo
-                        }
+                    PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto, person: person)
                 }
                 if photos.count > 5 {
                     NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: onDelete, person: person)) {
@@ -303,27 +341,6 @@ struct PersonDetailView: View {
                 }
             }
             .padding(.horizontal)
-        }
-        
-        private func photoThumbnail(_ photo: Photo) -> some View {
-            Group {
-                if let image = photo.image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 110, height: 110)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .matchedGeometryEffect(id: photo.id, in: namespace)
-                        .padding(.bottom, 2)
-                } else {
-                    ProgressView()
-                        .frame(width: 110, height: 110)
-                        .background(Color.gray.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .matchedGeometryEffect(id: photo.id, in: namespace)
-                        .padding(.bottom, 2)
-                }
-            }
         }
         
         private func remainingPhotosCount(_ count: Int) -> some View {
@@ -339,116 +356,63 @@ struct PersonDetailView: View {
     }
 
     // Function to group photos by age
-    private func groupPhotosByAge() -> [(String, [Photo])] {
+    private func groupAndSortPhotos(forYearView: Bool = false) -> [(String, [Photo])] {
         let calendar = Calendar.current
         let sortedPhotos = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
-        var groupedPhotos: [(String, [Photo])] = []
+        var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: photo.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-            let days = components.day ?? 0
-
-            let sectionTitle: String
-            if photo.dateTaken >= person.dateOfBirth {
-                if years == 0 {
-                    switch months {
-                    case 0:
-                        sectionTitle = "Birth Month"
-                    case 1...11:
-                        sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                    default:
-                        sectionTitle = "1 Year"
-                    }
-                } else {
-                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            } else {
-                let componentsBeforeBirth = calendar.dateComponents([.day], from: photo.dateTaken, to: person.dateOfBirth)
-                let daysBeforeBirth = componentsBeforeBirth.day ?? 0
-                let weeksBeforeBirth = daysBeforeBirth / 7
-                let remainingDays = daysBeforeBirth % 7
-                let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-                
-                if pregnancyWeek == 40 {
-                    sectionTitle = "Birth Month"
-                } else if pregnancyWeek > 0 {
-                    if remainingDays > 0 {
-                        sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") and \(remainingDays) Day\(remainingDays == 1 ? "" : "s") Pregnant"
-                    } else {
-                        sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
-                    }
-                } else {
-                    sectionTitle = "Before Pregnancy"
-                }
-            }
-
-            if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
-                groupedPhotos[index].1.append(photo)
-            } else {
-                groupedPhotos.append((sectionTitle, [photo]))
-            }
-        }
-
-        // Create the order array
-        let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
-        let monthOrder = (1...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        let pregnancyOrder = (1...39).reversed().map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" }
-        
-        let order = yearOrder + monthOrder + ["Birth Month"] + pregnancyOrder
-
-        // Sort the grouped photos
-        return groupedPhotos.sorted { (group1, group2) -> Bool in
-            let index1 = order.firstIndex(of: group1.0) ?? Int.max
-            let index2 = order.firstIndex(of: group2.0) ?? Int.max
-            return index1 < index2
-        }
-    }
-    
-    // New function for grouping photos in the year view
-    private func groupPhotosByAgeForYearView() -> [(String, [Photo])] {
-        let calendar = Calendar.current
-        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
-        var groupedPhotos: [(String, [Photo])] = []
-
-        for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: photo.dateTaken)
+            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
             let years = components.year ?? 0
             let months = components.month ?? 0
 
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
                 if years == 0 {
-                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
+                    sectionTitle = forYearView ? "\(months) Month\(months == 1 ? "" : "s")" : (months == 0 ? "Birth Month" : "\(months) Month\(months == 1 ? "" : "s")")
                 } else {
                     sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
             } else {
-                sectionTitle = "Pregnancy"
+                sectionTitle = forYearView ? "Pregnancy" : calculatePregnancyWeek(photo.dateTaken)
             }
 
-            if let index = groupedPhotos.firstIndex(where: { $0.0 == sectionTitle }) {
-                groupedPhotos[index].1.append(photo)
-            } else {
-                groupedPhotos.append((sectionTitle, [photo]))
-            }
+            groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
-        // Create the order array
         let yearOrder = (1...100).reversed().map { "\($0) Year\($0 == 1 ? "" : "s")" }
         let monthOrder = (0...11).reversed().map { "\($0) Month\($0 == 1 ? "" : "s")" }
-        
-        let order = yearOrder + monthOrder + ["Pregnancy"]
+        let order = yearOrder + monthOrder + (forYearView ? ["Pregnancy"] : ["Birth Month"])
 
-        // Sort the grouped photos
-        return groupedPhotos.sorted { (group1, group2) -> Bool in
-            let index1 = order.firstIndex(of: group1.0) ?? Int.max
-            let index2 = order.firstIndex(of: group2.0) ?? Int.max
-            return index1 < index2
+        return order.compactMap { title in
+            if let photos = groupedPhotos[title] {
+                return (title, photos)
+            }
+            return nil
         }
     }
-    
+
+    private func calculatePregnancyWeek(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let componentsBeforeBirth = calendar.dateComponents([.day], from: date, to: person.dateOfBirth)
+        let daysBeforeBirth = componentsBeforeBirth.day ?? 0
+        let weeksBeforeBirth = daysBeforeBirth / 7
+        let remainingDays = daysBeforeBirth % 7
+        let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
+        
+        if pregnancyWeek == 40 {
+            return "Birth Month"
+        } else if pregnancyWeek > 0 {
+            if remainingDays > 0 {
+                return "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") and \(remainingDays) Day\(remainingDays == 1 ? "" : "s") Pregnant"
+            } else {
+                return "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
+            }
+        } else {
+            return "Before Pregnancy"
+        }
+    }
+
     // Image loading function
     func loadImage() {
         guard !selectedAssets.isEmpty else { 
@@ -463,21 +427,6 @@ struct PersonDetailView: View {
         }
     }
 
-    // Function to extract date taken from metadata
-    func extractDateTaken(from metadata: [String: Any]?) -> Date? {
-        print("Full metadata: \(String(describing: metadata))")
-        if let dateTimeOriginal = metadata?["DateTimeOriginal"] as? String {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
-            if let date = dateFormatter.date(from: dateTimeOriginal) {
-                print("Extracted date: \(date)")
-                return date
-            }
-        }
-        print("Failed to extract date, using current date")
-        return Date()
-    }
-
     // Function to delete a photo
     func deletePhoto(_ photo: Photo) {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
@@ -486,19 +435,10 @@ struct PersonDetailView: View {
         }
     }
     
-    // Helper function to format date
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
     // Helper function to format age
     private func calculateAge() -> String {
         let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
-        let photoDate = sortedPhotos[safeIndex].dateTaken
+        let photoDate = sortedPhotos.indices.contains(currentPhotoIndex) ? sortedPhotos[currentPhotoIndex].dateTaken : Date()
         return AgeCalculator.calculateAgeString(for: person, at: photoDate)
     }
 
@@ -644,7 +584,7 @@ struct PersonDetailView: View {
 
     // Sort grouped photos based on stacksSortOrder
     private func sortedGroupedPhotos() -> [(String, [Photo])] {
-        let groupedPhotos = groupPhotosByAgeForYearView()
+        let groupedPhotos = groupAndSortPhotos(forYearView: true)
         return stacksSortOrder == .oldestToLatest ? groupedPhotos : groupedPhotos.reversed()
     }
 
@@ -727,47 +667,6 @@ struct PersonDetailView: View {
         }
         .presentationDetents([.height(300)])
     }
-
-    private func sheetContent(item: ActiveSheet) -> some View {
-        switch item {
-        case .settings:
-            return AnyView(
-                NavigationView {
-                    PersonSettingsView(viewModel: viewModel, person: $person)
-                }
-            )
-        case .bulkImport:
-            return AnyView(
-                BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                    if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                        person = updatedPerson
-                    }
-                })
-            )
-        case .shareView:
-            return AnyView(
-                NavigationView {
-                    if !person.photos.isEmpty {
-                        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                        let safeIndex = min(max(0, currentPhotoIndex), sortedPhotos.count - 1)
-                        SharePhotoView(
-                            image: sortedPhotos[safeIndex].image ?? UIImage(),
-                            name: person.name,
-                            age: calculateAge(),
-                            isShareSheetPresented: $isShareSheetPresented,
-                            activityItems: $activityItems
-                        )
-                    } else {
-                        Text("No photos available to share")
-                    }
-                }
-            )
-        case .sharingComingSoon:
-            return AnyView(
-                SharingComingSoonView()
-            )
-        }
-    }
 }
 
 // Add this new view
@@ -845,7 +744,7 @@ struct CircularButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .foregroundColor(.secondary)
+                .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                 .font(.system(size: 14, weight: .bold))
                 .frame(width: 40, height: 40)
         }
