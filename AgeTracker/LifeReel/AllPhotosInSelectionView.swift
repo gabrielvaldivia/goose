@@ -63,8 +63,8 @@ struct AllPhotosInSectionView: View {
             .onChange(of: geometry.size) { _, newSize in
                 updateGridColumns(width: newSize.width)
             }
-            .sheet(isPresented: $isShowingShareSheet) {
-                ShareSlideshowView(photos: photos, person: person)
+            .onChange(of: visibleRange) { _, _ in
+                loadVisibleThumbnails()
             }
         }
         .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
@@ -75,9 +75,6 @@ struct AllPhotosInSectionView: View {
                 onDelete: onDelete,
                 person: person
             )
-        }
-        .onChange(of: visibleRange) { _, _ in
-            loadVisibleThumbnails()
         }
     }
     
@@ -183,16 +180,26 @@ struct AllPhotosInSectionView: View {
     
     private var shareButton: some View {
         Button(action: {
-            isShowingShareSheet = true
+            let slideshow = ShareSlideshowView(
+                photos: photos,
+                person: person,
+                sectionTitle: sectionTitle
+            )
+            let hostingController = UIHostingController(rootView: slideshow)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootViewController = window.rootViewController {
+                rootViewController.present(hostingController, animated: true, completion: nil)
+            }
         }) {
             ZStack {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 36, height: 36) 
+                    .frame(width: 30, height: 30)
 
                 Image(systemName: "square.and.arrow.up")
                     .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold)) // Reduced from 16 to 14
+                    .font(.system(size: 14, weight: .bold))
             }
         }
     }

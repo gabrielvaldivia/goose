@@ -15,24 +15,36 @@ struct ShareSlideshowView: View {
     // Properties
     let photos: [Photo]
     let person: Person
+    let sectionTitle: String
     @State private var currentPhotoIndex = 0
     @State private var isPlaying = false
     @State private var playbackSpeed: Double = 1.0
     @State private var isSharePresented = false
-    @State private var showComingSoonAlert = false // New state variable
+    @State private var showComingSoonAlert = false
     @State private var loadedImages: [String: UIImage] = [:]
     @State private var timer: Timer?
     @State private var scrubberPosition: Double = 0
     @Environment(\.presentationMode) var presentationMode
     
-    enum SlideshowRange: Identifiable, Equatable, Hashable {
+    @State private var selectedRange: SlideshowRange
+    @State private var currentFilteredPhotoIndex = 0
+    
+    init(photos: [Photo], person: Person, sectionTitle: String) {
+        self.photos = photos
+        self.person = person
+        self.sectionTitle = sectionTitle
+        let initialRange = SlideshowRange.allCases.first { $0.displayName == sectionTitle } ?? .allPhotos
+        _selectedRange = State(initialValue: initialRange)
+    }
+    
+    enum SlideshowRange: Hashable, CaseIterable {
         case allPhotos
         case pregnancy
         case birthMonth
         case month(Int)
         case year(Int)
 
-        var id: String {
+        var displayName: String {
             switch self {
             case .allPhotos: return "All Photos"
             case .pregnancy: return "Pregnancy"
@@ -41,45 +53,91 @@ struct ShareSlideshowView: View {
             case .year(let value): return "\(value) Year\(value == 1 ? "" : "s")"
             }
         }
-
-        var displayName: String { id }
         
+        static var allCases: [SlideshowRange] {
+            var cases: [SlideshowRange] = [.allPhotos, .pregnancy, .birthMonth]
+            for month in 1...12 {
+                cases.append(.month(month))
+            }
+            for year in 1...18 {
+                cases.append(.year(year))
+            }
+            return cases
+        }
+
         func hash(into hasher: inout Hasher) {
-            hasher.combine(id)
+            switch self {
+            case .allPhotos:
+                hasher.combine(0)
+            case .pregnancy:
+                hasher.combine(1)
+            case .birthMonth:
+                hasher.combine(2)
+            case .month(let value):
+                hasher.combine(3)
+                hasher.combine(value)
+            case .year(let value):
+                hasher.combine(4)
+                hasher.combine(value)
+            }
+        }
+
+        static func == (lhs: SlideshowRange, rhs: SlideshowRange) -> Bool {
+            switch (lhs, rhs) {
+            case (.allPhotos, .allPhotos),
+                 (.pregnancy, .pregnancy),
+                 (.birthMonth, .birthMonth):
+                return true
+            case let (.month(lhsValue), .month(rhsValue)):
+                return lhsValue == rhsValue
+            case let (.year(lhsValue), .year(rhsValue)):
+                return lhsValue == rhsValue
+            default:
+                return false
+            }
         }
     }
     
-    @State private var selectedRange: SlideshowRange = .allPhotos
-    @State private var currentFilteredPhotoIndex = 0
-    
     private var availableRanges: [SlideshowRange] {
         let groupedPhotos = groupAndSortPhotos()
-        var ranges: [SlideshowRange] = []
-        
-        if photos.count >= 2 { ranges.append(.allPhotos) }
-        
-        for (key, photos) in groupedPhotos {
-            if photos.count >= 2 {
-                switch key {
-                case "Pregnancy":
-                    ranges.append(.pregnancy)
-                case "Birth Month":
-                    ranges.append(.birthMonth)
-                case let str where str.hasSuffix("Month") || str.hasSuffix("Months"):
-                    if let month = Int(str.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                        ranges.append(.month(month))
-                    }
-                case let str where str.hasSuffix("Year") || str.hasSuffix("Years"):
-                    if let year = Int(str.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                        ranges.append(.year(year))
-                    }
-                default:
-                    break
-                }
+        return SlideshowRange.allCases.filter { range in
+            switch range {
+            case .allPhotos:
+                return !photos.isEmpty
+            case .pregnancy:
+                return groupedPhotos.contains { $0.0 == "Pregnancy" }
+            case .birthMonth:
+                return groupedPhotos.contains { $0.0 == "Birth Month" }
+            case .month(let value):
+                return groupedPhotos.contains { $0.0 == "\(value) Month\(value == 1 ? "" : "s")" }
+            case .year(let value):
+                return groupedPhotos.contains { $0.0 == "\(value) Year\(value == 1 ? "" : "s")" }
             }
         }
-        
-        return ranges
+    }
+    
+    private var filteredPhotos: [Photo] {
+        switch selectedRange {
+        case .allPhotos:
+            return photos
+        case .pregnancy:
+            return photos.filter { $0.dateTaken < person.dateOfBirth }
+        case .birthMonth:
+            return photos.filter { photo in
+                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
+                return age.years == 0 && age.months == 0
+            }
+        case .month(let month):
+            return photos.filter { photo in
+                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
+                return age.years == 0 && age.months == month - 1
+            }
+        case .year(let year):
+            return photos.filter { photo in
+                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
+                return age.years == year - 1
+            }
+        }
     }
     
     // Body
@@ -94,7 +152,7 @@ struct ShareSlideshowView: View {
                 if !availableRanges.isEmpty {
                     VStack {
                         Picker("Range", selection: $selectedRange) {
-                            ForEach(availableRanges) { range in
+                            ForEach(availableRanges, id: \.self) { range in
                                 Text(range.displayName).tag(range)
                             }
                         }
@@ -108,7 +166,7 @@ struct ShareSlideshowView: View {
                 }
                 Spacer()
                 Button("Share") {
-                    showComingSoonAlert = true // Show alert instead of presenting share sheet
+                    showComingSoonAlert = true
                 }
             }
             .padding(.horizontal)
@@ -178,20 +236,20 @@ struct ShareSlideshowView: View {
         .onAppear {
             loadImagesAround(index: currentFilteredPhotoIndex)
         }
-        .onChange(of: isPlaying) { oldValue, newValue in // Updated onChange modifier
+        .onChange(of: isPlaying) { oldValue, newValue in
             if newValue {
                 startTimer()
             } else {
                 stopTimer()
             }
         }
-        .onChange(of: playbackSpeed) { oldValue, newValue in // Updated onChange modifier
+        .onChange(of: playbackSpeed) { oldValue, newValue in
             if isPlaying {
                 stopTimer()
                 startTimer()
             }
         }
-        .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in // Updated onChange modifier
+        .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in
             if !isPlaying {
                 scrubberPosition = Double(newValue)
             }
@@ -201,7 +259,7 @@ struct ShareSlideshowView: View {
             scrubberPosition = 0
             loadImagesAround(index: currentFilteredPhotoIndex)
         }
-        .alert("Coming Soon", isPresented: $showComingSoonAlert) { // New alert
+        .alert("Coming Soon", isPresented: $showComingSoonAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Sharing functionality will be available in a future update.")
@@ -252,7 +310,7 @@ struct ShareSlideshowView: View {
     // Timer Methods
     private func startTimer() {
         guard filteredPhotos.count > 1 else { return }
-        let interval = 0.016 // Update at 60fps for smoother animation
+        let interval = 0.016
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             withAnimation(.linear(duration: interval)) {
                 scrubberPosition += interval * playbackSpeed
@@ -272,22 +330,6 @@ struct ShareSlideshowView: View {
         timer?.invalidate()
         timer = nil
         scrubberPosition = Double(currentFilteredPhotoIndex)
-    }
-    
-    private var filteredPhotos: [Photo] {
-        let groupedPhotos = groupAndSortPhotos()
-        switch selectedRange {
-        case .allPhotos:
-            return photos
-        case .pregnancy:
-            return groupedPhotos.first { $0.0 == "Pregnancy" }?.1 ?? []
-        case .birthMonth:
-            return groupedPhotos.first { $0.0 == "Birth Month" }?.1 ?? []
-        case .month(let value):
-            return groupedPhotos.first { $0.0 == "\(value) Month\(value == 1 ? "" : "s")" }?.1 ?? []
-        case .year(let value):
-            return groupedPhotos.first { $0.0 == "\(value) Year\(value == 1 ? "" : "s")" }?.1 ?? []
-        }
     }
     
     private func groupAndSortPhotos() -> [(String, [Photo])] {

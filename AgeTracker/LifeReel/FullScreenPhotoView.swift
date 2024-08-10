@@ -49,6 +49,7 @@ struct FullScreenPhotoView: View {
                 // Background
                 Color.black
                     .edgesIgnoringSafeArea(.all)
+                    
                     .opacity(1 - dismissProgress)
                 
                 // Photo Display
@@ -110,9 +111,6 @@ struct FullScreenPhotoView: View {
                     },
                     onShare: {
                         activeSheet = .shareView
-                    },
-                    onDelete: {
-                        showDeleteConfirmation = true
                     },
                     currentIndex: $currentIndex,
                     totalPhotos: photos.count,
@@ -276,82 +274,54 @@ struct ControlsOverlay: View {
     let photo: Photo
     let onClose: () -> Void
     let onShare: () -> Void
-    let onDelete: () -> Void
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
 
     var body: some View {
-        ZStack {
-            if showControls {
-                VStack(spacing: 0) {
-                    // Top gradient
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.black.opacity(0.3), Color.clear]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 150)
-                    .edgesIgnoringSafeArea(.top)
-
-                    Spacer()
-
-                    // Bottom gradient
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.clear, Color.black.opacity(0.3)]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 150)
-                    .edgesIgnoringSafeArea(.bottom)
-                }
-
-                VStack {
-                    // Top Bar with Close Button
-                    HStack {
-                        CircularIconButton(icon: "xmark", action: onClose)
-                        Spacer()
-                        VStack(spacing: 4) {
-                            // Text(person.name)
-                            //     .font(.title3)
-                            //     .fontWeight(.bold)
-                            //     .foregroundColor(.white)
-
-                        }
-                        .padding(.top, 16)
-                        Spacer()
+        VStack {
+            // Top Bar with Close and Share Buttons
+            HStack {
+                CircularIconButton(icon: "xmark", action: onClose)
+                Spacer()
+                CircularIconButton(icon: "square.and.arrow.up", action: onShare)
+            }
+            .padding(.top, 44)
+            .padding(.horizontal, 8)
+            
+            Spacer()
+            
+            // Bottom Bar with Age and Scrubber
+            VStack(spacing: 16) {
+                // Scrubber with side fade-out effect
+                ThumbnailScrubber(
+                    photos: person.photos,
+                    currentIndex: $currentIndex,
+                    onScrub: onScrub
+                )
+                .frame(height: 60)
+                .mask(
+                    HStack(spacing: 0) {
+                        LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 40)
+                        Rectangle().fill(Color.white)
+                        LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 40)
                     }
-                    .padding(.top, 44)
-                    .padding(.horizontal, 8)
-                    
+                )
+                
+                HStack {
                     Spacer()
-                    
-                    // Bottom Bar with Share, Age, and Delete Buttons
-                    VStack(spacing: 16) {
-                        // Thumbnail Scrubber
-                        ThumbnailScrubber(
-                            photos: person.photos,
-                            currentIndex: $currentIndex,
-                            onScrub: onScrub
-                        )
-                        .frame(height: 60)
-                        
-                        HStack {
-                            CircularIconButton(icon: "square.and.arrow.up", action: onShare)
-                            Spacer()
-                            Text(calculateAge(for: person, at: photo.dateTaken))
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            Spacer()
-                            CircularIconButton(icon: "trash", action: onDelete)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
+                    Text(calculateAge(for: person, at: photo.dateTaken))
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                    Spacer()
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 30)
         }
-        .edgesIgnoringSafeArea(.all)
+        .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
     }
     

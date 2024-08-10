@@ -81,7 +81,7 @@ struct PersonDetailView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    sortButton
+                    shareButton
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -175,21 +175,7 @@ struct PersonDetailView: View {
         VStack {
             Spacer()
             HStack {
-                CircularButton(systemName: "square.and.arrow.up") {
-                    if !person.photos.isEmpty {
-                        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                        let slideshow = ShareSlideshowView(photos: sortedPhotos, person: person)
-                        let hostingController = UIHostingController(rootView: slideshow)
-                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let window = windowScene.windows.first,
-                           let rootViewController = window.rootViewController {
-                            rootViewController.present(hostingController, animated: true, completion: nil)
-                        }
-                    } else {
-                        // Show an alert or message when there are no photos
-                        print("No photos available to share")
-                    }
-                }
+                sortButton
 
                 Spacer()
 
@@ -205,20 +191,31 @@ struct PersonDetailView: View {
         }
     }
 
-    // New sort button
-    private var sortButton: some View {
+    // New share button
+    private var shareButton: some View {
         Button(action: {
-            toggleSortOrder()
+            if !person.photos.isEmpty {
+                activeSheet = .shareView
+            } else {
+                // Show an alert or message when there are no photos
+                print("No photos available to share")
+            }
         }) {
             ZStack {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Image(systemName: "arrow.up.arrow.down")
+                    .frame(width: 30, height: 30)
+                Image(systemName: "square.and.arrow.up")
                     .foregroundColor(.blue)
                     .font(.system(size: 14, weight: .bold))
             }
+        }
+    }
+
+    // Updated sort button
+    private var sortButton: some View {
+        CircularButton(systemName: "arrow.up.arrow.down") {
+            toggleSortOrder()
         }
     }
 
