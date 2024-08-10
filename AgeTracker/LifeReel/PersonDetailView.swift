@@ -123,6 +123,9 @@ struct PersonDetailView: View {
             .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
             .fullScreenCover(item: $selectedPhoto, content: fullScreenPhotoView)
             .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
+            .onAppear {
+                viewModel.setLastOpenedPerson(person)
+            }
         }
     }
     

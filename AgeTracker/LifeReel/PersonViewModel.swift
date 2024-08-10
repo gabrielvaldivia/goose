@@ -11,7 +11,8 @@ import Photos
 
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
-    
+    @Published var lastOpenedPersonId: UUID?
+
     init() {
         loadPeople()
         
@@ -371,6 +372,11 @@ class PersonViewModel: ObservableObject {
             people[personIndex] = person
         }
         savePeople()
+    }
+    
+    func setLastOpenedPerson(_ person: Person) {
+        lastOpenedPersonId = person.id
+        UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
     }
 }
 

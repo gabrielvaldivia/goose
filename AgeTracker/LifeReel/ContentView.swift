@@ -3,13 +3,14 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingAddPerson = false
+    @State private var navigationPath = NavigationPath()
     
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if !viewModel.people.isEmpty {
                     List(viewModel.people) { person in
-                        NavigationLink(destination: PersonDetailView(person: person, viewModel: viewModel)) {
+                        NavigationLink(value: person) {
                             Text(person.name)
                         }
                     }
@@ -18,14 +19,24 @@ struct ContentView: View {
                     WelcomeView(showingAddPerson: $showingAddPerson)
                 }
             }
-            .navigationTitle("Life Reels")
+            .navigationTitle("People")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationBarItems(trailing: Button(action: { showingAddPerson = true }) {
                 Image(systemName: "plus")
             })
+            .navigationDestination(for: Person.self) { person in
+                PersonDetailView(person: person, viewModel: viewModel)
+            }
         }
         .environmentObject(viewModel)
         .sheet(isPresented: $showingAddPerson) {
             AddPersonView(viewModel: viewModel)
+        }
+        .onAppear {
+            if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
+               let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
+                navigationPath.append(lastOpenedPerson)
+            }
         }
     }
 }
@@ -35,7 +46,7 @@ struct WelcomeView: View {
     
     var body: some View {
         VStack {
-            Text("Welcome to Life Reels")
+            Text("Welcome to LifeReel")
                 .font(.largeTitle)
                 .padding()
             

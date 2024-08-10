@@ -10,7 +10,7 @@ import UIKit
 import AVFoundation
 import Photos
 
-struct Person: Identifiable, Codable, Equatable {
+struct Person: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var name: String
     var dateOfBirth: Date
@@ -32,6 +32,10 @@ struct Person: Identifiable, Codable, Equatable {
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
                lhs.ageFormat == rhs.ageFormat
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

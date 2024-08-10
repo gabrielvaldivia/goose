@@ -18,7 +18,16 @@ struct LifeReelApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: personViewModel)
+            NavigationView {
+                ContentView(viewModel: personViewModel)
+            }
+            .onAppear {
+                if let lastOpenedPersonIdString = UserDefaults.standard.string(forKey: "lastOpenedPersonId"),
+                   let lastOpenedPersonId = UUID(uuidString: lastOpenedPersonIdString),
+                   let lastOpenedPerson = personViewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
+                    personViewModel.setLastOpenedPerson(lastOpenedPerson)
+                }
+            }
         }
     }
     
