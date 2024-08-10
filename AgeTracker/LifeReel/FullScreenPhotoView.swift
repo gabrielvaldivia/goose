@@ -377,66 +377,81 @@ struct ThumbnailScrubber: View {
     private let spacing: CGFloat = 4
     
     @State private var scrollOffset: CGFloat = 0
+    @State private var isDragging = false
     @State private var viewWidth: CGFloat = 0
+    @State private var initialDragOffset: CGFloat = 0
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                ScrollViewReader { scrollProxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: spacing) {
-                            ForEach(photos.indices, id: \.self) { index in
-                                ThumbnailView(photo: photos[index], isSelected: index == currentIndex)
-                                    .frame(width: thumbnailSize, height: thumbnailSize)
-                                    .onTapGesture {
-                                        onScrub(index)
-                                    }
-                                    .id(index)
-                            }
-                        }
-                        .padding(.horizontal, (geometry.size.width - thumbnailSize) / 2)
-                    }
-                    .onAppear {
-                        scrollProxy.scrollTo(currentIndex, anchor: .center)
-                        viewWidth = geometry.size.width
-                    }
-                    .onChange(of: currentIndex) { newIndex in
-                        withAnimation {
-                            scrollProxy.scrollTo(newIndex, anchor: .center)
+            ScrollViewReader { scrollProxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: spacing) {
+                        ForEach(photos.indices, id: \.self) { index in
+                            ThumbnailView(photo: photos[index], isSelected: index == currentIndex)
+                                .frame(width: thumbnailSize, height: thumbnailSize)
+                                .id(index)
                         }
                     }
-                    .simultaneousGesture(
-                        DragGesture()
-                            .onChanged { value in
-                                scrollOffset = value.translation.width
+                    .padding(.horizontal, geometry.size.width / 2 - thumbnailSize / 2)
+                }
+                .content.offset(x: scrollOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if !isDragging {
+                                isDragging = true
+                                initialDragOffset = calculateCurrentOffset(geometry: geometry)
                             }
-                            .onEnded { _ in
-                                updateCurrentIndex()
-                            }
-                    )
+                            let newOffset = initialDragOffset + value.translation.width
+                            scrollOffset = newOffset
+                            updateCurrentIndex(currentOffset: newOffset, geometry: geometry)
+                        }
+                        .onEnded { value in
+                            isDragging = false
+                            let velocity = value.predictedEndLocation.x - value.location.x
+                            let itemWidth = thumbnailSize + spacing
+                            let additionalScroll = velocity / 3 // Adjust this factor to control momentum
+                            let targetOffset = scrollOffset + additionalScroll
+                            let targetIndex = round(-targetOffset / itemWidth)
+                            let finalIndex = max(0, min(Int(targetIndex), photos.count - 1))
+                            
+                            currentIndex = finalIndex
+                            scrollToCurrentIndex(proxy: scrollProxy)
+                        }
+                )
+                .onAppear {
+                    viewWidth = geometry.size.width
+                    scrollToCurrentIndex(proxy: scrollProxy)
+                }
+                .onChange(of: currentIndex) { _ in
+                    if !isDragging {
+                        scrollToCurrentIndex(proxy: scrollProxy)
+                    }
                 }
             }
-            .mask(
-                HStack(spacing: 0) {
-                    LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 40)
-                    Rectangle().fill(Color.white)
-                    LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 40)
-                }
-            )
         }
+        .frame(height: thumbnailSize + 10)
     }
     
-    private func updateCurrentIndex() {
-        let centerX = viewWidth / 2
+    private func calculateCurrentOffset(geometry: GeometryProxy) -> CGFloat {
         let itemWidth = thumbnailSize + spacing
-        let estimatedIndex = Int((scrollOffset - centerX) / -itemWidth)
-        let newIndex = max(0, min(estimatedIndex, photos.count - 1))
+        return -CGFloat(currentIndex) * itemWidth
+    }
+    
+    private func updateCurrentIndex(currentOffset: CGFloat, geometry: GeometryProxy) {
+        let itemWidth = thumbnailSize + spacing
+        let estimatedIndex = round(-currentOffset / itemWidth)
+        let newIndex = max(0, min(Int(estimatedIndex), photos.count - 1))
         if newIndex != currentIndex {
             currentIndex = newIndex
             onScrub(newIndex)
         }
+    }
+    
+    private func scrollToCurrentIndex(proxy: ScrollViewProxy) {
+        let itemWidth = thumbnailSize + spacing
+        scrollOffset = -CGFloat(currentIndex) * itemWidth
+        proxy.scrollTo(currentIndex, anchor: .center)
     }
 }
 
