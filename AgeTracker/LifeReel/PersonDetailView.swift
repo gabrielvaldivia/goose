@@ -61,10 +61,23 @@ struct PersonDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        Text(person.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                    Button(action: {
+                        activeSheet = .settings
+                    }) {
+                        HStack(spacing: 8) {
+                            Text(person.name)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            
+                            
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 8, weight: .bold))
+                                .frame(width: 20, height: 20)
+                                .background(Color.gray.opacity(0.2))
+                                .clipShape(Circle())
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -204,7 +217,7 @@ struct PersonDetailView: View {
                 
                 Image(systemName: "arrow.up.arrow.down")
                     .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
             }
         }
     }
@@ -761,7 +774,7 @@ struct CustomBackButton: View {
         }) {
             Image(systemName: "chevron.left")
                 .foregroundColor(.blue)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
         }
     }
 }

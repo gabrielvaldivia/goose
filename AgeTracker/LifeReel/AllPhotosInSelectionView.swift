@@ -188,11 +188,11 @@ struct AllPhotosInSectionView: View {
             ZStack {
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
+                    .frame(width: 36, height: 36) 
+
                 Image(systemName: "square.and.arrow.up")
                     .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 14, weight: .bold)) // Reduced from 16 to 14
             }
         }
     }

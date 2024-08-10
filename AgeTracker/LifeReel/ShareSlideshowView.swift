@@ -19,6 +19,7 @@ struct ShareSlideshowView: View {
     @State private var isPlaying = false
     @State private var playbackSpeed: Double = 1.0
     @State private var isSharePresented = false
+    @State private var showComingSoonAlert = false // New state variable
     @State private var loadedImages: [String: UIImage] = [:]
     @State private var timer: Timer?
     @State private var scrubberPosition: Double = 0
@@ -107,7 +108,7 @@ struct ShareSlideshowView: View {
                 }
                 Spacer()
                 Button("Share") {
-                    isSharePresented = true
+                    showComingSoonAlert = true // Show alert instead of presenting share sheet
                 }
             }
             .padding(.horizontal)
@@ -200,10 +201,10 @@ struct ShareSlideshowView: View {
             scrubberPosition = 0
             loadImagesAround(index: currentFilteredPhotoIndex)
         }
-        .sheet(isPresented: $isSharePresented) {
-            if let image = filteredPhotos[currentFilteredPhotoIndex].image {
-                ActivityViewController(activityItems: [image])
-            }
+        .alert("Coming Soon", isPresented: $showComingSoonAlert) { // New alert
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Sharing functionality will be available in a future update.")
         }
     }
     

@@ -21,9 +21,19 @@ struct ContentView: View {
             }
             .navigationTitle("People")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button(action: { showingAddPerson = true }) {
-                Image(systemName: "plus")
-            })
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("People")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingAddPerson = true }) {
+                        Image(systemName: "plus")
+                            .fontWeight(.bold)
+                    }
+                }
+            }
             .navigationDestination(for: Person.self) { person in
                 PersonDetailView(person: person, viewModel: viewModel)
             }
@@ -47,7 +57,8 @@ struct WelcomeView: View {
     var body: some View {
         VStack {
             Text("Welcome to LifeReel")
-                .font(.largeTitle)
+                .font(.title3)
+                .fontWeight(.bold)
                 .padding()
             
             Text("Add someone to get started")
