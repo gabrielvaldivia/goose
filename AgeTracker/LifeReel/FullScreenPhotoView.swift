@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import AVKit
+import UIKit
 
 struct FullScreenPhotoView: View {
     // View Properties
@@ -27,6 +28,7 @@ struct FullScreenPhotoView: View {
     @State private var lastScale: CGFloat = 1.0
     @GestureState private var magnifyBy = CGFloat(1.0)
     @GestureState private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
     @State private var showDeleteConfirmation = false
     @State private var dismissProgress: CGFloat = 0.0
     @State private var showActionSheet = false
@@ -57,8 +59,33 @@ struct FullScreenPhotoView: View {
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .offset(calculateImageOffset(geometry: geometry))
                         .scaleEffect(scale * magnifyBy)
+                        .offset(x: isDragging ? dragOffset.width : 0)
                         .gesture(dragGesture(geometry: geometry))
                         .gesture(magnificationGesture())
+                        .gesture(
+                            DragGesture()
+                                .updating($dragOffset) { value, state, _ in
+                                    if scale <= 1.0 {
+                                        state = value.translation
+                                    }
+                                }
+                                .onChanged { _ in
+                                    if scale <= 1.0 {
+                                        isDragging = true
+                                    }
+                                }
+                                .onEnded { value in
+                                    if scale <= 1.0 {
+                                        let threshold: CGFloat = 50
+                                        if value.translation.width > threshold {
+                                            goToPreviousPhoto()
+                                        } else if value.translation.width < -threshold {
+                                            goToNextPhoto()
+                                        }
+                                        isDragging = false
+                                    }
+                                }
+                        )
                         .gesture(
                             LongPressGesture(minimumDuration: 0.5)
                                 .onEnded { _ in
@@ -74,11 +101,25 @@ struct FullScreenPhotoView: View {
                 }
                 
                 // Controls Overlay
-                ControlsOverlay(showControls: showControls, person: person, photo: photos[currentIndex], onClose: {
-                    presentationMode.wrappedValue.dismiss()
-                }, onShare: {
-                    activeSheet = .shareView
-                })
+                ControlsOverlay(
+                    showControls: showControls,
+                    person: person,
+                    photo: photos[currentIndex],
+                    onClose: {
+                        presentationMode.wrappedValue.dismiss()
+                    },
+                    onShare: {
+                        activeSheet = .shareView
+                    },
+                    onDelete: {
+                        showDeleteConfirmation = true
+                    },
+                    currentIndex: currentIndex,
+                    totalPhotos: photos.count,
+                    onScrub: { newIndex in
+                        currentIndex = newIndex
+                    }
+                )
                 .opacity(1 - dismissProgress)
             }
         }
@@ -211,6 +252,22 @@ struct FullScreenPhotoView: View {
                 lastScale = scale
             }
     }
+
+    private func goToPreviousPhoto() {
+        if currentIndex > 0 {
+            withAnimation(.spring()) {
+                currentIndex -= 1
+            }
+        }
+    }
+
+    private func goToNextPhoto() {
+        if currentIndex < photos.count - 1 {
+            withAnimation(.spring()) {
+                currentIndex += 1
+            }
+        }
+    }
 }
 
 struct ControlsOverlay: View {
@@ -219,6 +276,10 @@ struct ControlsOverlay: View {
     let photo: Photo
     let onClose: () -> Void
     let onShare: () -> Void
+    let onDelete: () -> Void
+    let currentIndex: Int
+    let totalPhotos: Int
+    let onScrub: (Int) -> Void
 
     var body: some View {
         ZStack {
@@ -246,7 +307,7 @@ struct ControlsOverlay: View {
                 }
 
                 VStack {
-                    // Top Bar with Control Buttons
+                    // Top Bar with Close Button
                     HStack {
                         CircularIconButton(icon: "xmark", action: onClose)
                         Spacer()
@@ -260,11 +321,30 @@ struct ControlsOverlay: View {
                         }
                         .padding(.top, 16)
                         Spacer()
-                        CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     }
                     .padding(.top, 44)
                     .padding(.horizontal, 8)
+                    
                     Spacer()
+                    
+                    // Bottom Bar with Share, Scrubber, and Delete Buttons
+                    VStack(spacing: 16) {
+                        // Thumbnail Scrubber
+                        ThumbnailScrubber(
+                            photos: person.photos,
+                            currentIndex: currentIndex,
+                            onScrub: onScrub
+                        )
+                        .frame(height: 60)
+                        
+                        HStack {
+                            CircularIconButton(icon: "square.and.arrow.up", action: onShare)
+                            Spacer()
+                            CircularIconButton(icon: "trash", action: onDelete)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
                 }
             }
         }
@@ -282,6 +362,94 @@ struct ControlsOverlay: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+}
+
+struct ThumbnailScrubber: View {
+    let photos: [Photo]
+    let currentIndex: Int
+    let onScrub: (Int) -> Void
+    
+    private let thumbnailSize: CGFloat = 50
+    private let spacing: CGFloat = 4
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: spacing) {
+                            ForEach(photos.indices, id: \.self) { index in
+                                ThumbnailView(photo: photos[index], isSelected: index == currentIndex)
+                                    .frame(width: thumbnailSize, height: thumbnailSize)
+                                    .onTapGesture {
+                                        onScrub(index)
+                                    }
+                                    .id(index)
+                            }
+                        }
+                        .padding(.horizontal, (geometry.size.width - thumbnailSize) / 2)
+                    }
+                    .onAppear {
+                        scrollProxy.scrollTo(currentIndex, anchor: .center)
+                    }
+                    .onChange(of: currentIndex) { newIndex in
+                        withAnimation {
+                            scrollProxy.scrollTo(newIndex, anchor: .center)
+                        }
+                    }
+                }
+                
+                // Left gradient mask
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 40)
+                .frame(maxHeight: .infinity)
+                .blendMode(.destinationOut)
+                .allowsHitTesting(false)
+                .position(x: 20, y: geometry.size.height / 2)
+                
+                // Right gradient mask
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0), Color.black]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 40)
+                .frame(maxHeight: .infinity)
+                .blendMode(.destinationOut)
+                .allowsHitTesting(false)
+                .position(x: geometry.size.width - 20, y: geometry.size.height / 2)
+            }
+        }
+    }
+}
+
+struct ThumbnailView: View {
+    let photo: Photo
+    let isSelected: Bool
+    
+    var body: some View {
+        ZStack {
+            if let image = photo.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                Color.gray
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white, lineWidth: isSelected ? 2 : 0)
+        )
     }
 }
 

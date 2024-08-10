@@ -19,11 +19,67 @@ struct ShareSlideshowView: View {
     @State private var isPlaying = false
     @State private var playbackSpeed: Double = 1.0
     @State private var isSharePresented = false
-    @State private var loadedImages: [Int: UIImage] = [:]
+    @State private var loadedImages: [String: UIImage] = [:]
     @State private var timer: Timer?
     @State private var scrubberPosition: Double = 0
     @Environment(\.presentationMode) var presentationMode
-
+    
+    enum SlideshowRange: String, Identifiable {
+        case allPhotos = "All Photos"
+        case pregnancy = "Pregnancy"
+        case newborn = "Newborn"
+        case month1 = "1 Month"
+        case month2 = "2 Months"
+        case month3 = "3 Months"
+        case month4 = "4 Months"
+        case month5 = "5 Months"
+        case month6 = "6 Months"
+        case month7 = "7 Months"
+        case month8 = "8 Months"
+        case month9 = "9 Months"
+        case month10 = "10 Months"
+        case month11 = "11 Months"
+        case year1 = "1 Year"
+        case year2 = "2 Years"
+        case year3 = "3 Years"
+        case year4 = "4 Years"
+        case year5 = "5 Years"
+        
+        var id: String { self.rawValue }
+    }
+    
+    @State private var selectedRange: SlideshowRange = .allPhotos
+    @State private var currentFilteredPhotoIndex = 0
+    
+    private var availableRanges: [SlideshowRange] {
+        let groupedPhotos = groupAndSortPhotos()
+        var ranges: [SlideshowRange] = []
+        
+        if photos.count >= 2 { ranges.append(.allPhotos) }
+        
+        if let pregnancyPhotos = groupedPhotos.first(where: { $0.0 == "Pregnancy" })?.1, pregnancyPhotos.count >= 2 {
+            ranges.append(.pregnancy)
+        }
+        
+        if let newbornPhotos = groupedPhotos.first(where: { $0.0 == "Newborn" })?.1, newbornPhotos.count >= 2 {
+            ranges.append(.newborn)
+        }
+        
+        for i in 1...11 {
+            if let monthPhotos = groupedPhotos.first(where: { $0.0 == "\(i) Month\(i == 1 ? "" : "s")" })?.1, monthPhotos.count >= 2 {
+                ranges.append(SlideshowRange(rawValue: "\(i) Month\(i == 1 ? "" : "s")")!)
+            }
+        }
+        
+        for i in 1...5 {
+            if let yearPhotos = groupedPhotos.first(where: { $0.0 == "\(i) Year\(i == 1 ? "" : "s")" })?.1, yearPhotos.count >= 2 {
+                ranges.append(SlideshowRange(rawValue: "\(i) Year\(i == 1 ? "" : "s")")!)
+            }
+        }
+        
+        return ranges
+    }
+    
     // Body
     var body: some View {   
         VStack(alignment: .center, spacing: 10) {
@@ -33,8 +89,21 @@ struct ShareSlideshowView: View {
                     presentationMode.wrappedValue.dismiss()
                 }
                 Spacer()
-                Text("Share Slideshow")
-                    .font(.headline)
+                if !availableRanges.isEmpty {
+                    VStack {
+                        Picker("Range", selection: $selectedRange) {
+                            ForEach(availableRanges) { range in
+                                Text(range.rawValue).tag(range)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .onChange(of: selectedRange) { _ in
+                            currentFilteredPhotoIndex = 0
+                            scrubberPosition = 0
+                            loadImagesAround(index: currentFilteredPhotoIndex)
+                        }
+                    }
+                }
                 Spacer()
                 Button("Share") {
                     isSharePresented = true
@@ -44,59 +113,68 @@ struct ShareSlideshowView: View {
             .padding(.top, 10)
 
             // Photo TabView
-            TabView(selection: $currentPhotoIndex) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                    ZStack(alignment: .bottomLeading) {
-                        LazyImage(photo: photo, loadedImage: loadedImages[index])
-                        
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                        .frame(height: 100)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(calculateGeneralAge(for: person, at: photos[index].dateTaken))
-                                .font(.title2)
-                                .fontWeight(.bold)
+            if filteredPhotos.isEmpty {
+                Text("No photos available for this range")
+                    .foregroundColor(.secondary)
+                    .padding()
+            } else {
+                TabView(selection: $currentFilteredPhotoIndex) {
+                    ForEach(Array(filteredPhotos.enumerated()), id: \.element.id) { index, photo in
+                        ZStack(alignment: .bottomLeading) {
+                            LazyImage(photo: photo, loadedImage: loadedImages[photo.id.uuidString])
                             
-                            Text(formatDate(photos[index].dateTaken))
-                                .font(.subheadline)
-                                .opacity(0.7) 
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                            .frame(height: 100)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(calculateGeneralAge(for: person, at: photo.dateTaken))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                
+                                Text(formatDate(photo.dateTaken))
+                                    .font(.subheadline)
+                                    .opacity(0.7) 
+                            }
+                            .padding()
+                            .foregroundColor(.white)
                         }
-                        .padding()
-                        .foregroundColor(.white)
+                        .tag(index)
                     }
-                    .tag(index)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .animation(.none)
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+
+                // Scrubber
+                if filteredPhotos.count > 1 {
+                    Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
+                        .padding(.horizontal)
+                        .onChange(of: scrubberPosition) { newValue in
+                            if !isPlaying {
+                                currentFilteredPhotoIndex = Int(newValue.rounded())
+                                loadImagesAround(index: currentFilteredPhotoIndex)
+                            }
+                        }
+                }
+
+                // Playback Controls
+                if filteredPhotos.count > 1 {
+                    PlaybackControls(isPlaying: $isPlaying, playbackSpeed: $playbackSpeed)
                 }
             }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-            .animation(.none)
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
-
-            // Scrubber
-            Slider(value: $scrubberPosition, in: 0...Double(photos.count - 1), step: 0.01)
-                .padding(.horizontal)
-                .onChange(of: scrubberPosition) { newValue in
-                    if !isPlaying {
-                        currentPhotoIndex = Int(newValue.rounded())
-                        loadImagesAround(index: currentPhotoIndex)
-                    }
-                }
-
-            // Playback Controls
-            PlaybackControls(isPlaying: $isPlaying, playbackSpeed: $playbackSpeed)
 
             Spacer()
         }
-        // View Modifiers
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(UIColor.secondarySystemBackground))
         .onAppear {
-            loadImagesAround(index: currentPhotoIndex)
+            loadImagesAround(index: currentFilteredPhotoIndex)
         }
         .onChange(of: isPlaying) { newValue in
             if newValue {
@@ -111,13 +189,18 @@ struct ShareSlideshowView: View {
                 startTimer()
             }
         }
-        .onChange(of: currentPhotoIndex) { newValue in
+        .onChange(of: currentFilteredPhotoIndex) { newValue in
             if !isPlaying {
                 scrubberPosition = Double(newValue)
             }
         }
+        .onChange(of: selectedRange) { _ in
+            currentFilteredPhotoIndex = 0
+            scrubberPosition = 0
+            loadImagesAround(index: currentFilteredPhotoIndex)
+        }
         .sheet(isPresented: $isSharePresented) {
-            if let image = photos[currentPhotoIndex].image {
+            if let image = filteredPhotos[currentFilteredPhotoIndex].image {
                 ActivityViewController(activityItems: [image])
             }
         }
@@ -125,10 +208,11 @@ struct ShareSlideshowView: View {
     
     // Helper Methods
     private func loadImagesAround(index: Int) {
-        let range = max(0, index - 5)...min(photos.count - 1, index + 5)
+        let range = max(0, index - 5)...min(filteredPhotos.count - 1, index + 5)
         for i in range {
-            if loadedImages[i] == nil {
-                loadedImages[i] = photos[i].image
+            let photo = filteredPhotos[i]
+            if loadedImages[photo.id.uuidString] == nil {
+                loadedImages[photo.id.uuidString] = photo.image
             }
         }
     }
@@ -165,17 +249,18 @@ struct ShareSlideshowView: View {
     
     // Timer Methods
     private func startTimer() {
+        guard filteredPhotos.count > 1 else { return }
         let interval = 0.016 // Update at 60fps for smoother animation
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             withAnimation(.linear(duration: interval)) {
                 scrubberPosition += interval * playbackSpeed
-                if scrubberPosition >= Double(photos.count) {
+                if scrubberPosition >= Double(filteredPhotos.count) {
                     scrubberPosition = 0
                 }
                 let newPhotoIndex = Int(scrubberPosition.rounded())
-                if newPhotoIndex != currentPhotoIndex {
-                    currentPhotoIndex = newPhotoIndex
-                    loadImagesAround(index: currentPhotoIndex)
+                if newPhotoIndex != currentFilteredPhotoIndex {
+                    currentFilteredPhotoIndex = newPhotoIndex
+                    loadImagesAround(index: currentFilteredPhotoIndex)
                 }
             }
         }
@@ -184,7 +269,53 @@ struct ShareSlideshowView: View {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
-        scrubberPosition = Double(currentPhotoIndex)
+        scrubberPosition = Double(currentFilteredPhotoIndex)
+    }
+    
+    private var filteredPhotos: [Photo] {
+        let groupedPhotos = groupAndSortPhotos()
+        switch selectedRange {
+        case .allPhotos:
+            return photos
+        case .pregnancy:
+            return groupedPhotos.first { $0.0 == "Pregnancy" }?.1 ?? []
+        case .newborn:
+            return groupedPhotos.first { $0.0 == "Newborn" }?.1 ?? []
+        case .month1, .month2, .month3, .month4, .month5, .month6, .month7, .month8, .month9, .month10, .month11:
+            let monthNumber = Int(selectedRange.rawValue.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 0
+            return groupedPhotos.first { $0.0 == "\(monthNumber) Month\(monthNumber == 1 ? "" : "s")" }?.1 ?? []
+        case .year1, .year2, .year3, .year4, .year5:
+            let yearNumber = Int(selectedRange.rawValue.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 0
+            return groupedPhotos.first { $0.0 == "\(yearNumber) Year\(yearNumber == 1 ? "" : "s")" }?.1 ?? []
+        }
+    }
+    
+    private func groupAndSortPhotos() -> [(String, [Photo])] {
+        let calendar = Calendar.current
+        var groupedPhotos: [String: [Photo]] = [:]
+
+        for photo in photos {
+            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
+
+            let sectionTitle: String
+            if photo.dateTaken >= person.dateOfBirth {
+                if years == 0 && months == 0 {
+                    sectionTitle = "Newborn"
+                } else if years == 0 {
+                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
+                } else {
+                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                }
+            } else {
+                sectionTitle = "Pregnancy"
+            }
+
+            groupedPhotos[sectionTitle, default: []].append(photo)
+        }
+
+        return groupedPhotos.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
     }
 }
 

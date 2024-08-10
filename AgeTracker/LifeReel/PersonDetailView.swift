@@ -43,6 +43,7 @@ struct PersonDetailView: View {
     @State private var stacksSortOrder: SortOrder = .latestToOldest
     @State private var timelineSortOrder: SortOrder = .latestToOldest
     @State private var showingSharingComingSoon = false
+    @State private var currentScrollPosition: String?
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -64,13 +65,10 @@ struct PersonDetailView: View {
                         Text(person.name)
                             .font(.headline)
                             .foregroundColor(.primary)
-                        Text("All photos")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    shareButton
+                    sortButton
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -131,16 +129,28 @@ struct PersonDetailView: View {
     // Break down the main content into a separate function
     @ViewBuilder
     private func mainContent(_ geometry: GeometryProxy) -> some View {
-        switch selectedView {
-        case 0:
-            StacksView
-                .transition(.opacity)
-        case 1:
-            GridView
-                .transition(.opacity)
-        default:
-            TimelineView
-                .transition(.opacity)
+        ScrollViewReader { scrollProxy in
+            switch selectedView {
+            case 0:
+                StacksView
+                    .transition(.opacity)
+            case 1:
+                GridView
+                    .transition(.opacity)
+                    .onChange(of: selectedView) { oldValue, newValue in
+                        if newValue == 1 {
+                            scrollToStoredPosition(proxy: scrollProxy)
+                        }
+                    }
+            default:
+                TimelineView
+                    .transition(.opacity)
+                    .onChange(of: selectedView) { oldValue, newValue in
+                        if newValue == 2 {
+                            scrollToStoredPosition(proxy: scrollProxy)
+                        }
+                    }
+            }
         }
     }
 
@@ -149,8 +159,20 @@ struct PersonDetailView: View {
         VStack {
             Spacer()
             HStack {
-                CircularButton(systemName: "arrow.up.arrow.down") {
-                    toggleSortOrder()
+                CircularButton(systemName: "square.and.arrow.up") {
+                    if !person.photos.isEmpty {
+                        let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+                        let slideshow = ShareSlideshowView(photos: sortedPhotos, person: person)
+                        let hostingController = UIHostingController(rootView: slideshow)
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let window = windowScene.windows.first,
+                           let rootViewController = window.rootViewController {
+                            rootViewController.present(hostingController, animated: true, completion: nil)
+                        }
+                    } else {
+                        // Show an alert or message when there are no photos
+                        print("No photos available to share")
+                    }
                 }
 
                 Spacer()
@@ -167,6 +189,23 @@ struct PersonDetailView: View {
         }
     }
 
+    // New sort button
+    private var sortButton: some View {
+        Button(action: {
+            toggleSortOrder()
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 36, height: 36)
+                
+                Image(systemName: "arrow.up.arrow.down")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 16, weight: .bold))
+            }
+        }
+    }
+
     // New Timeline view
     private var TimelineView: some View {
         ScrollView {
@@ -177,10 +216,15 @@ struct PersonDetailView: View {
                             TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
                         }
                     }
+                    .id(section)
                 }
             }
             .padding(.top, 20)
             .padding(.bottom, 80) // Increased bottom padding
+        }
+        .coordinateSpace(name: "scroll")
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            updateScrollPosition(value)
         }
     }
 
@@ -198,7 +242,6 @@ struct PersonDetailView: View {
             Spacer()
         }
         .padding(.top, 8)
-        .background(Color(UIColor.systemBackground))
     }
 
     private struct TimelineItemView: View {
@@ -250,10 +293,15 @@ struct PersonDetailView: View {
                     Section(header: stickyHeader(for: section)) {
                         PhotoGridView(photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
                     }
+                    .id(section)
                 }
             }
             .padding(.top, 20)
             .padding(.bottom, 80) // Increased bottom padding
+        }
+        .coordinateSpace(name: "scroll")
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            updateScrollPosition(value)
         }
     }
 
@@ -354,35 +402,6 @@ struct PersonDetailView: View {
         return formatter.string(from: date)
     }
     
-    // New share button
-    private var shareButton: some View {
-        Button(action: {
-            if !person.photos.isEmpty {
-                let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                let slideshow = ShareSlideshowView(photos: sortedPhotos, person: person)
-                let hostingController = UIHostingController(rootView: slideshow)
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let rootViewController = window.rootViewController {
-                    rootViewController.present(hostingController, animated: true, completion: nil)
-                }
-            } else {
-                // Show an alert or message when there are no photos
-                print("No photos available to share")
-            }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
-                
-                Image(systemName: "square.and.arrow.up")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 16, weight: .bold))
-            }
-        }
-    }
-
     private func updatePhotoDate(_ photo: Photo, newDate: Date) {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
             person.photos[index].dateTaken = newDate
@@ -533,6 +552,26 @@ struct PersonDetailView: View {
                 return photo1.dateTaken > photo2.dateTaken
             case .oldestToLatest:
                 return photo1.dateTaken < photo2.dateTaken
+            }
+        }
+    }
+
+    // New function to update scroll position
+    private func updateScrollPosition(_ value: CGPoint) {
+        let sections = sortedGroupedPhotosForAll().map { $0.0 }
+        if let index = sections.firstIndex(where: { section in
+            let sectionY = value.y + UIScreen.main.bounds.height / 2
+            return sectionY >= 0 && sectionY <= UIScreen.main.bounds.height
+        }) {
+            currentScrollPosition = sections[index]
+        }
+    }
+
+    // New function to scroll to stored position
+    private func scrollToStoredPosition(proxy: ScrollViewProxy) {
+        if let position = currentScrollPosition {
+            withAnimation {
+                proxy.scrollTo(position, anchor: .top)
             }
         }
     }
@@ -728,4 +767,36 @@ struct CustomBackButton: View {
 enum SortOrder {
     case oldestToLatest
     case latestToOldest
+}
+
+// New preference key for scroll offset
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {}
+}
+
+// New view modifier to track scroll position
+struct ScrollOffsetModifier: ViewModifier {
+    let coordinateSpace: String
+    @Binding var offset: CGPoint
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(key: ScrollOffsetPreferenceKey.self, value: geo.frame(in: .named(coordinateSpace)).origin)
+                }
+            )
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                offset = value
+            }
+    }
+}
+
+// Extension to make the modifier easier to use
+extension View {
+    func trackScrollOffset(coordinateSpace: String, offset: Binding<CGPoint>) -> some View {
+        modifier(ScrollOffsetModifier(coordinateSpace: coordinateSpace, offset: offset))
+    }
 }
