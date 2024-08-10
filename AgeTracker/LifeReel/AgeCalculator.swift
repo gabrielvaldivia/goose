@@ -30,13 +30,13 @@ struct AgeCalculator {
             
             var ageComponents: [String] = []
             
-            // Special case: If age is less than 1 year, show months regardless of format
+            // Special case: If age is less than 1 year, show months and days
             if years == 0 {
                 if months > 0 {
                     ageComponents.append("\(months) month\(months == 1 ? "" : "s")")
                 }
-                if ageComponents.isEmpty {
-                    ageComponents.append("Less than 1 month")
+                if days > 0 || ageComponents.isEmpty {
+                    ageComponents.append("\(days) day\(days == 1 ? "" : "s")")
                 }
             } else {
                 switch person.ageFormat {

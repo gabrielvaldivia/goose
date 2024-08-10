@@ -114,7 +114,7 @@ struct FullScreenPhotoView: View {
                     onDelete: {
                         showDeleteConfirmation = true
                     },
-                    currentIndex: currentIndex,
+                    currentIndex: $currentIndex,
                     totalPhotos: photos.count,
                     onScrub: { newIndex in
                         currentIndex = newIndex
@@ -277,7 +277,7 @@ struct ControlsOverlay: View {
     let onClose: () -> Void
     let onShare: () -> Void
     let onDelete: () -> Void
-    let currentIndex: Int
+    @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
 
@@ -312,12 +312,11 @@ struct ControlsOverlay: View {
                         CircularIconButton(icon: "xmark", action: onClose)
                         Spacer()
                         VStack(spacing: 4) {
-                            Text(person.name)
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            Text(calculateAge(for: person, at: photo.dateTaken))
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.5))
+                            // Text(person.name)
+                            //     .font(.title3)
+                            //     .fontWeight(.bold)
+                            //     .foregroundColor(.white)
+
                         }
                         .padding(.top, 16)
                         Spacer()
@@ -327,18 +326,22 @@ struct ControlsOverlay: View {
                     
                     Spacer()
                     
-                    // Bottom Bar with Share, Scrubber, and Delete Buttons
+                    // Bottom Bar with Share, Age, and Delete Buttons
                     VStack(spacing: 16) {
                         // Thumbnail Scrubber
                         ThumbnailScrubber(
                             photos: person.photos,
-                            currentIndex: currentIndex,
+                            currentIndex: $currentIndex,
                             onScrub: onScrub
                         )
                         .frame(height: 60)
                         
                         HStack {
                             CircularIconButton(icon: "square.and.arrow.up", action: onShare)
+                            Spacer()
+                            Text(calculateAge(for: person, at: photo.dateTaken))
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
                             Spacer()
                             CircularIconButton(icon: "trash", action: onDelete)
                         }
@@ -367,11 +370,14 @@ struct ControlsOverlay: View {
 
 struct ThumbnailScrubber: View {
     let photos: [Photo]
-    let currentIndex: Int
+    @Binding var currentIndex: Int
     let onScrub: (Int) -> Void
     
     private let thumbnailSize: CGFloat = 50
     private let spacing: CGFloat = 4
+    
+    @State private var scrollOffset: CGFloat = 0
+    @State private var viewWidth: CGFloat = 0
     
     var body: some View {
         GeometryReader { geometry in
@@ -392,38 +398,44 @@ struct ThumbnailScrubber: View {
                     }
                     .onAppear {
                         scrollProxy.scrollTo(currentIndex, anchor: .center)
+                        viewWidth = geometry.size.width
                     }
                     .onChange(of: currentIndex) { newIndex in
                         withAnimation {
                             scrollProxy.scrollTo(newIndex, anchor: .center)
                         }
                     }
+                    .simultaneousGesture(
+                        DragGesture()
+                            .onChanged { value in
+                                scrollOffset = value.translation.width
+                            }
+                            .onEnded { _ in
+                                updateCurrentIndex()
+                            }
+                    )
                 }
-                
-                // Left gradient mask
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.black, Color.black.opacity(0)]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 40)
-                .frame(maxHeight: .infinity)
-                .blendMode(.destinationOut)
-                .allowsHitTesting(false)
-                .position(x: 20, y: geometry.size.height / 2)
-                
-                // Right gradient mask
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.black.opacity(0), Color.black]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 40)
-                .frame(maxHeight: .infinity)
-                .blendMode(.destinationOut)
-                .allowsHitTesting(false)
-                .position(x: geometry.size.width - 20, y: geometry.size.height / 2)
             }
+            .mask(
+                HStack(spacing: 0) {
+                    LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 40)
+                    Rectangle().fill(Color.white)
+                    LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 40)
+                }
+            )
+        }
+    }
+    
+    private func updateCurrentIndex() {
+        let centerX = viewWidth / 2
+        let itemWidth = thumbnailSize + spacing
+        let estimatedIndex = Int((scrollOffset - centerX) / -itemWidth)
+        let newIndex = max(0, min(estimatedIndex, photos.count - 1))
+        if newIndex != currentIndex {
+            currentIndex = newIndex
+            onScrub(newIndex)
         }
     }
 }
