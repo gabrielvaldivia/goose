@@ -24,28 +24,28 @@ struct ShareSlideshowView: View {
     @State private var scrubberPosition: Double = 0
     @Environment(\.presentationMode) var presentationMode
     
-    enum SlideshowRange: String, Identifiable {
-        case allPhotos = "All Photos"
-        case pregnancy = "Pregnancy"
-        case newborn = "Newborn"
-        case month1 = "1 Month"
-        case month2 = "2 Months"
-        case month3 = "3 Months"
-        case month4 = "4 Months"
-        case month5 = "5 Months"
-        case month6 = "6 Months"
-        case month7 = "7 Months"
-        case month8 = "8 Months"
-        case month9 = "9 Months"
-        case month10 = "10 Months"
-        case month11 = "11 Months"
-        case year1 = "1 Year"
-        case year2 = "2 Years"
-        case year3 = "3 Years"
-        case year4 = "4 Years"
-        case year5 = "5 Years"
+    enum SlideshowRange: Identifiable, Equatable, Hashable {
+        case allPhotos
+        case pregnancy
+        case birthMonth
+        case month(Int)
+        case year(Int)
+
+        var id: String {
+            switch self {
+            case .allPhotos: return "All Photos"
+            case .pregnancy: return "Pregnancy"
+            case .birthMonth: return "Birth Month"
+            case .month(let value): return "\(value) Month\(value == 1 ? "" : "s")"
+            case .year(let value): return "\(value) Year\(value == 1 ? "" : "s")"
+            }
+        }
+
+        var displayName: String { id }
         
-        var id: String { self.rawValue }
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
     }
     
     @State private var selectedRange: SlideshowRange = .allPhotos
@@ -57,23 +57,24 @@ struct ShareSlideshowView: View {
         
         if photos.count >= 2 { ranges.append(.allPhotos) }
         
-        if let pregnancyPhotos = groupedPhotos.first(where: { $0.0 == "Pregnancy" })?.1, pregnancyPhotos.count >= 2 {
-            ranges.append(.pregnancy)
-        }
-        
-        if let newbornPhotos = groupedPhotos.first(where: { $0.0 == "Newborn" })?.1, newbornPhotos.count >= 2 {
-            ranges.append(.newborn)
-        }
-        
-        for i in 1...11 {
-            if let monthPhotos = groupedPhotos.first(where: { $0.0 == "\(i) Month\(i == 1 ? "" : "s")" })?.1, monthPhotos.count >= 2 {
-                ranges.append(SlideshowRange(rawValue: "\(i) Month\(i == 1 ? "" : "s")")!)
-            }
-        }
-        
-        for i in 1...5 {
-            if let yearPhotos = groupedPhotos.first(where: { $0.0 == "\(i) Year\(i == 1 ? "" : "s")" })?.1, yearPhotos.count >= 2 {
-                ranges.append(SlideshowRange(rawValue: "\(i) Year\(i == 1 ? "" : "s")")!)
+        for (key, photos) in groupedPhotos {
+            if photos.count >= 2 {
+                switch key {
+                case "Pregnancy":
+                    ranges.append(.pregnancy)
+                case "Birth Month":
+                    ranges.append(.birthMonth)
+                case let str where str.hasSuffix("Month") || str.hasSuffix("Months"):
+                    if let month = Int(str.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
+                        ranges.append(.month(month))
+                    }
+                case let str where str.hasSuffix("Year") || str.hasSuffix("Years"):
+                    if let year = Int(str.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
+                        ranges.append(.year(year))
+                    }
+                default:
+                    break
+                }
             }
         }
         
@@ -93,7 +94,7 @@ struct ShareSlideshowView: View {
                     VStack {
                         Picker("Range", selection: $selectedRange) {
                             ForEach(availableRanges) { range in
-                                Text(range.rawValue).tag(range)
+                                Text(range.displayName).tag(range)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
@@ -228,7 +229,7 @@ struct ShareSlideshowView: View {
         if let year = components.year, let month = components.month {
             if year == 0 {
                 if month == 0 {
-                    return "Newborn"
+                    return "Birth Month"
                 } else {
                     return "\(month) month\(month == 1 ? "" : "s")"
                 }
@@ -279,14 +280,12 @@ struct ShareSlideshowView: View {
             return photos
         case .pregnancy:
             return groupedPhotos.first { $0.0 == "Pregnancy" }?.1 ?? []
-        case .newborn:
-            return groupedPhotos.first { $0.0 == "Newborn" }?.1 ?? []
-        case .month1, .month2, .month3, .month4, .month5, .month6, .month7, .month8, .month9, .month10, .month11:
-            let monthNumber = Int(selectedRange.rawValue.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 0
-            return groupedPhotos.first { $0.0 == "\(monthNumber) Month\(monthNumber == 1 ? "" : "s")" }?.1 ?? []
-        case .year1, .year2, .year3, .year4, .year5:
-            let yearNumber = Int(selectedRange.rawValue.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) ?? 0
-            return groupedPhotos.first { $0.0 == "\(yearNumber) Year\(yearNumber == 1 ? "" : "s")" }?.1 ?? []
+        case .birthMonth:
+            return groupedPhotos.first { $0.0 == "Birth Month" }?.1 ?? []
+        case .month(let value):
+            return groupedPhotos.first { $0.0 == "\(value) Month\(value == 1 ? "" : "s")" }?.1 ?? []
+        case .year(let value):
+            return groupedPhotos.first { $0.0 == "\(value) Year\(value == 1 ? "" : "s")" }?.1 ?? []
         }
     }
     
@@ -302,7 +301,7 @@ struct ShareSlideshowView: View {
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
                 if years == 0 && months == 0 {
-                    sectionTitle = "Newborn"
+                    sectionTitle = "Birth Month"
                 } else if years == 0 {
                     sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
                 } else {

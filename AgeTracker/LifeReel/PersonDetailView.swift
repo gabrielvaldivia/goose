@@ -335,7 +335,7 @@ struct PersonDetailView: View {
             let sectionTitle: String
             if photo.dateTaken >= person.dateOfBirth {
                 if years == 0 && months == 0 {
-                    sectionTitle = "Newborn"
+                    sectionTitle = "Birth Month"
                 } else if years == 0 {
                     sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
                 } else {
@@ -448,7 +448,7 @@ struct PersonDetailView: View {
 
     private func orderFromSectionTitle(_ title: String) -> Int {
         if title == "Pregnancy" { return -1 }
-        if title == "Newborn" { return 0 }
+        if title == "Birth Month" { return 0 }
         if title.contains("Month") {
             let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
             return months
