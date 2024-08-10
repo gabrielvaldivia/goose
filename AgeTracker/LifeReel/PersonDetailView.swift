@@ -104,24 +104,11 @@ struct PersonDetailView: View {
                         }
                     })
                 case .shareView:
-                    NavigationView {
-                        if !person.photos.isEmpty {
-                            let sortedPhotos = person.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-                            if let firstPhoto = sortedPhotos.first {
-                                SharePhotoView(
-                                    image: firstPhoto.image ?? UIImage(),
-                                    name: person.name,
-                                    age: AgeCalculator.calculateAgeString(for: person, at: firstPhoto.dateTaken),
-                                    isShareSheetPresented: $isShareSheetPresented,
-                                    activityItems: $activityItems
-                                )
-                            } else {
-                                Text("No photos available to share")
-                            }
-                        } else {
-                            Text("No photos available to share")
-                        }
-                    }
+                    ShareSlideshowView(
+                        photos: person.photos,
+                        person: person,
+                        sectionTitle: "All Photos"
+                    )
                 case .sharingComingSoon:
                     SharingComingSoonView()
                 }
