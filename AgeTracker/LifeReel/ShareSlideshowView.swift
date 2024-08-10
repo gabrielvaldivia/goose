@@ -97,7 +97,7 @@ struct ShareSlideshowView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
-                        .onChange(of: selectedRange) { _ in
+                        .onChange(of: selectedRange) { oldValue, newValue in
                             currentFilteredPhotoIndex = 0
                             scrubberPosition = 0
                             loadImagesAround(index: currentFilteredPhotoIndex)
@@ -147,7 +147,7 @@ struct ShareSlideshowView: View {
                     }
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .animation(.none)
+                .animation(.none, value: currentFilteredPhotoIndex)
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
 
@@ -155,7 +155,7 @@ struct ShareSlideshowView: View {
                 if filteredPhotos.count > 1 {
                     Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
                         .padding(.horizontal)
-                        .onChange(of: scrubberPosition) { newValue in
+                        .onChange(of: scrubberPosition) { oldValue, newValue in
                             if !isPlaying {
                                 currentFilteredPhotoIndex = Int(newValue.rounded())
                                 loadImagesAround(index: currentFilteredPhotoIndex)
@@ -176,25 +176,25 @@ struct ShareSlideshowView: View {
         .onAppear {
             loadImagesAround(index: currentFilteredPhotoIndex)
         }
-        .onChange(of: isPlaying) { newValue in
+        .onChange(of: isPlaying) { oldValue, newValue in // Updated onChange modifier
             if newValue {
                 startTimer()
             } else {
                 stopTimer()
             }
         }
-        .onChange(of: playbackSpeed) { _ in
+        .onChange(of: playbackSpeed) { oldValue, newValue in // Updated onChange modifier
             if isPlaying {
                 stopTimer()
                 startTimer()
             }
         }
-        .onChange(of: currentFilteredPhotoIndex) { newValue in
+        .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in // Updated onChange modifier
             if !isPlaying {
                 scrubberPosition = Double(newValue)
             }
         }
-        .onChange(of: selectedRange) { _ in
+        .onChange(of: selectedRange) { oldValue, newValue in
             currentFilteredPhotoIndex = 0
             scrubberPosition = 0
             loadImagesAround(index: currentFilteredPhotoIndex)
