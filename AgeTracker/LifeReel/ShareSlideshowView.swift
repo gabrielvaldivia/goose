@@ -28,6 +28,9 @@ struct ShareSlideshowView: View {
     
     @State private var selectedRange: SlideshowRange
     @State private var currentFilteredPhotoIndex = 0
+    @State private var aspectRatio: AspectRatio = .square
+    @State private var isMusicSelectionPresented = false
+    @State private var showAppIcon: Bool = true
     
     init(photos: [Photo], person: Person, sectionTitle: String) {
         self.photos = photos
@@ -180,29 +183,14 @@ struct ShareSlideshowView: View {
             } else {
                 TabView(selection: $currentFilteredPhotoIndex) {
                     ForEach(Array(filteredPhotos.enumerated()), id: \.element.id) { index, photo in
-                        ZStack(alignment: .bottomLeading) {
-                            LazyImage(photo: photo, loadedImage: loadedImages[photo.id.uuidString])
-                            
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
-                                startPoint: .bottom,
-                                endPoint: .top
-                            )
-                            .frame(height: 100)
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(calculateGeneralAge(for: person, at: photo.dateTaken))
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                
-                                Text(formatDate(photo.dateTaken))
-                                    .font(.subheadline)
-                                    .opacity(0.7) 
-                            }
-                            .padding()
-                            .foregroundColor(.white)
-                        }
+                        LazyImage(
+                            photo: photo,
+                            loadedImage: loadedImages[photo.id.uuidString],
+                            aspectRatio: aspectRatio.value,
+                            showAppIcon: showAppIcon,
+                            generalAge: calculateGeneralAge(for: person, at: photo.dateTaken),
+                            formattedDate: formatDate(photo.dateTaken)
+                        )
                         .tag(index)
                     }
                 }
@@ -211,25 +199,74 @@ struct ShareSlideshowView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
 
-                // Scrubber
-                if filteredPhotos.count > 1 {
-                    Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
-                        .padding(.horizontal)
-                        .onChange(of: scrubberPosition) { oldValue, newValue in
-                            if !isPlaying {
-                                currentFilteredPhotoIndex = Int(newValue.rounded())
-                                loadImagesAround(index: currentFilteredPhotoIndex)
-                            }
-                        }
-                }
-
                 // Playback Controls
                 if filteredPhotos.count > 1 {
-                    PlaybackControls(isPlaying: $isPlaying, playbackSpeed: $playbackSpeed)
+                    HStack(spacing: 20) {
+                        PlayButton(isPlaying: $isPlaying)
+                            .frame(width: 40, height: 40)
+                        
+                        Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
+                            .onChange(of: scrubberPosition) { oldValue, newValue in
+                                if !isPlaying {
+                                    currentFilteredPhotoIndex = Int(newValue.rounded())
+                                    loadImagesAround(index: currentFilteredPhotoIndex)
+                                }
+                            }
+                    }
+                    .padding(.leading, 20)
+                    .padding(.trailing, 40)
                 }
-            }
 
-            Spacer()
+                Spacer()
+
+                // Bottom controls section
+                VStack(spacing: 20) {
+                    Divider()
+                    
+                    HStack(spacing: 30) {
+                        SimplifiedCustomizationButton(
+                            icon: "aspectratio",
+                            title: "Aspect Ratio",
+                            options: [AspectRatio.square, AspectRatio.portrait],
+                            selection: $aspectRatio
+                        )
+                        
+                        VStack(spacing: 8) {
+                            Text("\(Int(playbackSpeed))x")
+                                .font(.system(size: 24))
+                                .frame(height: 24)
+                            Text("Speed")
+                                .font(.caption)
+                        }
+                        .onTapGesture {
+                            playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
+                        }
+                        
+                        SimplifiedCustomizationButton(
+                            icon: "music.note",
+                            title: "Music",
+                            options: ["None", "Track 1", "Track 2", "Track 3"],
+                            selection: .constant("None")
+                        )
+                        
+                        // App Icon toggle
+                        VStack(spacing: 8) {
+                            Button(action: { showAppIcon.toggle() }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                                        .font(.system(size: 24))
+                                        .frame(height: 24)
+                                    Text("App Icon")
+                                        .font(.caption)
+                                }
+                            }
+                            .foregroundColor(.primary)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.bottom)
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(UIColor.secondarySystemBackground))
@@ -263,6 +300,9 @@ struct ShareSlideshowView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Sharing functionality will be available in a future update.")
+        }
+        .sheet(isPresented: $isMusicSelectionPresented) {
+            MusicSelectionView()
         }
     }
     
@@ -365,52 +405,66 @@ struct ShareSlideshowView: View {
 struct LazyImage: View {
     let photo: Photo
     let loadedImage: UIImage?
+    let aspectRatio: CGFloat
+    let showAppIcon: Bool
+    let generalAge: String
+    let formattedDate: String
 
     var body: some View {
         GeometryReader { geometry in
-            if let image = loadedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geometry.size.width, height: geometry.size.width)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-            } else {
-                ProgressView()
-                    .frame(width: geometry.size.width, height: geometry.size.width)
+            ZStack {
+                if let image = loadedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
+                        .clipped()
+                } else {
+                    ProgressView()
+                }
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(generalAge)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            Text(formattedDate)
+                                .font(.subheadline)
+                                .opacity(0.7)
+                        }
+                        .padding()
+                        .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        if showAppIcon {
+                            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 40, height: 40)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .padding(.vertical, 8)
+                                .padding(.trailing, 16)
+                        }
+                    }
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                }
             }
+            .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
+            .background(Color.black.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-        .aspectRatio(1, contentMode: .fit)
-    }
-}
-
-// PlaybackControls
-struct PlaybackControls: View {
-    @Binding var isPlaying: Bool
-    @Binding var playbackSpeed: Double
-    
-    var body: some View {
-        HStack(spacing: 40) {
-            SpeedControlButton(playbackSpeed: $playbackSpeed)
-            
-            PlayButton(isPlaying: $isPlaying)
-            
-            VolumeButton()
-        }
-        .frame(height: 40)
-    }
-}
-
-struct SpeedControlButton: View {
-    @Binding var playbackSpeed: Double
-    
-    var body: some View {
-        Button(action: {
-            playbackSpeed = playbackSpeed == 1.0 ? 2.0 : playbackSpeed == 2.0 ? 3.0 : 1.0
-        }) {
-            Text("\(Int(playbackSpeed))x")
-                .foregroundColor(.blue)
-                .font(.system(size: 18, weight: .bold))
-        }
+        .aspectRatio(aspectRatio, contentMode: .fit)
     }
 }
 
@@ -423,19 +477,34 @@ struct PlayButton: View {
         }) {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .foregroundColor(.blue)
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
+        }
+        .frame(width: 40, height: 40)
+        .background(Color.clear)
+        .clipShape(Circle())
+    }
+}
+
+struct MusicSelectionView: View {
+    @Environment(\.presentationMode) var presentationMode
+
+    var body: some View {
+        NavigationView {
+            Text("Music Selection Coming Soon")
+                .navigationTitle("Select Music")
+                .navigationBarItems(trailing: Button("Done") {
+                    presentationMode.wrappedValue.dismiss()
+                })
         }
     }
 }
 
-struct VolumeButton: View {
-    var body: some View {
-        Button(action: {
-            // Volume control logic
-        }) {
-            Image(systemName: "speaker.wave.2")
-                .foregroundColor(.blue)
-                .font(.system(size: 24, weight: .bold))
-        }
-    }
+// Add these new structs outside the main view
+struct AspectRatio: Hashable, CustomStringConvertible {
+    let value: CGFloat
+    let description: String
+    
+    static let square = AspectRatio(value: 1.0, description: "Square")
+    static let portrait = AspectRatio(value: 9.0/16.0, description: "9:16")
 }
+
