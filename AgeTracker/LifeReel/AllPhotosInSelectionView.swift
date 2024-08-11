@@ -11,7 +11,7 @@ import PhotosUI
 
 struct AllPhotosInSectionView: View {
     let sectionTitle: String
-    let photos: [Photo]
+    @State private var photos: [Photo]
     var onDelete: (Photo) -> Void
     @State private var selectedPhotoIndex: IdentifiableIndex?
     let person: Person
@@ -33,27 +33,47 @@ struct AllPhotosInSectionView: View {
     @State private var activeSheet: ActiveSheet?
     @State private var isShareSheetPresented = false
     @State private var activityItems: [Any] = []
+    
+    @State private var sortOrder: SortOrder = .latestToOldest
+    @State private var showingImagePicker = false
+
+    init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person) {
+        self.sectionTitle = sectionTitle
+        self._photos = State(initialValue: photos)
+        self.onDelete = onDelete
+        self.person = person
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            VStack {
-                GridView(geometry: geometry)
-            }
-            .navigationBarBackButtonHidden(true)
-            .navigationBarItems(
-                leading: CustomBackButton(),
-                trailing: shareButton
-            )
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        Text(person.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        Text(sectionTitle)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            ZStack {
+                VStack {
+                    GridView(geometry: geometry)
+                }
+                .navigationBarBackButtonHidden(true)
+                .navigationBarItems(leading: CustomBackButton())
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        VStack(spacing: 2) {
+                            Text(sectionTitle)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                        }
                     }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        sortButton
+                    }
+                }
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        shareButton
+                        Spacer()
+                        addPhotoButton
+                    }
+                    .padding(.horizontal)
                 }
             }
             .onAppear {
@@ -75,6 +95,10 @@ struct AllPhotosInSectionView: View {
                 onDelete: onDelete,
                 person: person
             )
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(selectedAssets: .constant([]), isPresented: $showingImagePicker)
+                .edgesIgnoringSafeArea(.all)
         }
     }
     
@@ -179,7 +203,7 @@ struct AllPhotosInSectionView: View {
     }
     
     private var shareButton: some View {
-        Button(action: {
+        CircularButton(systemName: "square.and.arrow.up") {
             let slideshow = ShareSlideshowView(
                 photos: photos,
                 person: person,
@@ -191,16 +215,12 @@ struct AllPhotosInSectionView: View {
                let rootViewController = window.rootViewController {
                 rootViewController.present(hostingController, animated: true, completion: nil)
             }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-
-                Image(systemName: "square.and.arrow.up")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold))
-            }
+        }
+    }
+    
+    private var addPhotoButton: some View {
+        CircularButton(systemName: "plus") {
+            showingImagePicker = true
         }
     }
     
@@ -213,6 +233,37 @@ struct AllPhotosInSectionView: View {
     
     private func calculateAge(for person: Person, at date: Date) -> String {
         return AgeCalculator.calculateAgeString(for: person, at: date)
+    }
+    
+    private var sortButton: some View {
+        Button(action: {
+            toggleSortOrder()
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 30, height: 30)
+                Image(systemName: "arrow.up.arrow.down")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 14, weight: .bold))
+            }
+        }
+    }
+    
+    private func toggleSortOrder() {
+        sortOrder = sortOrder == .oldestToLatest ? .latestToOldest : .oldestToLatest
+        photos = sortPhotos(photos, order: sortOrder)
+    }
+    
+    private func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
+        photos.sorted { photo1, photo2 in
+            switch order {
+            case .latestToOldest:
+                return photo1.dateTaken > photo2.dateTaken
+            case .oldestToLatest:
+                return photo1.dateTaken < photo2.dateTaken
+            }
+        }
     }
 }
 

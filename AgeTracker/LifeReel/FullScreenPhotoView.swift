@@ -112,6 +112,9 @@ struct FullScreenPhotoView: View {
                     onShare: {
                         activeSheet = .shareView
                     },
+                    onDelete: {
+                        showDeleteConfirmation = true
+                    },
                     currentIndex: $currentIndex,
                     totalPhotos: photos.count,
                     onScrub: { newIndex in
@@ -274,24 +277,24 @@ struct ControlsOverlay: View {
     let photo: Photo
     let onClose: () -> Void
     let onShare: () -> Void
+    let onDelete: () -> Void
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
 
     var body: some View {
         VStack {
-            // Top Bar with Close and Share Buttons
+            // Top Bar with Close Button
             HStack {
                 CircularIconButton(icon: "xmark", action: onClose)
                 Spacer()
-                CircularIconButton(icon: "square.and.arrow.up", action: onShare)
             }
             .padding(.top, 44)
             .padding(.horizontal, 8)
             
             Spacer()
             
-            // Bottom Bar with Age and Scrubber
+            // Bottom Bar with Share, Age, Delete, and Scrubber
             VStack(spacing: 16) {
                 // Scrubber with side fade-out effect
                 ThumbnailScrubber(
@@ -311,11 +314,13 @@ struct ControlsOverlay: View {
                 )
                 
                 HStack {
+                    CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
                     Text(calculateAge(for: person, at: photo.dateTaken))
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.8))
                     Spacer()
+                    CircularIconButton(icon: "trash", action: onDelete)
                 }
             }
             .padding(.horizontal, 20)
@@ -457,6 +462,7 @@ struct CircularIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold)) 
                 .foregroundColor(.white)
                 .frame(width: 28, height: 28)
         }

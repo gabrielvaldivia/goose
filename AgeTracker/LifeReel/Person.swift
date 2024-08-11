@@ -16,7 +16,6 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var dateOfBirth: Date
     var photos: [Photo]
     var syncedAlbumIdentifier: String?
-    var ageFormat: AgeFormat = .full
     
     init(name: String, dateOfBirth: Date) {
         self.id = UUID()
@@ -30,19 +29,12 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.name == rhs.name &&
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
-               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.ageFormat == rhs.ageFormat
+               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier
     }
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-}
-
-enum AgeFormat: String, Codable, CaseIterable {
-    case full = "YY, MM, DD"
-    case yearMonth = "YY, MM"
-    case yearOnly = "YY"
 }
 
 struct Photo: Identifiable, Codable, Equatable {

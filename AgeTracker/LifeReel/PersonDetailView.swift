@@ -81,7 +81,7 @@ struct PersonDetailView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    shareButton
+                    sortButton
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -162,7 +162,7 @@ struct PersonDetailView: View {
         VStack {
             Spacer()
             HStack {
-                sortButton
+                shareButton
 
                 Spacer()
 
@@ -178,31 +178,31 @@ struct PersonDetailView: View {
         }
     }
 
-    // New share button
+    // Updated share button
     private var shareButton: some View {
-        Button(action: {
+        CircularButton(systemName: "square.and.arrow.up") {
             if !person.photos.isEmpty {
                 activeSheet = .shareView
             } else {
                 // Show an alert or message when there are no photos
                 print("No photos available to share")
             }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-                Image(systemName: "square.and.arrow.up")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold))
-            }
         }
     }
 
     // Updated sort button
     private var sortButton: some View {
-        CircularButton(systemName: "arrow.up.arrow.down") {
+        Button(action: {
             toggleSortOrder()
+        }) {
+            ZStack {
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 30, height: 30)
+                Image(systemName: "arrow.up.arrow.down")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 14, weight: .bold))
+            }
         }
     }
 

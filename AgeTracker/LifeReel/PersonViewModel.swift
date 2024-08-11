@@ -90,7 +90,6 @@ class PersonViewModel: ObservableObject {
         } else {
             people.append(updatedPerson)
         }
-        print("Updating person with age format: \(updatedPerson.ageFormat)") // Debug print
         savePeople()
         objectWillChange.send()
     }
@@ -114,7 +113,6 @@ class PersonViewModel: ObservableObject {
                         var person = Person(name: oldPerson.name, dateOfBirth: oldPerson.dateOfBirth)
                         person.photos = oldPerson.photos
                         person.syncedAlbumIdentifier = oldPerson.syncedAlbumIdentifier
-                        person.ageFormat = .full // Set default ageFormat
                         return person
                     }
                     savePeople() // Save the migrated data

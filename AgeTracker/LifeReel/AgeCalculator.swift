@@ -39,17 +39,9 @@ struct AgeCalculator {
                     ageComponents.append("\(days) day\(days == 1 ? "" : "s")")
                 }
             } else {
-                switch person.ageFormat {
-                case .full:
-                    if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
-                    if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-                    if days > 0 { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
-                case .yearMonth:
-                    if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
-                    if months > 0 || ageComponents.isEmpty { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-                case .yearOnly:
-                    ageComponents.append("\(years) year\(years == 1 ? "" : "s")")
-                }
+                if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
+                if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
+                if days > 0 { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
             }
             
             return ageComponents.joined(separator: ", ")
