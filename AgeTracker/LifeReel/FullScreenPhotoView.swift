@@ -289,8 +289,7 @@ struct ControlsOverlay: View {
                 CircularIconButton(icon: "xmark", action: onClose)
                 Spacer()
             }
-            .padding(.top, 44)
-            .padding(.horizontal, 8)
+            .padding(.horizontal)
             
             Spacer()
             

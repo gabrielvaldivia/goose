@@ -208,13 +208,13 @@ struct SharePhotoView: View {
         // Calculate the height based on the aspect ratio
         let imageHeight: CGFloat
         if aspectRatio == .square {
-            imageHeight = baseWidth - (padding * 1.6)
+            imageHeight = baseWidth - (padding * 2)
         } else {
             let imageAspectRatio = image.size.height / image.size.width
-            imageHeight = (baseWidth - (padding * 1.6)) * imageAspectRatio
+            imageHeight = (baseWidth - (padding * 2)) * imageAspectRatio
         }
 
-        let baseHeight: CGFloat = imageHeight + (padding * 1.6) + bottomAreaHeight
+        let baseHeight: CGFloat = imageHeight + (padding * 2) + bottomAreaHeight
 
         UIGraphicsBeginImageContextWithOptions(CGSize(width: baseWidth, height: baseHeight), false, 1.0)
         defer { UIGraphicsEndImageContext() }
@@ -224,7 +224,7 @@ struct SharePhotoView: View {
         case 0, 1: // Light and Dark templates
             renderStandardTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
         case 2: // Overlay template
-            renderOverlayTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
+            renderOverlayTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
         default:
             break
         }
@@ -239,70 +239,76 @@ struct SharePhotoView: View {
     }
 
     private func renderStandardTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat, imageHeight: CGFloat) {
-    // Draw background
-    let backgroundColor: UIColor = selectedTemplate == 1 ? .black : .white
-    backgroundColor.setFill()
-    UIRectFill(CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+        // Draw background
+        let backgroundColor: UIColor = selectedTemplate == 1 ? .black : .white
+        backgroundColor.setFill()
+        UIRectFill(CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
 
-    // Calculate image size and position
-    let imageWidth = baseWidth - (padding * 2)
-    let imageY = padding
+        // Calculate image size and position
+        let imageWidth = baseWidth - (padding * 2)
+        let imageRect = CGRect(x: padding, y: padding, width: imageWidth, height: imageHeight)
 
-    // Draw image
-    if aspectRatio == .square {
-        // For square aspect ratio, crop the image to fit
-        if let cgImage = image.cgImage {
-            let sourceSize = CGSize(width: cgImage.width, height: cgImage.height)
-            let sourceSide = min(sourceSize.width, sourceSize.height)
-            let sourceX = (sourceSize.width - sourceSide) / 2
-            let sourceY = (sourceSize.height - sourceSide) / 2
-            let sourceRect = CGRect(x: sourceX, y: sourceY, width: sourceSide, height: sourceSide)
-            
-            if let croppedImage = cgImage.cropping(to: sourceRect) {
-                let destRect = CGRect(x: padding, y: imageY, width: imageWidth, height: imageWidth)
-                UIImage(cgImage: croppedImage).draw(in: destRect)
-            }
-        }
-    } else {
-        // For other aspect ratios, draw normally
-        image.draw(in: CGRect(x: padding, y: imageY, width: imageWidth, height: imageHeight))
-    }
-
-    // Calculate text position
-    let textY = imageY + (aspectRatio == .square ? imageWidth : imageHeight) + (padding * 0.5)
-
-    // Draw text and app icon
-    drawTextAndIcon(at: CGPoint(x: padding, y: textY), maxWidth: imageWidth, baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
-}
-
-    private func renderOverlayTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat) {
-        // Draw image to fill the entire frame
+        // Draw image
         if aspectRatio == .square {
-            // Crop the image to a square
-            let squareSize = min(image.size.width, image.size.height)
-            let sourceRect = CGRect(
-                x: (image.size.width - squareSize) / 2,
-                y: (image.size.height - squareSize) / 2,
-                width: squareSize,
-                height: squareSize
-            )
-            if let cgImage = image.cgImage?.cropping(to: sourceRect) {
-                let croppedImage = UIImage(cgImage: cgImage)
-                croppedImage.draw(in: CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+            // For square aspect ratio, crop the image to fit
+            if let cgImage = image.cgImage {
+                let sourceSize = CGSize(width: cgImage.width, height: cgImage.height)
+                let sourceSide = min(sourceSize.width, sourceSize.height)
+                let sourceX = (sourceSize.width - sourceSide) / 2
+                let sourceY = (sourceSize.height - sourceSide) / 2
+                let sourceRect = CGRect(x: sourceX, y: sourceY, width: sourceSide, height: sourceSide)
+                
+                if let croppedImage = cgImage.cropping(to: sourceRect) {
+                    UIImage(cgImage: croppedImage).draw(in: imageRect)
+                }
             }
         } else {
-            // Original aspect ratio
-            image.draw(in: CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
+            // For other aspect ratios, draw normally
+            image.draw(in: imageRect)
         }
+
+        // Calculate text position
+        let textY = imageRect.maxY + (padding * 0.5)
+
+        // Draw text and app icon
+        drawTextAndIcon(at: CGPoint(x: padding, y: textY), maxWidth: imageWidth, baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
+    }
+
+    private func renderOverlayTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat, imageHeight: CGFloat) {
+        let drawingRect = CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight)
+
+        // Draw image
+        let imageSize = image.size
+        let imageAspect = imageSize.height / imageSize.width
+        let rectAspect = drawingRect.height / drawingRect.width
+        
+        let drawRect: CGRect
+        if imageAspect > rectAspect {
+            // Image is taller, crop top and bottom
+            let newHeight = drawingRect.width * imageAspect
+            let yOffset = (newHeight - drawingRect.height) / 2
+            drawRect = CGRect(x: 0, y: -yOffset, width: drawingRect.width, height: newHeight)
+        } else {
+            // Image is wider, crop sides
+            let newWidth = drawingRect.height / imageAspect
+            let xOffset = (newWidth - drawingRect.width) / 2
+            drawRect = CGRect(x: -xOffset, y: 0, width: newWidth, height: drawingRect.height)
+        }
+        
+        // Create a clipping path to ensure the image doesn't draw outside the bounds
+        let path = UIBezierPath(rect: drawingRect)
+        path.addClip()
+        
+        image.draw(in: drawRect)
 
         // Add overlay gradient
         let context = UIGraphicsGetCurrentContext()!
         let colors = [UIColor.black.withAlphaComponent(0.5).cgColor, UIColor.clear.cgColor]
         let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
-        context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: baseHeight), end: CGPoint(x: 0, y: baseHeight * 0.7), options: [])
+        context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: drawingRect.maxY), end: CGPoint(x: 0, y: drawingRect.maxY - drawingRect.height * 0.3), options: [])
 
         // Draw text and app icon
-        let textY = baseHeight - padding - (baseWidth * 0.05) - (baseWidth * 0.035) - 5
+        let textY = drawingRect.maxY - padding - (baseWidth * 0.05) - (baseWidth * 0.035) - 5
         drawTextAndIcon(at: CGPoint(x: padding, y: textY), maxWidth: baseWidth - (padding * 2), baseWidth: baseWidth, baseHeight: baseHeight, padding: padding)
     }
 
@@ -374,22 +380,23 @@ struct LightTemplateView: View {
     let showAppIcon: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
+    @State private var textAreaHeight: CGFloat = 60
     
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
-            let imageWidth = availableWidth - 40 // 20 points padding on each side of the image
-            let imageHeight = calculateImageHeight(for: imageWidth)
+            let availableWidth = geometry.size.width - 40 
+            let templateHeight = calculateTemplateHeight(for: availableWidth)
             
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: imageWidth, height: imageHeight)
+                    .frame(width: availableWidth - 40, height: templateHeight - textAreaHeight - 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         if !titleText.isEmpty {
                             Text(titleText)
                                 .font(.title3)
@@ -398,8 +405,8 @@ struct LightTemplateView: View {
                         }
                         if !subtitleText.isEmpty {
                             Text(subtitleText)
-                                .font(.footnote)
-                                .foregroundColor(.gray)
+                                .font(.subheadline)
+                                .foregroundColor(.primary.opacity(0.8))
                         }
                     }
                     Spacer()
@@ -411,14 +418,20 @@ struct LightTemplateView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ViewHeightKey.self, value: geo.size.height)
+                })
             }
-            .padding(.vertical, 20)
-            .frame(width: availableWidth)
+            .padding(20)
+            .frame(width: availableWidth, height: templateHeight)
             .background(Color.white)
             .cornerRadius(isRendering ? 0 : 20)
             .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 5)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            .onPreferenceChange(ViewHeightKey.self) { height in
+                self.textAreaHeight = height
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -448,10 +461,10 @@ struct LightTemplateView: View {
         return formatter.string(from: date)
     }
     
-    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
         switch aspectRatio {
         case .original:
-            return image.size.height * (width / image.size.width)
+            return width * (image.size.height / image.size.width)
         case .square:
             return width
         }
@@ -467,22 +480,23 @@ struct DarkTemplateView: View {
     let showAppIcon: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
+    @State private var textAreaHeight: CGFloat = 60
     
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
-            let imageWidth = availableWidth - 40 // 20 points padding on each side of the image
-            let imageHeight = calculateImageHeight(for: imageWidth)
+            let availableWidth = geometry.size.width - 40 
+            let templateHeight = calculateTemplateHeight(for: availableWidth)
             
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: imageWidth, height: imageHeight)
+                    .frame(width: availableWidth - 40, height: templateHeight - textAreaHeight - 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         if !titleText.isEmpty {
                             Text(titleText)
                                 .font(.title3)
@@ -491,8 +505,8 @@ struct DarkTemplateView: View {
                         }
                         if !subtitleText.isEmpty {
                             Text(subtitleText)
-                                .font(.footnote)
-                                .foregroundColor(.gray)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
                         }
                     }
                     Spacer()
@@ -504,14 +518,20 @@ struct DarkTemplateView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ViewHeightKey.self, value: geo.size.height)
+                })
             }
-            .padding(.vertical, 20)
-            .frame(width: availableWidth)
+            .padding(20)
+            .frame(width: availableWidth, height: templateHeight)
             .background(Color.black)
             .cornerRadius(isRendering ? 0 : 20)
             .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            .onPreferenceChange(ViewHeightKey.self) { height in
+                self.textAreaHeight = height
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -541,10 +561,10 @@ struct DarkTemplateView: View {
         return formatter.string(from: date)
     }
     
-    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
         switch aspectRatio {
         case .original:
-            return image.size.height * (width / image.size.width)
+            return width * (image.size.height / image.size.width)
         case .square:
             return width
         }
@@ -560,26 +580,26 @@ struct OverlayTemplateView: View {
     let showAppIcon: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
+    @State private var textAreaHeight: CGFloat = 60
     
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 40 // 20 points padding on each side
-            let imageWidth = availableWidth
-            let imageHeight = calculateImageHeight(for: imageWidth)
+            let availableWidth = geometry.size.width - 40
+            let templateHeight = calculateTemplateHeight(for: availableWidth)
             
-            ZStack {
+            ZStack(alignment: .bottom) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: imageWidth, height: imageHeight)
+                    .frame(width: availableWidth, height: templateHeight)
                     .clipped()
                 
-                // Add the subtle gradient background
                 LinearGradient(
-                    gradient: Gradient(colors: [Color.black.opacity(0.3), Color.black.opacity(0.1)]),
+                    gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
                     startPoint: .bottom,
                     endPoint: .top
                 )
+                .frame(height: templateHeight * 0.4)
                 
                 VStack {
                     Spacer()
@@ -595,7 +615,7 @@ struct OverlayTemplateView: View {
                                 Text(subtitleText)
                                     .font(.subheadline)
                                     .foregroundColor(.white)
-                                    .opacity(0.7) 
+                                    .opacity(0.8)
                             }
                         }
                         Spacer()
@@ -607,13 +627,20 @@ struct OverlayTemplateView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
-                    .padding(16)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(key: ViewHeightKey.self, value: geo.size.height)
+                    })
                 }
             }
-            .frame(width: imageWidth, height: imageHeight)
+            .frame(width: availableWidth, height: templateHeight)
             .cornerRadius(isRendering ? 0 : 20)
             .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            .onPreferenceChange(ViewHeightKey.self) { height in
+                self.textAreaHeight = height
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -643,10 +670,11 @@ struct OverlayTemplateView: View {
         return formatter.string(from: date)
     }
     
-    private func calculateImageHeight(for width: CGFloat) -> CGFloat {
+    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
         switch aspectRatio {
         case .original:
-            return image.size.height * (width / image.size.width)
+            let imageAspectRatio = image.size.height / image.size.width
+            return width * imageAspectRatio
         case .square:
             return width
         }
