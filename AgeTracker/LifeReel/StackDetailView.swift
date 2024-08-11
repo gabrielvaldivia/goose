@@ -1,5 +1,5 @@
 //
-//  AllPhotosInSelectionView.swift
+//  StackDetailView.swift
 //  AgeTracker
 //
 //  Created by Gabriel Valdivia on 8/2/24.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 import PhotosUI
 
-struct AllPhotosInSectionView: View {
+struct StackDetailView: View {
     let sectionTitle: String
     @State private var photos: [Photo]
     var onDelete: (Photo) -> Void

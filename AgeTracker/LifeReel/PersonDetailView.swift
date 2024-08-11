@@ -75,7 +75,7 @@ struct PersonDetailView: View {
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 8, weight: .bold))
                                 .frame(width: 20, height: 20)
-                                .background(Color.gray.opacity(0.2))
+                                .background(Color.gray.opacity(0.1))
                                 .clipShape(Circle())
                         }
                     }
@@ -674,7 +674,7 @@ private struct StackSectionView: View {
     let maxWidth: CGFloat
     
     var body: some View {
-        NavigationLink(destination: AllPhotosInSectionView(sectionTitle: section, photos: photos, onDelete: { _ in }, person: person)) {
+        NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: { _ in }, person: person)) {
             if let randomPhoto = photos.randomElement() {
                 ZStack(alignment: .bottom) {
                     if let image = randomPhoto.image {
