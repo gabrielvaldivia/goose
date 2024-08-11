@@ -31,6 +31,9 @@ struct ShareSlideshowView: View {
     @State private var aspectRatio: AspectRatio = .square
     @State private var isMusicSelectionPresented = false
     @State private var showAppIcon: Bool = true
+    @State private var titleOption: TitleOption = .name
+    @State private var subtitleOption: TitleOption = .age
+    @State private var speedOptions = [1.0, 2.0, 3.0]
     
     init(photos: [Photo], person: Person, sectionTitle: String) {
         self.photos = photos
@@ -99,6 +102,15 @@ struct ShareSlideshowView: View {
                 return false
             }
         }
+    }
+    
+    enum TitleOption: String, CaseIterable, CustomStringConvertible {
+        case none = "None"
+        case name = "Name"
+        case age = "Age"
+        case date = "Date"
+        
+        var description: String { self.rawValue }
     }
     
     private var availableRanges: [SlideshowRange] {
@@ -188,8 +200,8 @@ struct ShareSlideshowView: View {
                             loadedImage: loadedImages[photo.id.uuidString],
                             aspectRatio: aspectRatio.value,
                             showAppIcon: showAppIcon,
-                            generalAge: calculateGeneralAge(for: person, at: photo.dateTaken),
-                            formattedDate: formatDate(photo.dateTaken)
+                            titleText: getTitleText(for: photo),
+                            subtitleText: getSubtitleText(for: photo)
                         )
                         .tag(index)
                     }
@@ -223,7 +235,21 @@ struct ShareSlideshowView: View {
                 VStack(spacing: 20) {
                     Divider()
                     
-                    HStack(spacing: 30) {
+                    HStack(spacing: 20) {
+                        SimplifiedCustomizationButton(
+                            icon: "textformat",
+                            title: "Title",
+                            options: TitleOption.allCases,
+                            selection: $titleOption
+                        )
+                        
+                        SimplifiedCustomizationButton(
+                            icon: "text.alignleft",
+                            title: "Subtitle",
+                            options: TitleOption.allCases.filter { $0 != titleOption || $0 == .none },
+                            selection: $subtitleOption
+                        )
+                        
                         SimplifiedCustomizationButton(
                             icon: "aspectratio",
                             title: "Aspect Ratio",
@@ -231,22 +257,18 @@ struct ShareSlideshowView: View {
                             selection: $aspectRatio
                         )
                         
-                        VStack(spacing: 8) {
-                            Text("\(Int(playbackSpeed))x")
-                                .font(.system(size: 24))
-                                .frame(height: 24)
-                            Text("Speed")
-                                .font(.caption)
-                        }
-                        .onTapGesture {
-                            playbackSpeed = playbackSpeed >= 3 ? 1 : playbackSpeed + 1
-                        }
-                        
                         SimplifiedCustomizationButton(
-                            icon: "music.note",
-                            title: "Music",
-                            options: ["None", "Track 1", "Track 2", "Track 3"],
-                            selection: .constant("None")
+                            icon: "speedometer",
+                            title: "Speed",
+                            options: speedOptions.map { "\(Int($0))x" },
+                            selection: Binding(
+                                get: { "\(Int(self.playbackSpeed))x" },
+                                set: { newValue in
+                                    if let speed = Double(newValue.dropLast()) {
+                                        self.playbackSpeed = speed
+                                    }
+                                }
+                            )
                         )
                         
                         // App Icon toggle
@@ -258,12 +280,15 @@ struct ShareSlideshowView: View {
                                         .frame(height: 24)
                                     Text("App Icon")
                                         .font(.caption)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
                                 }
+                                .frame(width: 70) // Match the width of other buttons
                             }
                             .foregroundColor(.primary)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 10)
                 }
                 .padding(.bottom)
             }
@@ -347,6 +372,24 @@ struct ShareSlideshowView: View {
         return formatter.string(from: date)
     }
     
+    private func getTitleText(for photo: Photo) -> String {
+        switch titleOption {
+        case .none: return ""
+        case .name: return person.name
+        case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
+        case .date: return formatDate(photo.dateTaken)
+        }
+    }
+    
+    private func getSubtitleText(for photo: Photo) -> String {
+        switch subtitleOption {
+        case .none: return ""
+        case .name: return person.name
+        case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
+        case .date: return formatDate(photo.dateTaken)
+        }
+    }
+    
     // Timer Methods
     private func startTimer() {
         guard filteredPhotos.count > 1 else { return }
@@ -407,8 +450,8 @@ struct LazyImage: View {
     let loadedImage: UIImage?
     let aspectRatio: CGFloat
     let showAppIcon: Bool
-    let generalAge: String
-    let formattedDate: String
+    let titleText: String
+    let subtitleText: String
 
     var body: some View {
         GeometryReader { geometry in
@@ -427,13 +470,17 @@ struct LazyImage: View {
                     Spacer()
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(generalAge)
-                                .font(.title2)
-                                .fontWeight(.bold)
+                            if !titleText.isEmpty {
+                                Text(titleText)
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                            }
                             
-                            Text(formattedDate)
-                                .font(.subheadline)
-                                .opacity(0.7)
+                            if !subtitleText.isEmpty {
+                                Text(subtitleText)
+                                    .font(.subheadline)
+                                    .opacity(0.7)
+                            }
                         }
                         .padding()
                         .foregroundColor(.white)
