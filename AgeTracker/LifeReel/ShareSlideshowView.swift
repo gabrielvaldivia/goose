@@ -187,30 +187,26 @@ struct ShareSlideshowView: View {
             .padding(.horizontal)
             .padding(.top, 10)
 
-            // Photo TabView
+            // Single Photo View (replacing TabView)
             if filteredPhotos.isEmpty {
                 Text("No photos available for this range")
                     .foregroundColor(.secondary)
                     .padding()
             } else {
-                TabView(selection: $currentFilteredPhotoIndex) {
-                    ForEach(Array(filteredPhotos.enumerated()), id: \.element.id) { index, photo in
-                        LazyImage(
-                            photo: photo,
-                            loadedImage: loadedImages[photo.id.uuidString],
-                            aspectRatio: aspectRatio.value,
-                            showAppIcon: showAppIcon,
-                            titleText: getTitleText(for: photo),
-                            subtitleText: getSubtitleText(for: photo)
-                        )
-                        .tag(index)
-                    }
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .animation(.none, value: currentFilteredPhotoIndex)
+                Spacer()
+                LazyImage(
+                    photo: filteredPhotos[currentFilteredPhotoIndex],
+                    loadedImage: loadedImages[filteredPhotos[currentFilteredPhotoIndex].id.uuidString],
+                    aspectRatio: aspectRatio.value,
+                    showAppIcon: showAppIcon,
+                    titleText: getTitleText(for: filteredPhotos[currentFilteredPhotoIndex]),
+                    subtitleText: getSubtitleText(for: filteredPhotos[currentFilteredPhotoIndex])
+                )
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
 
+                Spacer()
+                
                 // Playback Controls
                 if filteredPhotos.count > 1 {
                     HStack(spacing: 20) {
