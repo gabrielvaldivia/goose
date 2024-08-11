@@ -130,7 +130,7 @@ struct ShareSlideshowView: View {
         case .month(let month):
             return photos.filter { photo in
                 let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
-                return age.years == 0 && age.months == month - 1
+                return age.years == 0 && age.months == month
             }
         case .year(let year):
             return photos.filter { photo in
