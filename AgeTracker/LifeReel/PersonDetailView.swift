@@ -288,36 +288,26 @@ struct PersonDetailView: View {
     // Grid view
     private var GridView: some View {
         ScrollView {
-            LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], spacing: 20) {
                 ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
                     Section(header: stickyHeader(for: section)) {
-                        PhotoGridView(photos: photos, onDelete: deletePhoto, selectedPhoto: $selectedPhoto, person: person)
+                        ForEach(sortPhotos(photos, order: timelineSortOrder), id: \.id) { photo in
+                            PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto)
+                                .aspectRatio(1, contentMode: .fill)
+                                .frame(width: 110, height: 110)
+                                .clipped()
+                                .cornerRadius(10)
+                        }
                     }
-                    .id(section)
                 }
             }
+            .padding(.horizontal)
             .padding(.top, 20)
             .padding(.bottom, 80) // Increased bottom padding
         }
         .coordinateSpace(name: "scroll")
         .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
             updateScrollPosition(value)
-        }
-    }
-
-    private struct PhotoGridView: View {
-        let photos: [Photo]
-        let onDelete: (Photo) -> Void
-        @Binding var selectedPhoto: Photo?
-        let person: Person
-        
-        var body: some View {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], spacing: 10) {
-                ForEach(photos) { photo in
-                    PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto)
-                }
-            }
-            .padding(.horizontal)
         }
     }
 
