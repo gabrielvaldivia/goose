@@ -54,7 +54,7 @@ struct PhotoUtils {
         }
     }
 
-    static func groupAndSortPhotos(for person: Person, sortOrder: SortOrder, trackPregnancy: Bool, showBirthMonths: Bool, showPregnancyWeeks: Bool) -> [(String, [Photo])] {
+    static func groupAndSortPhotos(for person: Person, sortOrder: SortOrder, showBirthMonths: Bool) -> [(String, [Photo])] {
         let calendar = Calendar.current
         let sortedPhotos = sortPhotos(person.photos, order: sortOrder)
         var groupedPhotos: [String: [Photo]] = [:]
@@ -64,8 +64,9 @@ struct PhotoUtils {
             let daysBeforeBirth = components.day ?? 0
 
             let sectionTitle: String
-            if photo.dateTaken >= person.dateOfBirth {
-                // Existing logic for after birth
+            if daysBeforeBirth > 0 {
+                sectionTitle = "Pregnancy"
+            } else {
                 let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
                 let years = ageComponents.year ?? 0
                 let months = ageComponents.month ?? 0
@@ -83,23 +84,12 @@ struct PhotoUtils {
                 } else {
                     sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                 }
-            } else if trackPregnancy {
-                // Updated logic for pregnancy
-                if showPregnancyWeeks {
-                    let weeksBeforeBirth = daysBeforeBirth / 7
-                    let pregnancyWeek = min(max(1, 40 - weeksBeforeBirth), 40)
-                    sectionTitle = "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
-                } else {
-                    sectionTitle = "Pregnancy"
-                }
-            } else {
-                continue // Skip pregnancy photos if not tracking
             }
 
             groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
-        // Sort the groups based on the orderFromSectionTitle function
+        // Sort the groups
         let sortedGroups = groupedPhotos.sorted { (group1, group2) in
             let order1 = orderFromSectionTitle(group1.key, sortOrder: sortOrder)
             let order2 = orderFromSectionTitle(group2.key, sortOrder: sortOrder)
@@ -110,11 +100,9 @@ struct PhotoUtils {
     }
 
     static func orderFromSectionTitle(_ title: String, sortOrder: SortOrder) -> Int {
-        if title.contains("Pregnant") {
-            let week = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return sortOrder == .oldestToLatest ? week : 1000 - week
+        if title == "Pregnancy" {
+            return sortOrder == .oldestToLatest ? Int.min : Int.max
         }
-        if title == "Pregnancy" { return sortOrder == .oldestToLatest ? 0 : 1000 }
         if title == "Birth Month" { return sortOrder == .oldestToLatest ? 1001 : -1 }
         if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1001 : -1 }
         if title.contains("Month") {
@@ -132,9 +120,7 @@ struct PhotoUtils {
         let groupedPhotos = groupAndSortPhotos(
             for: person,
             sortOrder: viewModel.sortOrder,
-            trackPregnancy: person.trackPregnancy,
-            showBirthMonths: person.showBirthMonths,
-            showPregnancyWeeks: person.showPregnancyWeeks
+            showBirthMonths: person.showBirthMonths
         )
         
         // Convert groupedPhotos to a dictionary for easier lookup
@@ -162,9 +148,7 @@ struct PhotoUtils {
         let groupedPhotos = groupAndSortPhotos(
             for: person,
             sortOrder: viewModel.sortOrder,
-            trackPregnancy: person.trackPregnancy,
-            showBirthMonths: person.showBirthMonths,
-            showPregnancyWeeks: person.showPregnancyWeeks
+            showBirthMonths: person.showBirthMonths
         )
         
         // Convert groupedPhotos to a dictionary for easier lookup
@@ -187,13 +171,6 @@ struct PhotoUtils {
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
         var stacks: [String] = []
-        if person.trackPregnancy {
-            if person.showPregnancyWeeks {
-                stacks.append(contentsOf: (1...40).map { "\($0) Week\($0 == 1 ? "" : "s") Pregnant" })
-            } else {
-                stacks.append("Pregnancy")
-            }
-        }
         if person.showBirthMonths {
             stacks.append("Birth Month")
             stacks.append(contentsOf: (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" })

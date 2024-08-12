@@ -83,13 +83,13 @@ struct PersonDetailView: View {
     @State private var currentMoment: String = ""
     @State private var isCustomImagePickerPresented = false
     @State private var customImagePickerTargetDate = Date()
-    @State private var showPregnancyWeeks: Bool
+    @State private var showBirthMonths: Bool
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
         self._person = State(initialValue: person)
         self.viewModel = viewModel
-        self._showPregnancyWeeks = State(initialValue: person.showPregnancyWeeks)
+        self._showBirthMonths = State(initialValue: person.showBirthMonths)
     }
     
     // Main body of the view
@@ -188,8 +188,8 @@ struct PersonDetailView: View {
                     )
                 }
             }
-            .onChange(of: person.showPregnancyWeeks) { newValue in
-                showPregnancyWeeks = newValue
+            .onChange(of: person.showBirthMonths) { newValue in
+                showBirthMonths = newValue
             }
         }
     }
@@ -460,9 +460,7 @@ struct PersonDetailView: View {
         return PhotoUtils.groupAndSortPhotos(
             for: person,
             sortOrder: viewModel.sortOrder,
-            trackPregnancy: person.trackPregnancy,
-            showBirthMonths: person.showBirthMonths,
-            showPregnancyWeeks: person.showPregnancyWeeks
+            showBirthMonths: person.showBirthMonths
         )
     }
 
@@ -470,12 +468,6 @@ struct PersonDetailView: View {
         var moments: [(String, [Photo])] = []
         let calendar = Calendar.current
         let sortedPhotos = person.photos.sorted { $0.dateTaken < $1.dateTaken }
-        
-        // Pregnancy
-        if person.trackPregnancy {
-            let pregnancyPhotos = sortedPhotos.filter { $0.dateTaken < person.dateOfBirth }
-            moments.append(("Pregnancy", pregnancyPhotos))
-        }
         
         // Birth
         let birthPhotos = sortedPhotos.filter { calendar.isDate($0.dateTaken, inSameDayAs: person.dateOfBirth) }

@@ -49,20 +49,9 @@ struct AgeCalculator {
             let componentsBeforeBirth = calendar.dateComponents([.day], from: date, to: birthDate)
             let daysBeforeBirth = componentsBeforeBirth.day ?? 0
             let weeksBeforeBirth = daysBeforeBirth / 7
-            let remainingDays = daysBeforeBirth % 7
-            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
             
-            if pregnancyWeek == 40 {
-                return "Newborn"
-            } else if pregnancyWeek > 0 {
-                let weekString = "\(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s")"
-                let dayString = "\(remainingDays) day\(remainingDays == 1 ? "" : "s")"
-                
-                if remainingDays > 0 {
-                    return "\(weekString) and \(dayString)"
-                } else {
-                    return weekString
-                }
+            if weeksBeforeBirth <= 40 {
+                return "Pregnancy"
             } else {
                 return "Before pregnancy"
             }

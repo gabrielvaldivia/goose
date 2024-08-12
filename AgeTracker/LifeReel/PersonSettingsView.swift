@@ -21,11 +21,8 @@ struct PersonSettingsView: View {
     @State private var showingBirthDaySheet = false
     @State private var showingBulkImport = false
     @State private var localSortOrder: SortOrder
-
-    // Add these state variables for the toggles
-    @State private var trackPregnancy: Bool
-    @State private var showPregnancyWeeks: Bool
     @State private var showBirthMonths: Bool
+    
 
     // Alert handling
     @State private var showingAlert = false
@@ -42,8 +39,6 @@ struct PersonSettingsView: View {
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
         self._localSortOrder = State(initialValue: viewModel.sortOrder)
-        self._trackPregnancy = State(initialValue: person.wrappedValue.trackPregnancy)
-        self._showPregnancyWeeks = State(initialValue: person.wrappedValue.showPregnancyWeeks)
         self._showBirthMonths = State(initialValue: person.wrappedValue.showBirthMonths)
     }
 
@@ -77,16 +72,6 @@ struct PersonSettingsView: View {
                 }
                 .pickerStyle(DefaultPickerStyle())
                 
-                Toggle("Track Pregnancy", isOn: $trackPregnancy)
-                    .onChange(of: trackPregnancy) { newValue in
-                        updatePerson { $0.trackPregnancy = newValue }
-                    }
-                if trackPregnancy {
-                    Toggle("Show Pregnancy Weeks", isOn: $showPregnancyWeeks)
-                        .onChange(of: showPregnancyWeeks) { newValue in
-                            updatePerson { $0.showPregnancyWeeks = newValue }
-                        }
-                }
                 Toggle("Show Birth Months", isOn: $showBirthMonths)
                     .onChange(of: showBirthMonths) { newValue in
                         updatePerson { $0.showBirthMonths = newValue }
@@ -194,8 +179,6 @@ struct PersonSettingsView: View {
             person.name = editedName
             person.dateOfBirth = editedDateOfBirth
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
-            person.trackPregnancy = trackPregnancy
-            person.showPregnancyWeeks = showPregnancyWeeks
             person.showBirthMonths = showBirthMonths
         }
         

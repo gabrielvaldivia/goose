@@ -101,18 +101,9 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         
+        // Fetch assets from 40 weeks before birth onwards
         let calendar = Calendar.current
-        let startDate: Date
-        
-        if person.trackPregnancy {
-            // If tracking pregnancy, fetch photos from 40 weeks before birth
-            startDate = calendar.date(byAdding: .weekOfYear, value: -40, to: person.dateOfBirth) ?? person.dateOfBirth
-        } else {
-            // If not tracking pregnancy, use the birth date as the start date
-            startDate = person.dateOfBirth
-        }
-        
-        // Create a predicate to filter assets
+        let startDate = calendar.date(byAdding: .weekOfYear, value: -40, to: person.dateOfBirth) ?? person.dateOfBirth
         let predicate = NSPredicate(format: "creationDate >= %@", startDate as NSDate)
         fetchOptions.predicate = predicate
 
