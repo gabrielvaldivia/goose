@@ -30,6 +30,7 @@
 		4062061B2C6A7078000DE3C5 /* CustomImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */; };
 		4062061D2C6A862A000DE3C5 /* StacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061C2C6A862A000DE3C5 /* StacksView.swift */; };
 		4062061F2C6A8980000DE3C5 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061E2C6A8980000DE3C5 /* TimelineView.swift */; };
+		406206212C6A8B9B000DE3C5 /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406206202C6A8B9B000DE3C5 /* GridView.swift */; };
 		40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B512C604C5E00C1B076 /* AgeCalculator.swift */; };
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
@@ -81,6 +82,7 @@
 		4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomImagePicker.swift; sourceTree = "<group>"; };
 		4062061C2C6A862A000DE3C5 /* StacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StacksView.swift; sourceTree = "<group>"; };
 		4062061E2C6A8980000DE3C5 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
+		406206202C6A8B9B000DE3C5 /* GridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridView.swift; sourceTree = "<group>"; };
 		40C00B512C604C5E00C1B076 /* AgeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeCalculator.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
 				4062061E2C6A8980000DE3C5 /* TimelineView.swift */,
+				406206202C6A8B9B000DE3C5 /* GridView.swift */,
 				4062061C2C6A862A000DE3C5 /* StacksView.swift */,
 				4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */,
 				403C94752C666E26003373A2 /* ShareSlideshowView.swift */,
@@ -323,6 +326,7 @@
 				4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */,
 				4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */,
 				40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */,
+				406206212C6A8B9B000DE3C5 /* GridView.swift in Sources */,
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
 				4062061F2C6A8980000DE3C5 /* TimelineView.swift in Sources */,
 				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,

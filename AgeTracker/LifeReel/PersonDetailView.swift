@@ -191,7 +191,7 @@ struct PersonDetailView: View {
                 StacksView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
                     .transition(.opacity)
             case 1:
-                GridView
+                GridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, currentScrollPosition: $currentScrollPosition, openImagePickerForMoment: openImagePickerForMoment, deletePhoto: deletePhoto)
                     .transition(.opacity)
                     .onChange(of: selectedView) { oldValue, newValue in
                         if newValue == 1 {
@@ -269,105 +269,6 @@ struct PersonDetailView: View {
         }
     }
 
-    // Grid view
-    private var GridView: some View {
-        GeometryReader { geometry in
-            let spacing: CGFloat = 16
-            let itemWidth = (geometry.size.width - 40 - spacing * 2) / 3
-            
-            ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
-                    ForEach(bigMoments(), id: \.0) { section, photos in
-                        if photos.isEmpty {
-                            EmptyStackView(section: section, width: itemWidth) {
-                                openImagePickerForMoment(section)
-                            }
-                        } else {
-                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person)) {
-                                StackTileView(section: section, photos: photos, width: itemWidth)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 80)
-            }
-            .coordinateSpace(name: "scroll")
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                updateScrollPosition(value)
-            }
-        }
-    }
-
-    private struct EmptyStackView: View {
-        let section: String
-        let width: CGFloat
-        let action: () -> Void
-        
-        var body: some View {
-            VStack(spacing: 4) {
-                Button(action: action) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.1))
-                        
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(width: width, height: width)
-                
-                Text(section)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .frame(width: width)
-            }
-        }
-    }
-
-    private struct StackTileView: View {
-        let section: String
-        let photos: [Photo]
-        let width: CGFloat
-        
-        var body: some View {
-            VStack(spacing: 4) {
-                ZStack {
-                    if let firstPhoto = photos.first, let image = firstPhoto.image {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: width, height: width)
-                            .clipped()
-                    } else {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                    }
-                    
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                        }
-                    }
-                    .padding(4)
-                }
-                .frame(width: width, height: width)
-                .cornerRadius(8)
-                
-                Text(section)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .frame(width: width)
-            }
-        }
-    }
-
     // New function to open image picker for a specific moment
     private func openImagePickerForMoment(_ moment: String) {
         currentMoment = moment
@@ -402,98 +303,6 @@ struct PersonDetailView: View {
         }
         
         return person.dateOfBirth
-    }
-
-    // Function to generate big moments
-    private func bigMoments() -> [(String, [Photo])] {
-        let calendar = Calendar.current
-        let now = Date()
-        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: now)
-        let currentAge = ageComponents.year ?? 0
-        
-        var moments: [(String, [Photo])] = []
-        
-        // Add pregnancy moment
-        let pregnancyPhotos = person.photos.filter { $0.dateTaken < person.dateOfBirth }
-        moments.append(("Pregnancy", pregnancyPhotos))
-        
-        // Add birth month
-        let birthMonthEnd = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
-        let birthMonthPhotos = person.photos.filter { $0.dateTaken >= person.dateOfBirth && $0.dateTaken < birthMonthEnd }
-        moments.append(("Birth", birthMonthPhotos))
-        
-        // Add first 11 months
-        for month in 1...11 {
-            let monthStart = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
-            let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart)!
-            let monthPhotos = person.photos.filter { $0.dateTaken >= monthStart && $0.dateTaken < monthEnd }
-            moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
-        }
-        
-        // Add years
-        for year in 1...currentAge {
-            let yearStart = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
-            let yearEnd = calendar.date(byAdding: .year, value: 1, to: yearStart)!
-            let yearPhotos = person.photos.filter { $0.dateTaken >= yearStart && $0.dateTaken < yearEnd }
-            moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
-        }
-        
-        return moments.sorted { (moment1, moment2) -> Bool in
-            let order1 = orderFromSectionTitle(moment1.0)
-            let order2 = orderFromSectionTitle(moment2.0)
-            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
-        }
-    }
-
-    // Function to group photos by age
-    private func groupAndSortPhotos(forYearView: Bool = false) -> [(String, [Photo])] {
-        let calendar = Calendar.current
-        let sortedPhotos = sortPhotos(person.photos)
-        var groupedPhotos: [String: [Photo]] = [:]
-
-        for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-
-            let sectionTitle: String
-            if photo.dateTaken >= person.dateOfBirth {
-                if years == 0 && months == 0 {
-                    sectionTitle = "Birth Month"
-                } else if years == 0 {
-                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                } else {
-                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            } else {
-                sectionTitle = forYearView ? "Pregnancy" : calculatePregnancyWeek(photo.dateTaken)
-            }
-
-            groupedPhotos[sectionTitle, default: []].append(photo)
-        }
-
-        return groupedPhotos.map { ($0.key, $0.value) }
-    }
-
-    private func calculatePregnancyWeek(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let componentsBeforeBirth = calendar.dateComponents([.day], from: date, to: person.dateOfBirth)
-        let daysBeforeBirth = componentsBeforeBirth.day ?? 0
-        let weeksBeforeBirth = daysBeforeBirth / 7
-        let remainingDays = daysBeforeBirth % 7
-        let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-        
-        if pregnancyWeek == 40 {
-            return "Birth Month"
-        } else if pregnancyWeek > 0 {
-            if remainingDays > 0 {
-                return "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") and \(remainingDays) Day\(remainingDays == 1 ? "" : "s") Pregnant"
-            } else {
-                return "\(pregnancyWeek) Week\(pregnancyWeek == 1 ? "" : "s") Pregnant"
-            }
-        } else {
-            return "Before Pregnancy"
-        }
     }
 
     // Image loading function
@@ -652,6 +461,32 @@ struct PersonDetailView: View {
             return years * 12 + 1000
         }
         return 0
+    }
+
+    private func groupAndSortPhotos(forYearView: Bool) -> [(String, [Photo])] {
+        let calendar = Calendar.current
+        var groupedPhotos: [String: [Photo]] = [:]
+
+        for photo in person.photos {
+            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
+
+            let sectionTitle: String
+            if photo.dateTaken < person.dateOfBirth {
+                sectionTitle = "Pregnancy"
+            } else if years == 0 && months == 0 {
+                sectionTitle = "Birth"
+            } else if years == 0 {
+                sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
+            } else {
+                sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+            }
+
+            groupedPhotos[sectionTitle, default: []].append(photo)
+        }
+
+        return groupedPhotos.map { ($0.key, $0.value) }
     }
 }
 
