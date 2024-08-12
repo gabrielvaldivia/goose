@@ -171,10 +171,12 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 
 class ImageCell: UICollectionViewCell {
     private let imageView = UIImageView()
+    private let checkmarkView = UIImageView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupImageView()
+        setupCheckmarkView()
     }
 
     required init?(coder: NSCoder) {
@@ -194,6 +196,37 @@ class ImageCell: UICollectionViewCell {
         ])
     }
 
+    private func setupCheckmarkView() {
+        checkmarkView.isHidden = true
+        checkmarkView.contentMode = .scaleAspectFit
+        contentView.addSubview(checkmarkView)
+        checkmarkView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            checkmarkView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
+            checkmarkView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -4),
+            checkmarkView.widthAnchor.constraint(equalToConstant: 24),
+            checkmarkView.heightAnchor.constraint(equalToConstant: 24)
+        ])
+        
+        // Create a blue checkmark with white circle background
+        let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .bold)
+        let checkmark = UIImage(systemName: "checkmark.circle.fill", withConfiguration: config)?
+            .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+        
+        let whiteCircle = UIImage(systemName: "circle.fill", withConfiguration: config)?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+        
+        if let whiteCircle = whiteCircle, let checkmark = checkmark {
+            UIGraphicsBeginImageContextWithOptions(whiteCircle.size, false, 0.0)
+            whiteCircle.draw(in: CGRect(origin: .zero, size: whiteCircle.size))
+            checkmark.draw(in: CGRect(origin: .zero, size: checkmark.size))
+            let combinedImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            
+            checkmarkView.image = combinedImage
+        }
+    }
+
     func configure(with asset: PHAsset) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
@@ -203,6 +236,7 @@ class ImageCell: UICollectionViewCell {
 
     override var isSelected: Bool {
         didSet {
+            checkmarkView.isHidden = !isSelected
             contentView.alpha = isSelected ? 0.7 : 1.0
         }
     }

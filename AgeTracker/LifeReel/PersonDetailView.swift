@@ -82,6 +82,7 @@ struct PersonDetailView: View {
     @State private var isImagePickerPresented = false
     @State private var currentMoment: String = ""
     @State private var isCustomImagePickerPresented = false
+    @State private var customImagePickerTargetDate = Date()
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -173,7 +174,7 @@ struct PersonDetailView: View {
             }
             .sheet(isPresented: $isCustomImagePickerPresented) {
                 NavigationView {
-                    CustomImagePicker(isPresented: $isCustomImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
+                    CustomImagePicker(isPresented: $isCustomImagePickerPresented, targetDate: customImagePickerTargetDate) { assets in
                         for asset in assets {
                             self.viewModel.addPhoto(to: &self.person, asset: asset)
                         }
@@ -272,16 +273,23 @@ struct PersonDetailView: View {
     // New function to open image picker for a specific moment
     private func openImagePickerForMoment(_ moment: String) {
         currentMoment = moment
-        if moment == "First Year" {
-            // For "First Year", set the target date to 6 months after birth
-            let calendar = Calendar.current
-            if let sixMonthsAfterBirth = calendar.date(byAdding: .month, value: 6, to: person.dateOfBirth) {
-                isCustomImagePickerPresented = true
-                currentMoment = "6 Months"
+        let calendar = Calendar.current
+        var targetDate = person.dateOfBirth
+
+        if moment == "Pregnancy" {
+            targetDate = calendar.date(byAdding: .month, value: -4, to: person.dateOfBirth) ?? person.dateOfBirth
+        } else if moment.contains("Month") {
+            if let monthNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
+                targetDate = calendar.date(byAdding: .month, value: monthNumber - 1, to: person.dateOfBirth) ?? person.dateOfBirth
             }
-        } else {
-            isCustomImagePickerPresented = true
+        } else if moment.contains("Year") {
+            if let yearNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
+                targetDate = calendar.date(byAdding: .year, value: yearNumber - 1, to: person.dateOfBirth) ?? person.dateOfBirth
+            }
         }
+
+        isCustomImagePickerPresented = true
+        customImagePickerTargetDate = targetDate
     }
 
     // Helper function to get the date for a specific moment

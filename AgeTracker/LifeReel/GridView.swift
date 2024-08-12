@@ -64,24 +64,18 @@ struct GridView: View {
         
         // Pregnancy
         let pregnancyPhotos = sortedPhotos.filter { $0.dateTaken < person.dateOfBirth }
-        if !pregnancyPhotos.isEmpty {
-            moments.append(("Pregnancy", pregnancyPhotos))
-        }
+        moments.append(("Pregnancy", pregnancyPhotos))
         
         // Birth
         let birthPhotos = sortedPhotos.filter { calendar.isDate($0.dateTaken, inSameDayAs: person.dateOfBirth) }
-        if !birthPhotos.isEmpty {
-            moments.append(("Birth", birthPhotos))
-        }
+        moments.append(("Birth", birthPhotos))
         
         // First 12 months
         for month in 1...12 {
             let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
             let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            if !monthPhotos.isEmpty {
-                moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
-            }
+            moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
         }
         
         // Years
@@ -89,13 +83,11 @@ struct GridView: View {
         let ageComponents = calendar.dateComponents([.year], from: person.dateOfBirth, to: currentDate)
         let age = ageComponents.year ?? 0
         
-        for year in 1...age {
+        for year in 1...max(age, 1) {
             let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
             let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            if !yearPhotos.isEmpty {
-                moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
-            }
+            moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
         }
         
         return moments
