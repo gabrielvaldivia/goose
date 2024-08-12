@@ -11,18 +11,16 @@ import AVFoundation
 import Photos
 
 struct Person: Identifiable, Codable, Equatable, Hashable {
-    let id: UUID
+    var id = UUID()
     var name: String
     var dateOfBirth: Date
-    var photos: [Photo]
+    var photos: [Photo] = []
     var syncedAlbumIdentifier: String?
     var showBirthMonths: Bool
 
     init(name: String, dateOfBirth: Date) {
-        self.id = UUID()
         self.name = name
         self.dateOfBirth = dateOfBirth
-        self.photos = []
         self.syncedAlbumIdentifier = nil
         self.showBirthMonths = true
     }

@@ -90,11 +90,13 @@ class PersonViewModel: ObservableObject {
     func updatePerson(_ updatedPerson: Person) {
         if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
             people[index] = updatedPerson
-            savePeople()
-            objectWillChange.send()
+            print("Updated person \(updatedPerson.name) in people array")
         } else {
-            print("Person not found in array")
+            people.append(updatedPerson)
+            print("Added new person \(updatedPerson.name) to people array")
         }
+        savePeople()
+        objectWillChange.send()
     }
     
     private func savePeople() {

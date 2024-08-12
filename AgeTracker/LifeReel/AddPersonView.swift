@@ -227,7 +227,10 @@ struct AddPersonView: View {
     }
     
     private func saveNewPerson() {
-        guard let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else { return }
+        guard let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else {
+            print("Missing date of birth or no selected assets")
+            return
+        }
         
         isLoading = true
         print("Selected assets count: \(selectedAssets.count)")
@@ -236,10 +239,12 @@ struct AddPersonView: View {
         
         for asset in selectedAssets {
             viewModel.addPhoto(to: &newPerson, asset: asset)
+            print("Added photo to new person")
         }
         
         viewModel.updatePerson(newPerson)
         print("New person created with \(newPerson.photos.count) photos")
+        
         self.isLoading = false
         self.presentationMode.wrappedValue.dismiss()
     }
