@@ -189,7 +189,7 @@ struct PersonDetailView: View {
         ScrollViewReader { scrollProxy in
             switch selectedView {
             case 0:
-                StacksView
+                StacksView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
                     .transition(.opacity)
             case 1:
                 GridView
@@ -597,57 +597,6 @@ struct PersonDetailView: View {
         }
     }
 
-    // New Stacks view
-    private var StacksView: some View {
-        GeometryReader { geometry in
-            VStack {
-                ScrollView {
-                    LazyVStack(spacing: 15) {
-                        ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
-                            StackSectionView(
-                                section: section,
-                                photos: photos,
-                                selectedPhoto: $selectedPhoto,
-                                person: person,
-                                cardHeight: 300,
-                                maxWidth: geometry.size.width - 30
-                            )
-                        }
-                    }
-                    .padding()
-                    .padding(.bottom, 80) // Increased bottom padding
-                }
-            }
-        }
-    }
-
-    // Sort grouped photos based on stacksSortOrder
-    private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(forYearView: true)
-        
-        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
-            let order1 = orderFromSectionTitle(group1.0)
-            let order2 = orderFromSectionTitle(group2.0)
-            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
-        }
-        
-        return sortedGroups
-    }
-
-    private func orderFromSectionTitle(_ title: String) -> Int {
-        if title == "Pregnancy" { return -1 }
-        if title == "Birth" { return 0 }
-        if title.contains("Month") {
-            let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return months
-        }
-        if title.contains("Year") {
-            let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return years * 12 + 1000 // Add 1000 to ensure years come after months
-        }
-        return 0
-    }
-
     // Circular buttonn
     struct CircularButton: View {
         let systemName: String
@@ -741,6 +690,33 @@ struct PersonDetailView: View {
                 return photo1.dateTaken < photo2.dateTaken
             }
         }
+    }
+
+    // Sort grouped photos based on stacksSortOrder
+    private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
+        let groupedPhotos = groupAndSortPhotos(forYearView: true)
+        
+        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
+            let order1 = orderFromSectionTitle(group1.0)
+            let order2 = orderFromSectionTitle(group2.0)
+            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
+        }
+        
+        return sortedGroups
+    }
+
+    private func orderFromSectionTitle(_ title: String) -> Int {
+        if title == "Pregnancy" { return -1 }
+        if title == "Birth" { return 0 }
+        if title.contains("Month") {
+            let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
+            return months
+        }
+        if title.contains("Year") {
+            let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
+            return years * 12 + 1000 // Add 1000 to ensure years come after months
+        }
+        return 0
     }
 }
 
@@ -839,79 +815,6 @@ struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
     func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
-}
-
-// New StackSectionView
-private struct StackSectionView: View {
-    let section: String
-    let photos: [Photo]
-    @Binding var selectedPhoto: Photo?
-    let person: Person
-    let cardHeight: CGFloat
-    let maxWidth: CGFloat
-    
-    var body: some View {
-        NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: { _ in }, person: person)) {
-            if let randomPhoto = photos.randomElement() {
-                ZStack(alignment: .bottom) {
-                    if let image = randomPhoto.image {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: cardHeight)
-                            .frame(maxWidth: maxWidth)
-                            .clipped()
-                            .cornerRadius(20)
-                    } else {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: cardHeight)
-                            .frame(maxWidth: maxWidth)
-                            .cornerRadius(20)
-                    }
-                    
-                    // Gradient overlay
-                    LinearGradient(
-                        gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: cardHeight / 3)
-                    .frame(maxWidth: maxWidth)
-                    .cornerRadius(20)
-                    
-                    HStack {
-                        HStack(spacing: 8) {
-                            Text(section)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                            
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.white.opacity(0.7))
-                                .font(.system(size: 18, weight: .bold))
-                        }
-                        
-                        Spacer()
-                        
-                        Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(8)
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(8)
-                    }
-                    .padding()
-                }
-            } else {
-                Text("No photos available")
-                    .italic()
-                    .foregroundColor(.gray)
-                    .frame(height: cardHeight)
-                    .frame(maxWidth: maxWidth)
-            }
-        }
-    }
 }
 
 struct CustomBackButton: View {
