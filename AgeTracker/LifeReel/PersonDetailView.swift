@@ -23,6 +23,43 @@ enum ActiveSheet: Identifiable {
     }
 }
 
+struct ImagePickerRepresentable: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    let targetDate: Date
+    let onPick: ([PHAsset]) -> Void
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 0 // Allow multiple selection
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: ImagePickerRepresentable
+
+        init(_ parent: ImagePickerRepresentable) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            parent.isPresented = false
+            
+            let identifiers = results.compactMap(\.assetIdentifier)
+            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+            let assets = (0..<fetchResult.count).compactMap { fetchResult.object(at: $0) }
+            parent.onPick(assets)
+        }
+    }
+}
+
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -44,6 +81,9 @@ struct PersonDetailView: View {
     @State private var timelineSortOrder: SortOrder = .latestToOldest
     @State private var showingSharingComingSoon = false
     @State private var currentScrollPosition: String?
+    @State private var isImagePickerPresented = false
+    @State private var currentMoment: String = ""
+    @State private var isCustomImagePickerPresented = false
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
@@ -121,10 +161,35 @@ struct PersonDetailView: View {
             }
             .onAppear(perform: handleOnAppear)
             .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
-            .fullScreenCover(item: $selectedPhoto, content: fullScreenPhotoView)
+            .fullScreenCover(item: $selectedPhoto) { photo in
+                FullScreenPhotoView(
+                    photo: photo,
+                    currentIndex: person.photos.firstIndex(of: photo) ?? 0,
+                    photos: person.photos,
+                    onDelete: deletePhoto,
+                    person: person
+                )
+            }
             .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
             .onAppear {
                 viewModel.setLastOpenedPerson(person)
+            }
+            .sheet(isPresented: $isImagePickerPresented) {
+                ImagePickerRepresentable(isPresented: $isImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
+                    for asset in assets {
+                        let newPhoto = Photo(asset: asset)
+                        self.viewModel.addPhoto(to: &self.person, asset: asset)
+                    }
+                }
+            }
+            .sheet(isPresented: $isCustomImagePickerPresented) {
+                NavigationView {
+                    CustomImagePicker(isPresented: $isCustomImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
+                        for asset in assets {
+                            self.viewModel.addPhoto(to: &self.person, asset: asset)
+                        }
+                    }
+                }
             }
         }
     }
@@ -255,6 +320,9 @@ struct PersonDetailView: View {
                 .cornerRadius(10)
                 .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                 .padding(.horizontal)
+                .onTapGesture {
+                    selectedPhoto = photo
+                }
         }
     }
 
@@ -287,27 +355,173 @@ struct PersonDetailView: View {
 
     // Grid view
     private var GridView: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], spacing: 20) {
-                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
-                    Section(header: stickyHeader(for: section)) {
-                        ForEach(sortPhotos(photos, order: timelineSortOrder), id: \.id) { photo in
-                            PhotoView(photo: photo, containerWidth: 110, isGridView: true, selectedPhoto: $selectedPhoto)
-                                .aspectRatio(1, contentMode: .fill)
-                                .frame(width: 110, height: 110)
-                                .clipped()
-                                .cornerRadius(10)
+        GeometryReader { geometry in
+            let itemWidth = (geometry.size.width - 40) / 3 // 40 accounts for horizontal padding and spacing
+            
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(itemWidth), spacing: 10), count: 3), spacing: 10) {
+                    ForEach(bigMoments(), id: \.0) { section, photos in
+                        if photos.isEmpty {
+                            EmptyStackView(section: section, width: itemWidth) {
+                                openImagePickerForMoment(section)
+                            }
+                        } else {
+                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person)) {
+                                StackTileView(section: section, photos: photos, width: itemWidth)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                 }
+                .padding(.horizontal, 10)
+                .padding(.top, 20)
+                .padding(.bottom, 80)
             }
-            .padding(.horizontal)
-            .padding(.top, 20)
-            .padding(.bottom, 80) // Increased bottom padding
+            .coordinateSpace(name: "scroll")
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                updateScrollPosition(value)
+            }
         }
-        .coordinateSpace(name: "scroll")
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-            updateScrollPosition(value)
+    }
+
+    private struct EmptyStackView: View {
+        let section: String
+        let width: CGFloat
+        let action: () -> Void
+        
+        var body: some View {
+            VStack(spacing: 4) {
+                Button(action: action) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "plus")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: width, height: width)
+                
+                Text(section)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .frame(width: width)
+            }
+        }
+    }
+
+    private struct StackTileView: View {
+        let section: String
+        let photos: [Photo]
+        let width: CGFloat
+        
+        var body: some View {
+            VStack(spacing: 4) {
+                ZStack {
+                    if let firstPhoto = photos.first, let image = firstPhoto.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: width, height: width)
+                            .clipped()
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                    }
+                    
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Text("\(photos.count)")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .padding(6)
+                                .background(Color.black.opacity(0.6))
+                                .foregroundColor(.white)
+                                .clipShape(Circle())
+                        }
+                    }
+                    .padding(4)
+                }
+                .frame(width: width, height: width)
+                .cornerRadius(8)
+                
+                Text(section)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .frame(width: width)
+            }
+        }
+    }
+
+    // New function to open image picker for a specific moment
+    private func openImagePickerForMoment(_ moment: String) {
+        currentMoment = moment
+        isCustomImagePickerPresented = true
+    }
+
+    // Helper function to get the date for a specific moment
+    private func dateForMoment(_ moment: String) -> Date {
+        let calendar = Calendar.current
+        
+        if moment == "Pregnancy" {
+            return calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
+        } else if moment == "Birth" {
+            return person.dateOfBirth
+        } else if moment.contains("Month") {
+            let months = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
+            return calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? person.dateOfBirth
+        } else if moment.contains("Year") {
+            let years = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
+            return calendar.date(byAdding: .year, value: years, to: person.dateOfBirth) ?? person.dateOfBirth
+        }
+        
+        return person.dateOfBirth
+    }
+
+    // Function to generate big moments
+    private func bigMoments() -> [(String, [Photo])] {
+        let calendar = Calendar.current
+        let now = Date()
+        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: now)
+        let currentAge = ageComponents.year ?? 0
+        
+        var moments: [(String, [Photo])] = []
+        
+        // Add pregnancy moment
+        let pregnancyPhotos = person.photos.filter { $0.dateTaken < person.dateOfBirth }
+        moments.append(("Pregnancy", pregnancyPhotos))
+        
+        // Add birth month
+        let birthMonthEnd = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
+        let birthMonthPhotos = person.photos.filter { $0.dateTaken >= person.dateOfBirth && $0.dateTaken < birthMonthEnd }
+        moments.append(("Birth", birthMonthPhotos))
+        
+        // Add first 11 months
+        for month in 1...11 {
+            let monthStart = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
+            let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart)!
+            let monthPhotos = person.photos.filter { $0.dateTaken >= monthStart && $0.dateTaken < monthEnd }
+            moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
+        }
+        
+        // Add years
+        for year in 1...currentAge {
+            let yearStart = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
+            let yearEnd = calendar.date(byAdding: .year, value: 1, to: yearStart)!
+            let yearPhotos = person.photos.filter { $0.dateTaken >= yearStart && $0.dateTaken < yearEnd }
+            moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
+        }
+        
+        return moments.sorted { (moment1, moment2) -> Bool in
+            let order1 = orderFromSectionTitle(moment1.0)
+            let order2 = orderFromSectionTitle(moment2.0)
+            return stacksSortOrder == .latestToOldest ? order1 > order2 : order1 < order2
         }
     }
 
@@ -502,20 +716,6 @@ struct PersonDetailView: View {
             },
             secondaryButton: .cancel()
         )
-    }
-
-    private func fullScreenPhotoView(photo: Photo) -> some View {
-        FullScreenPhotoView(
-            photo: photo,
-            currentIndex: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }).firstIndex(of: photo) ?? 0,
-            photos: person.photos.sorted(by: { $0.dateTaken < $1.dateTaken }),
-            onDelete: deletePhoto,
-            person: person
-        )
-        .transition(.asymmetric(
-            insertion: AnyTransition.opacity.combined(with: .scale),
-            removal: .opacity
-        ))
     }
 
     private func photoDatePickerSheet() -> some View {

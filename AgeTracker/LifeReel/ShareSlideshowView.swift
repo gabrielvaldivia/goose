@@ -227,7 +227,7 @@ struct ShareSlideshowView: View {
 
                 Spacer()
 
-                // Bottom controls section
+                // Bottom controls
                 VStack(spacing: 20) {
                     Divider()
                     
@@ -268,25 +268,23 @@ struct ShareSlideshowView: View {
                         )
                         
                         // App Icon toggle
-                        VStack(spacing: 8) {
-                            Button(action: { showAppIcon.toggle() }) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
-                                        .font(.system(size: 24))
-                                        .frame(height: 24)
-                                    Text("App Icon")
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.5)
-                                }
-                                .frame(width: 70) // Match the width of other buttons
+                        Button(action: { showAppIcon.toggle() }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                                    .font(.system(size: 24))
+                                    .frame(height: 24)
+                                Text("App Icon")
+                                    .font(.caption)
                             }
-                            .foregroundColor(.primary)
+                            .frame(width: 70)
                         }
+                        .foregroundColor(.primary)
                     }
                     .padding(.horizontal, 10)
                 }
-                .padding(.bottom)
+                .padding(.vertical, 10)
+                .frame(height: 80)
+                .background(Color(UIColor.secondarySystemBackground))
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
