@@ -77,8 +77,6 @@ struct PersonDetailView: View {
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
-    @State private var stacksSortOrder: SortOrder = .latestToOldest
-    @State private var timelineSortOrder: SortOrder = .latestToOldest
     @State private var showingSharingComingSoon = false
     @State private var currentScrollPosition: String?
     @State private var isImagePickerPresented = false
@@ -101,27 +99,18 @@ struct PersonDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
+                    Text(person.name)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         activeSheet = .settings
                     }) {
-                        HStack(spacing: 8) {
-                            Text(person.name)
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                            
-                            
-                            Image(systemName: "chevron.down")
-                                .foregroundColor(.secondary)
-                                .font(.system(size: 8, weight: .bold))
-                                .frame(width: 20, height: 20)
-                                .background(Color.gray.opacity(0.1))
-                                .clipShape(Circle())
-                        }
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(.blue)
                     }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    sortButton
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -255,29 +244,13 @@ struct PersonDetailView: View {
         }
     }
 
-    // Updated sort button
-    private var sortButton: some View {
-        Button(action: {
-            toggleSortOrder()
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-                Image(systemName: "arrow.up.arrow.down")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .bold))
-            }
-        }
-    }
-
     // New Timeline view
     private var TimelineView: some View {
         ScrollView {
             LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
                 ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
                     Section(header: stickyHeader(for: section)) {
-                        ForEach(sortPhotos(photos, order: timelineSortOrder), id: \.id) { photo in
+                        ForEach(sortPhotos(photos), id: \.id) { photo in
                             TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
                         }
                     }
@@ -395,11 +368,10 @@ struct PersonDetailView: View {
                 Button(action: action) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                            .foregroundColor(.secondary)
+                            .fill(Color.gray.opacity(0.1))
                         
                         Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -533,14 +505,14 @@ struct PersonDetailView: View {
         return moments.sorted { (moment1, moment2) -> Bool in
             let order1 = orderFromSectionTitle(moment1.0)
             let order2 = orderFromSectionTitle(moment2.0)
-            return stacksSortOrder == .latestToOldest ? order1 > order2 : order1 < order2
+            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
         }
     }
 
     // Function to group photos by age
-    private func groupAndSortPhotos(forYearView: Bool = false, sortOrder: SortOrder = .latestToOldest) -> [(String, [Photo])] {
+    private func groupAndSortPhotos(forYearView: Bool = false) -> [(String, [Photo])] {
         let calendar = Calendar.current
-        let sortedPhotos = sortPhotos(person.photos, order: sortOrder)
+        let sortedPhotos = sortPhotos(person.photos)
         var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
@@ -651,12 +623,12 @@ struct PersonDetailView: View {
 
     // Sort grouped photos based on stacksSortOrder
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(forYearView: true, sortOrder: stacksSortOrder)
+        let groupedPhotos = groupAndSortPhotos(forYearView: true)
         
         let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
             let order1 = orderFromSectionTitle(group1.0)
             let order2 = orderFromSectionTitle(group2.0)
-            return stacksSortOrder == .latestToOldest ? order1 > order2 : order1 < order2
+            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
         }
         
         return sortedGroups
@@ -739,25 +711,6 @@ struct PersonDetailView: View {
         .presentationDetents([.height(300)])
     }
 
-    // Add this new function to toggle sort order
-    private func toggleSortOrder() {
-        let newOrder = stacksSortOrder == .oldestToLatest ? SortOrder.latestToOldest : SortOrder.oldestToLatest
-        stacksSortOrder = newOrder
-        timelineSortOrder = newOrder
-    }
-
-    // Add this new function to sort photos
-    private func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
-        photos.sorted { photo1, photo2 in
-            switch order {
-            case .latestToOldest:
-                return photo1.dateTaken > photo2.dateTaken
-            case .oldestToLatest:
-                return photo1.dateTaken < photo2.dateTaken
-            }
-        }
-    }
-
     // New function to update scroll position
     private func updateScrollPosition(_ value: CGPoint) {
         let sections = sortedGroupedPhotosForAll().map { $0.0 }
@@ -774,6 +727,18 @@ struct PersonDetailView: View {
         if let position = currentScrollPosition {
             withAnimation {
                 proxy.scrollTo(position, anchor: .top)
+            }
+        }
+    }
+
+    // Add this function inside PersonDetailView
+    private func sortPhotos(_ photos: [Photo]) -> [Photo] {
+        photos.sorted { photo1, photo2 in
+            switch viewModel.sortOrder {
+            case .latestToOldest:
+                return photo1.dateTaken > photo2.dateTaken
+            case .oldestToLatest:
+                return photo1.dateTaken < photo2.dateTaken
             }
         }
     }

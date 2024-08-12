@@ -11,10 +11,13 @@ import Photos
 
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
+    @Published var sortOrder: SortOrder = .latestToOldest
     @Published var lastOpenedPersonId: UUID?
 
     init() {
         loadPeople()
+        loadSortOrderPreference()
+        loadLastOpenedPersonId()
         
         // Check if photo migration is needed
         if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
@@ -375,6 +378,24 @@ class PersonViewModel: ObservableObject {
     func setLastOpenedPerson(_ person: Person) {
         lastOpenedPersonId = person.id
         UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
+    }
+    
+    func setSortOrder(_ newSortOrder: SortOrder) {
+        sortOrder = newSortOrder
+        UserDefaults.standard.set(newSortOrder == .latestToOldest ? "latest" : "oldest", forKey: "sortOrderPreference")
+    }
+    
+    private func loadSortOrderPreference() {
+        if let savedPreference = UserDefaults.standard.string(forKey: "sortOrderPreference") {
+            sortOrder = savedPreference == "latest" ? .latestToOldest : .oldestToLatest
+        }
+    }
+    
+    private func loadLastOpenedPersonId() {
+        if let savedId = UserDefaults.standard.string(forKey: "lastOpenedPersonId"),
+           let uuid = UUID(uuidString: savedId) {
+            lastOpenedPersonId = uuid
+        }
     }
 }
 

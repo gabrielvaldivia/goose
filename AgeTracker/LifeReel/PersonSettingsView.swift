@@ -22,6 +22,7 @@ struct PersonSettingsView: View {
     @State private var onBulkImportComplete: ((String?) -> Void)?
     @State private var showingBirthDaySheet = false
     @State private var showingBulkImport = false
+    @State private var localSortOrder: SortOrder
 
     // Add this enum at the top of your struct
     enum AlertType {
@@ -37,6 +38,7 @@ struct PersonSettingsView: View {
         self._person = person
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
+        self._localSortOrder = State(initialValue: viewModel.sortOrder)
     }
 
     var body: some View {
@@ -83,6 +85,14 @@ struct PersonSettingsView: View {
                     }
                 }
                 .foregroundColor(.primary)
+            }
+
+            Section(header: Text("Display Options")) {
+                Picker("Sort Order", selection: $localSortOrder) {
+                    Text("Latest to Oldest").tag(SortOrder.latestToOldest)
+                    Text("Oldest to Latest").tag(SortOrder.oldestToLatest)
+                }
+                .pickerStyle(DefaultPickerStyle())
             }
 
             Section(header: Text("Danger Zone")) {
@@ -179,6 +189,7 @@ struct PersonSettingsView: View {
         person.name = editedName
         person.dateOfBirth = editedDateOfBirth
         person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
+        viewModel.setSortOrder(localSortOrder)
         viewModel.updatePerson(person)
         presentationMode.wrappedValue.dismiss()
     }

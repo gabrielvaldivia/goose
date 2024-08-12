@@ -56,11 +56,6 @@ struct WelcomeView: View {
     
     var body: some View {
         VStack {
-            Text("Welcome to LifeReel")
-                .font(.title3)
-                .fontWeight(.bold)
-                .padding()
-            
             Text("Add someone to get started")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
