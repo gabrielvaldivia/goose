@@ -183,7 +183,6 @@ struct PersonDetailView: View {
         }
     }
     
-    // Break down the main content into a separate function
     @ViewBuilder
     private func mainContent(_ geometry: GeometryProxy) -> some View {
         ScrollViewReader { scrollProxy in
@@ -200,7 +199,7 @@ struct PersonDetailView: View {
                         }
                     }
             default:
-                TimelineView
+                TimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
                     .transition(.opacity)
                     .onChange(of: selectedView) { oldValue, newValue in
                         if newValue == 2 {
@@ -238,64 +237,8 @@ struct PersonDetailView: View {
             if !person.photos.isEmpty {
                 activeSheet = .shareView
             } else {
-                // Show an alert or message when there are no photos
                 print("No photos available to share")
             }
-        }
-    }
-
-    // New Timeline view
-    private var TimelineView: some View {
-        ScrollView {
-            LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
-                    Section(header: stickyHeader(for: section)) {
-                        ForEach(sortPhotos(photos), id: \.id) { photo in
-                            TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
-                        }
-                    }
-                    .id(section)
-                }
-            }
-            .padding(.top, 20)
-            .padding(.bottom, 80) // Increased bottom padding
-        }
-        .coordinateSpace(name: "scroll")
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-            updateScrollPosition(value)
-        }
-    }
-
-    private func stickyHeader(for section: String) -> some View {
-        HStack {
-            Spacer()
-            Text(section)
-                .font(.headline)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    VisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
-                        .clipShape(Capsule())
-                )
-            Spacer()
-        }
-        .padding(.top, 8)
-    }
-
-    private struct TimelineItemView: View {
-        let photo: Photo
-        let person: Person
-        @Binding var selectedPhoto: Photo?
-        
-        var body: some View {
-            PhotoView(photo: photo, containerWidth: UIScreen.main.bounds.width - 40, isGridView: false, selectedPhoto: $selectedPhoto)
-                .aspectRatio(contentMode: .fit)
-                .cornerRadius(10)
-                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                .padding(.horizontal)
-                .onTapGesture {
-                    selectedPhoto = photo
-                }
         }
     }
 
@@ -329,8 +272,8 @@ struct PersonDetailView: View {
     // Grid view
     private var GridView: some View {
         GeometryReader { geometry in
-            let spacing: CGFloat = 16 // Increased spacing between tiles
-            let itemWidth = (geometry.size.width - 40 - spacing * 2) / 3 // Adjusted for new spacing
+            let spacing: CGFloat = 16
+            let itemWidth = (geometry.size.width - 40 - spacing * 2) / 3
             
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
@@ -409,12 +352,6 @@ struct PersonDetailView: View {
                         Spacer()
                         HStack {
                             Spacer()
-                            // Text("\(photos.count)")
-                            //     .font(.caption)
-                            //     .padding(6)
-                            //     .background(Color.black.opacity(0.6))
-                            //     .foregroundColor(.white)
-                            //     .clipShape(Circle())
                         }
                     }
                     .padding(4)
@@ -455,7 +392,6 @@ struct PersonDetailView: View {
         } else if moment == "Birth" {
             return person.dateOfBirth
         } else if moment == "First Year" {
-            // For "First Year", return the date 6 months after birth
             return calendar.date(byAdding: .month, value: 6, to: person.dateOfBirth) ?? person.dateOfBirth
         } else if moment.contains("Month") {
             let months = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
@@ -597,7 +533,7 @@ struct PersonDetailView: View {
         }
     }
 
-    // Circular buttonn
+    // Circular button
     struct CircularButton: View {
         let systemName: String
         let action: () -> Void
@@ -680,7 +616,6 @@ struct PersonDetailView: View {
         }
     }
 
-    // Add this function inside PersonDetailView
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
         photos.sorted { photo1, photo2 in
             switch viewModel.sortOrder {
@@ -714,13 +649,12 @@ struct PersonDetailView: View {
         }
         if title.contains("Year") {
             let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return years * 12 + 1000 // Add 1000 to ensure years come after months
+            return years * 12 + 1000
         }
         return 0
     }
 }
 
-// Add this new view
 struct SharingComingSoonView: View {
     @Environment(\.presentationMode) var presentationMode
 
