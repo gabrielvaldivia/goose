@@ -63,8 +63,8 @@ struct ImagePickerRepresentable: UIViewControllerRepresentable {
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
-    @State private var person: Person
     @ObservedObject var viewModel: PersonViewModel
+    @State private var person: Person
     @State private var showingImagePicker = false
     @State private var selectedAssets: [PHAsset] = []
     @State private var showingDeleteAlert = false
@@ -87,7 +87,7 @@ struct PersonDetailView: View {
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
-        _person = State(initialValue: person)
+        self.person = person
         self.viewModel = viewModel
     }
     
@@ -356,10 +356,11 @@ struct PersonDetailView: View {
     // Grid view
     private var GridView: some View {
         GeometryReader { geometry in
-            let itemWidth = (geometry.size.width - 40) / 3 // 40 accounts for horizontal padding and spacing
+            let spacing: CGFloat = 16 // Increased spacing between tiles
+            let itemWidth = (geometry.size.width - 40 - spacing * 2) / 3 // Adjusted for new spacing
             
             ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(itemWidth), spacing: 10), count: 3), spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
                     ForEach(bigMoments(), id: \.0) { section, photos in
                         if photos.isEmpty {
                             EmptyStackView(section: section, width: itemWidth) {
@@ -373,7 +374,7 @@ struct PersonDetailView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 80)
             }
@@ -436,13 +437,12 @@ struct PersonDetailView: View {
                         Spacer()
                         HStack {
                             Spacer()
-                            Text("\(photos.count)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .padding(6)
-                                .background(Color.black.opacity(0.6))
-                                .foregroundColor(.white)
-                                .clipShape(Circle())
+                            // Text("\(photos.count)")
+                            //     .font(.caption)
+                            //     .padding(6)
+                            //     .background(Color.black.opacity(0.6))
+                            //     .foregroundColor(.white)
+                            //     .clipShape(Circle())
                         }
                     }
                     .padding(4)
@@ -462,7 +462,16 @@ struct PersonDetailView: View {
     // New function to open image picker for a specific moment
     private func openImagePickerForMoment(_ moment: String) {
         currentMoment = moment
-        isCustomImagePickerPresented = true
+        if moment == "First Year" {
+            // For "First Year", set the target date to 6 months after birth
+            let calendar = Calendar.current
+            if let sixMonthsAfterBirth = calendar.date(byAdding: .month, value: 6, to: person.dateOfBirth) {
+                isCustomImagePickerPresented = true
+                currentMoment = "6 Months"
+            }
+        } else {
+            isCustomImagePickerPresented = true
+        }
     }
 
     // Helper function to get the date for a specific moment
@@ -473,6 +482,9 @@ struct PersonDetailView: View {
             return calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
         } else if moment == "Birth" {
             return person.dateOfBirth
+        } else if moment == "First Year" {
+            // For "First Year", return the date 6 months after birth
+            return calendar.date(byAdding: .month, value: 6, to: person.dateOfBirth) ?? person.dateOfBirth
         } else if moment.contains("Month") {
             let months = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
             return calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? person.dateOfBirth
@@ -652,7 +664,7 @@ struct PersonDetailView: View {
 
     private func orderFromSectionTitle(_ title: String) -> Int {
         if title == "Pregnancy" { return -1 }
-        if title == "Birth Month" { return 0 }
+        if title == "Birth" { return 0 }
         if title.contains("Month") {
             let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
             return months

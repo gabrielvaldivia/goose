@@ -35,6 +35,19 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, dateOfBirth, photos, syncedAlbumIdentifier
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        dateOfBirth = try container.decode(Date.self, forKey: .dateOfBirth)
+        photos = try container.decode([Photo].self, forKey: .photos)
+        syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
+    }
 }
 
 struct Photo: Identifiable, Codable, Equatable {
