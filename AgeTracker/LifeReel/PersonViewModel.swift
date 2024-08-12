@@ -90,16 +90,21 @@ class PersonViewModel: ObservableObject {
     func updatePerson(_ updatedPerson: Person) {
         if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
             people[index] = updatedPerson
+            savePeople()
+            objectWillChange.send()
         } else {
-            people.append(updatedPerson)
+            print("Person not found in array")
         }
-        savePeople()
-        objectWillChange.send()
     }
     
     private func savePeople() {
-        if let encoded = try? JSONEncoder().encode(people) {
-            UserDefaults.standard.set(encoded, forKey: "SavedPeople")
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(people)
+            UserDefaults.standard.set(data, forKey: "SavedPeople")
+            UserDefaults.standard.synchronize() // Force immediate save
+        } catch {
+            print("Failed to save people: \(error.localizedDescription)")
         }
     }
     
@@ -107,21 +112,9 @@ class PersonViewModel: ObservableObject {
         if let savedPeople = UserDefaults.standard.data(forKey: "SavedPeople") {
             do {
                 let decoder = JSONDecoder()
-                if let decodedPeople = try? decoder.decode([Person].self, from: savedPeople) {
-                    people = decodedPeople
-                } else {
-                    // Migration: Handle the case where ageFormat is not present
-                    let oldPeople = try decoder.decode([OldPerson].self, from: savedPeople)
-                    people = oldPeople.map { oldPerson in
-                        var person = Person(name: oldPerson.name, dateOfBirth: oldPerson.dateOfBirth)
-                        person.photos = oldPerson.photos
-                        person.syncedAlbumIdentifier = oldPerson.syncedAlbumIdentifier
-                        return person
-                    }
-                    savePeople() // Save the migrated data
-                }
+                people = try decoder.decode([Person].self, from: savedPeople)
             } catch {
-                print("Error decoding people: \(error)")
+                print("Failed to load people: \(error.localizedDescription)")
             }
         }
     }

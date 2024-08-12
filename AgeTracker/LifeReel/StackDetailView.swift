@@ -97,8 +97,14 @@ struct StackDetailView: View {
             )
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedAssets: .constant([]), isPresented: $showingImagePicker)
-                .edgesIgnoringSafeArea(.all)
+            CustomImagePicker(
+                isPresented: $showingImagePicker,
+                targetDate: getTargetDate(),
+                person: person,
+                onPick: { assets in
+                    // Handle the picked assets here
+                }
+            )
         }
     }
     
@@ -222,6 +228,25 @@ struct StackDetailView: View {
         CircularButton(systemName: "plus") {
             showingImagePicker = true
         }
+        .sheet(isPresented: $showingImagePicker) {
+            CustomImagePicker(
+                isPresented: $showingImagePicker,
+                targetDate: getTargetDate(),
+                person: person,
+                onPick: { assets in
+                    // Handle the picked assets here
+                }
+            )
+        }
+    }
+    
+    private func getTargetDate() -> Date {
+        // Extract the date from the sectionTitle or use the first photo's date
+        if let firstPhoto = photos.first {
+            return firstPhoto.dateTaken
+        }
+        // If no photos, use the current date as a fallback
+        return Date()
     }
     
     private func formatDate(_ date: Date) -> String {

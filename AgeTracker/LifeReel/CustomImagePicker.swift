@@ -12,10 +12,11 @@ import Photos
 struct CustomImagePicker: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let targetDate: Date
+    let person: Person
     let onPick: ([PHAsset]) -> Void
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        let picker = CustomImagePickerViewController(targetDate: targetDate)
+        let picker = CustomImagePickerViewController(targetDate: targetDate, person: person)
         picker.delegate = context.coordinator
         let nav = UINavigationController(rootViewController: picker)
         return nav
@@ -53,12 +54,14 @@ protocol CustomImagePickerDelegate: AnyObject {
 class CustomImagePickerViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource {
     weak var delegate: CustomImagePickerDelegate?
     private var targetDate: Date
+    private var person: Person
     private var collectionView: UICollectionView!
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
 
-    init(targetDate: Date) {
+    init(targetDate: Date, person: Person) {
         self.targetDate = targetDate
+        self.person = person
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -71,6 +74,9 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupCollectionView()
         fetchAssets()
         setupNavigationBar()
+        DispatchQueue.main.async {
+            self.scrollToTargetDate()
+        }
     }
 
     private func setupCollectionView() {
@@ -95,12 +101,19 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         
-        // Calculate the date 40 weeks before the target date
         let calendar = Calendar.current
-        let fortyWeeksBefore = calendar.date(byAdding: .weekOfYear, value: -40, to: targetDate)!
+        let startDate: Date
+        
+        if person.trackPregnancy {
+            // If tracking pregnancy, fetch photos from 40 weeks before birth
+            startDate = calendar.date(byAdding: .weekOfYear, value: -40, to: person.dateOfBirth) ?? person.dateOfBirth
+        } else {
+            // If not tracking pregnancy, use the birth date as the start date
+            startDate = person.dateOfBirth
+        }
         
         // Create a predicate to filter assets
-        let predicate = NSPredicate(format: "creationDate >= %@", fortyWeeksBefore as NSDate)
+        let predicate = NSPredicate(format: "creationDate >= %@", startDate as NSDate)
         fetchOptions.predicate = predicate
 
         assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
@@ -118,6 +131,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             if let creationDate = asset.creationDate, creationDate <= targetDate {
                 let indexPath = IndexPath(item: i, section: 0)
                 collectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+                collectionView.layoutIfNeeded()
                 break
             }
         }

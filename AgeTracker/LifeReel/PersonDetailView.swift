@@ -83,11 +83,13 @@ struct PersonDetailView: View {
     @State private var currentMoment: String = ""
     @State private var isCustomImagePickerPresented = false
     @State private var customImagePickerTargetDate = Date()
+    @State private var showPregnancyWeeks: Bool
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
-        self.person = person
+        self._person = State(initialValue: person)
         self.viewModel = viewModel
+        self._showPregnancyWeeks = State(initialValue: person.showPregnancyWeeks)
     }
     
     // Main body of the view
@@ -174,12 +176,20 @@ struct PersonDetailView: View {
             }
             .sheet(isPresented: $isCustomImagePickerPresented) {
                 NavigationView {
-                    CustomImagePicker(isPresented: $isCustomImagePickerPresented, targetDate: customImagePickerTargetDate) { assets in
-                        for asset in assets {
-                            self.viewModel.addPhoto(to: &self.person, asset: asset)
+                    CustomImagePicker(
+                        isPresented: $isCustomImagePickerPresented,
+                        targetDate: customImagePickerTargetDate,
+                        person: person,
+                        onPick: { assets in
+                            for asset in assets {
+                                self.viewModel.addPhoto(to: &self.person, asset: asset)
+                            }
                         }
-                    }
+                    )
                 }
+            }
+            .onChange(of: person.showPregnancyWeeks) { newValue in
+                showPregnancyWeeks = newValue
             }
         }
     }
@@ -192,7 +202,17 @@ struct PersonDetailView: View {
                 StacksView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
                     .transition(.opacity)
             case 1:
-                GridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, currentScrollPosition: $currentScrollPosition, openImagePickerForMoment: openImagePickerForMoment, deletePhoto: deletePhoto)
+                GridView(
+                    viewModel: viewModel,
+                    person: $person,
+                    selectedPhoto: $selectedPhoto,
+                    currentScrollPosition: $currentScrollPosition,
+                    openImagePickerForMoment: openImagePickerForMoment,
+                    deletePhoto: deletePhoto,
+                    scrollToSection: { section in
+                        scrollToStoredPosition(proxy: scrollProxy, section: section)
+                    }
+                )
                     .transition(.opacity)
                     .onChange(of: selectedView) { oldValue, newValue in
                         if newValue == 1 {
@@ -280,11 +300,11 @@ struct PersonDetailView: View {
             targetDate = calendar.date(byAdding: .month, value: -4, to: person.dateOfBirth) ?? person.dateOfBirth
         } else if moment.contains("Month") {
             if let monthNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                targetDate = calendar.date(byAdding: .month, value: monthNumber - 1, to: person.dateOfBirth) ?? person.dateOfBirth
+                targetDate = calendar.date(byAdding: .month, value: monthNumber, to: person.dateOfBirth) ?? person.dateOfBirth
             }
         } else if moment.contains("Year") {
             if let yearNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                targetDate = calendar.date(byAdding: .year, value: yearNumber - 1, to: person.dateOfBirth) ?? person.dateOfBirth
+                targetDate = calendar.date(byAdding: .year, value: yearNumber, to: person.dateOfBirth) ?? person.dateOfBirth
             }
         }
 
@@ -298,10 +318,8 @@ struct PersonDetailView: View {
         
         if moment == "Pregnancy" {
             return calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
-        } else if moment == "Birth" {
+        } else if moment == "Birth Month" {
             return person.dateOfBirth
-        } else if moment == "First Year" {
-            return calendar.date(byAdding: .month, value: 6, to: person.dateOfBirth) ?? person.dateOfBirth
         } else if moment.contains("Month") {
             let months = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
             return calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? person.dateOfBirth
@@ -425,76 +443,65 @@ struct PersonDetailView: View {
     }
 
     // New function to scroll to stored position
-    private func scrollToStoredPosition(proxy: ScrollViewProxy) {
-        if let position = currentScrollPosition {
+    private func scrollToStoredPosition(proxy: ScrollViewProxy, section: String? = nil) {
+        let positionToScroll = section ?? currentScrollPosition
+        if let position = positionToScroll {
             withAnimation {
                 proxy.scrollTo(position, anchor: .top)
             }
         }
     }
 
-    private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { photo1, photo2 in
-            switch viewModel.sortOrder {
-            case .latestToOldest:
-                return photo1.dateTaken > photo2.dateTaken
-            case .oldestToLatest:
-                return photo1.dateTaken < photo2.dateTaken
-            }
-        }
-    }
-
-    // Sort grouped photos based on stacksSortOrder
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(forYearView: true)
-        
-        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
-            let order1 = orderFromSectionTitle(group1.0)
-            let order2 = orderFromSectionTitle(group2.0)
-            return viewModel.sortOrder == .latestToOldest ? order1 > order2 : order1 < order2
-        }
-        
-        return sortedGroups
-    }
-
-    private func orderFromSectionTitle(_ title: String) -> Int {
-        if title == "Pregnancy" { return -1 }
-        if title == "Birth" { return 0 }
-        if title.contains("Month") {
-            let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return months
-        }
-        if title.contains("Year") {
-            let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return years * 12 + 1000
-        }
-        return 0
+        return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
     }
 
     private func groupAndSortPhotos(forYearView: Bool) -> [(String, [Photo])] {
+        return PhotoUtils.groupAndSortPhotos(
+            for: person,
+            sortOrder: viewModel.sortOrder,
+            trackPregnancy: person.trackPregnancy,
+            showBirthMonths: person.showBirthMonths,
+            showPregnancyWeeks: person.showPregnancyWeeks
+        )
+    }
+
+    private func bigMoments() -> [(String, [Photo])] {
+        var moments: [(String, [Photo])] = []
         let calendar = Calendar.current
-        var groupedPhotos: [String: [Photo]] = [:]
-
-        for photo in person.photos {
-            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-
-            let sectionTitle: String
-            if photo.dateTaken < person.dateOfBirth {
-                sectionTitle = "Pregnancy"
-            } else if years == 0 && months == 0 {
-                sectionTitle = "Birth"
-            } else if years == 0 {
-                sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-            } else {
-                sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-            }
-
-            groupedPhotos[sectionTitle, default: []].append(photo)
+        let sortedPhotos = person.photos.sorted { $0.dateTaken < $1.dateTaken }
+        
+        // Pregnancy
+        if person.trackPregnancy {
+            let pregnancyPhotos = sortedPhotos.filter { $0.dateTaken < person.dateOfBirth }
+            moments.append(("Pregnancy", pregnancyPhotos))
         }
-
-        return groupedPhotos.map { ($0.key, $0.value) }
+        
+        // Birth
+        let birthPhotos = sortedPhotos.filter { calendar.isDate($0.dateTaken, inSameDayAs: person.dateOfBirth) }
+        moments.append(("Birth", birthPhotos))
+        
+        // First 12 months
+        for month in 1...12 {
+            let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
+            let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
+            let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
+            moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
+        }
+        
+        // Years
+        let currentDate = Date()
+        let ageComponents = calendar.dateComponents([.year], from: person.dateOfBirth, to: currentDate)
+        let age = ageComponents.year ?? 0
+        
+        for year in 1...max(age, 1) {
+            let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
+            let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
+            let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
+            moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
+        }
+        
+        return moments
     }
 }
 

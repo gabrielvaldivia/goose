@@ -14,8 +14,6 @@ struct PersonSettingsView: View {
     @Binding var person: Person
     @State private var editedName: String
     @State private var editedDateOfBirth: Date
-    @State private var showingDeletePhotosAlert = false
-    @State private var showingDeletePersonAlert = false
     @State private var albums: [PHAssetCollection] = []
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
@@ -24,14 +22,19 @@ struct PersonSettingsView: View {
     @State private var showingBulkImport = false
     @State private var localSortOrder: SortOrder
 
-    // Add this enum at the top of your struct
+    // Add these state variables for the toggles
+    @State private var trackPregnancy: Bool
+    @State private var showPregnancyWeeks: Bool
+    @State private var showBirthMonths: Bool
+
+    // Alert handling
+    @State private var showingAlert = false
+    @State private var activeAlert: AlertType = .deletePhotos
+
+    // Define the AlertType enum
     enum AlertType {
         case deletePhotos, deletePerson
     }
-
-    // Add these state variables
-    @State private var showingAlert = false
-    @State private var activeAlert: AlertType = .deletePhotos
 
     init(viewModel: PersonViewModel, person: Binding<Person>) {
         self.viewModel = viewModel
@@ -39,6 +42,9 @@ struct PersonSettingsView: View {
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
         self._localSortOrder = State(initialValue: viewModel.sortOrder)
+        self._trackPregnancy = State(initialValue: person.wrappedValue.trackPregnancy)
+        self._showPregnancyWeeks = State(initialValue: person.wrappedValue.showPregnancyWeeks)
+        self._showBirthMonths = State(initialValue: person.wrappedValue.showBirthMonths)
     }
 
     var body: some View {
@@ -64,6 +70,29 @@ struct PersonSettingsView: View {
                 }
             }
 
+            Section(header: Text("Display Options")) {
+                Picker("Sort Order", selection: $localSortOrder) {
+                    Text("Latest to Oldest").tag(SortOrder.latestToOldest)
+                    Text("Oldest to Latest").tag(SortOrder.oldestToLatest)
+                }
+                .pickerStyle(DefaultPickerStyle())
+                
+                Toggle("Track Pregnancy", isOn: $trackPregnancy)
+                    .onChange(of: trackPregnancy) { newValue in
+                        updatePerson { $0.trackPregnancy = newValue }
+                    }
+                if trackPregnancy {
+                    Toggle("Show Pregnancy Weeks", isOn: $showPregnancyWeeks)
+                        .onChange(of: showPregnancyWeeks) { newValue in
+                            updatePerson { $0.showPregnancyWeeks = newValue }
+                        }
+                }
+                Toggle("Show Birth Months", isOn: $showBirthMonths)
+                    .onChange(of: showBirthMonths) { newValue in
+                        updatePerson { $0.showBirthMonths = newValue }
+                    }
+            }
+
             Section {
                 Picker("Sync Album", selection: $selectedAlbum) {
                     Text("No album synced").tag(nil as PHAssetCollection?)
@@ -85,14 +114,6 @@ struct PersonSettingsView: View {
                     }
                 }
                 .foregroundColor(.primary)
-            }
-
-            Section(header: Text("Display Options")) {
-                Picker("Sort Order", selection: $localSortOrder) {
-                    Text("Latest to Oldest").tag(SortOrder.latestToOldest)
-                    Text("Oldest to Latest").tag(SortOrder.oldestToLatest)
-                }
-                .pickerStyle(DefaultPickerStyle())
             }
 
             Section(header: Text("Danger Zone")) {
@@ -161,6 +182,27 @@ struct PersonSettingsView: View {
         }
     }
 
+    private func updatePerson(_ update: (inout Person) -> Void) {
+        var updatedPerson = person
+        update(&updatedPerson)
+        person = updatedPerson
+        viewModel.updatePerson(updatedPerson)
+    }
+
+    private func saveChanges() {
+        updatePerson { person in
+            person.name = editedName
+            person.dateOfBirth = editedDateOfBirth
+            person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
+            person.trackPregnancy = trackPregnancy
+            person.showPregnancyWeeks = showPregnancyWeeks
+            person.showBirthMonths = showBirthMonths
+        }
+        
+        viewModel.setSortOrder(localSortOrder)
+        presentationMode.wrappedValue.dismiss()
+    }
+
     private func fetchAlbums() {
         viewModel.fetchAlbums { result in
             switch result {
@@ -185,24 +227,13 @@ struct PersonSettingsView: View {
         }
     }
 
-    private func saveChanges() {
-        person.name = editedName
-        person.dateOfBirth = editedDateOfBirth
-        person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
-        viewModel.setSortOrder(localSortOrder)
-        viewModel.updatePerson(person)
-        presentationMode.wrappedValue.dismiss()
-    }
-
     private func deleteAllPhotos() {
         viewModel.deleteAllPhotos(for: person) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success:
-                    // Update the local person object
                     self.person.photos.removeAll()
-                    // Notify the view model of the change
-                    self.viewModel.objectWillChange.send()
+                    self.viewModel.updatePerson(self.person)
                 case .failure(let error):
                     print("Failed to delete photos: \(error.localizedDescription)")
                     // Optionally, show an alert to the user about the failure
