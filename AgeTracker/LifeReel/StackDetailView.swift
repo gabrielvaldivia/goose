@@ -34,7 +34,7 @@ struct StackDetailView: View {
     @State private var isShareSheetPresented = false
     @State private var activityItems: [Any] = []
     
-    @State private var sortOrder: SortOrder = .latestToOldest
+    @State private var sortOrder: Person.SortOrder = .latestToOldest
     @State private var showingImagePicker = false
 
     init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person) {
@@ -280,7 +280,7 @@ struct StackDetailView: View {
         photos = sortPhotos(photos, order: sortOrder)
     }
     
-    private func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
+    private func sortPhotos(_ photos: [Photo], order: Person.SortOrder) -> [Photo] {
         photos.sorted { photo1, photo2 in
             switch order {
             case .latestToOldest:

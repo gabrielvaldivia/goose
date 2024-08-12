@@ -11,7 +11,7 @@ import Photos
 
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
-    @Published var sortOrder: SortOrder = .latestToOldest
+    @Published var sortOrder: Person.SortOrder = .latestToOldest
     @Published var lastOpenedPersonId: UUID?
 
     init() {
@@ -375,7 +375,7 @@ class PersonViewModel: ObservableObject {
         UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
     }
     
-    func setSortOrder(_ newSortOrder: SortOrder) {
+    func setSortOrder(_ newSortOrder: Person.SortOrder) {
         sortOrder = newSortOrder
         UserDefaults.standard.set(newSortOrder == .latestToOldest ? "latest" : "oldest", forKey: "sortOrderPreference")
     }

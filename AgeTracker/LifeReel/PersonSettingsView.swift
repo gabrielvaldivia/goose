@@ -20,8 +20,8 @@ struct PersonSettingsView: View {
     @State private var onBulkImportComplete: ((String?) -> Void)?
     @State private var showingBirthDaySheet = false
     @State private var showingBulkImport = false
-    @State private var localSortOrder: SortOrder
-    @State private var showBirthMonths: Bool
+    @State private var localSortOrder: Person.SortOrder
+    @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     
 
     // Alert handling
@@ -39,7 +39,7 @@ struct PersonSettingsView: View {
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
         self._localSortOrder = State(initialValue: viewModel.sortOrder)
-        self._showBirthMonths = State(initialValue: person.wrappedValue.showBirthMonths)
+        self._birthMonthsDisplay = State(initialValue: person.wrappedValue.birthMonthsDisplay)
     }
 
     var body: some View {
@@ -67,15 +67,19 @@ struct PersonSettingsView: View {
 
             Section(header: Text("Display Options")) {
                 Picker("Sort Order", selection: $localSortOrder) {
-                    Text("Latest to Oldest").tag(SortOrder.latestToOldest)
-                    Text("Oldest to Latest").tag(SortOrder.oldestToLatest)
+                    Text("Latest to Oldest").tag(Person.SortOrder.latestToOldest)
+                    Text("Oldest to Latest").tag(Person.SortOrder.oldestToLatest)
                 }
                 .pickerStyle(DefaultPickerStyle())
                 
-                Toggle("Show Birth Months", isOn: $showBirthMonths)
-                    .onChange(of: showBirthMonths) { newValue in
-                        updatePerson { $0.showBirthMonths = newValue }
+                Picker("Birth Months", selection: $birthMonthsDisplay) {
+                    ForEach(Person.BirthMonthsDisplay.allCases, id: \.self) { option in
+                        Text(option.rawValue).tag(option)
                     }
+                }
+                .onChange(of: birthMonthsDisplay) { newValue in
+                    updatePerson { $0.birthMonthsDisplay = newValue }
+                }
             }
 
             Section {
@@ -179,7 +183,7 @@ struct PersonSettingsView: View {
             person.name = editedName
             person.dateOfBirth = editedDateOfBirth
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
-            person.showBirthMonths = showBirthMonths
+            person.birthMonthsDisplay = birthMonthsDisplay
         }
         
         viewModel.setSortOrder(localSortOrder)

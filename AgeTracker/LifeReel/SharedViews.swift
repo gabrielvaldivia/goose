@@ -43,7 +43,7 @@ struct ShareButton: View {
 }
 
 struct PhotoUtils {
-    static func sortPhotos(_ photos: [Photo], order: SortOrder) -> [Photo] {
+    static func sortPhotos(_ photos: [Photo], order: Person.SortOrder) -> [Photo] {
         photos.sorted { photo1, photo2 in
             switch order {
             case .latestToOldest:
@@ -54,35 +54,46 @@ struct PhotoUtils {
         }
     }
 
-    static func groupAndSortPhotos(for person: Person, sortOrder: SortOrder, showBirthMonths: Bool) -> [(String, [Photo])] {
+    static func groupAndSortPhotos(for person: Person, sortOrder: Person.SortOrder) -> [(String, [Photo])] {
         let calendar = Calendar.current
         let sortedPhotos = sortPhotos(person.photos, order: sortOrder)
         var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
-            let components = calendar.dateComponents([.day], from: photo.dateTaken, to: person.dateOfBirth)
-            let daysBeforeBirth = components.day ?? 0
+            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+            let years = components.year ?? 0
+            let months = components.month ?? 0
 
             let sectionTitle: String
-            if daysBeforeBirth > 0 {
+            if photo.dateTaken < person.dateOfBirth {
                 sectionTitle = "Pregnancy"
             } else {
-                let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-                let years = ageComponents.year ?? 0
-                let months = ageComponents.month ?? 0
-
-                if years == 0 {
-                    if showBirthMonths {
+                switch person.birthMonthsDisplay {
+                case .none:
+                    if years == 0 {
+                        sectionTitle = "Birth Year"
+                    } else {
+                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                    }
+                case .twelveMonths:
+                    if years == 0 {
                         if months == 0 {
                             sectionTitle = "Birth Month"
                         } else {
                             sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
                         }
                     } else {
-                        sectionTitle = "Birth Year"
+                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                     }
-                } else {
-                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                case .twentyFourMonths:
+                    let totalMonths = years * 12 + months
+                    if totalMonths == 0 {
+                        sectionTitle = "Birth Month"
+                    } else if totalMonths > 0 && totalMonths <= 23 {
+                        sectionTitle = "\(totalMonths) Month\(totalMonths == 1 ? "" : "s")"
+                    } else {
+                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
+                    }
                 }
             }
 
@@ -99,12 +110,12 @@ struct PhotoUtils {
         return sortedGroups
     }
 
-    static func orderFromSectionTitle(_ title: String, sortOrder: SortOrder) -> Int {
+    static func orderFromSectionTitle(_ title: String, sortOrder: Person.SortOrder) -> Int {
         if title == "Pregnancy" {
             return sortOrder == .oldestToLatest ? Int.min : Int.max
         }
         if title == "Birth Month" { return sortOrder == .oldestToLatest ? 1001 : -1 }
-        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1001 : -1 }
+        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1002 : -2 }
         if title.contains("Month") {
             let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
             return sortOrder == .oldestToLatest ? 1001 + months : -1 - months
@@ -119,8 +130,7 @@ struct PhotoUtils {
     static func sortedGroupedPhotosForAll(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
         let groupedPhotos = groupAndSortPhotos(
             for: person,
-            sortOrder: viewModel.sortOrder,
-            showBirthMonths: person.showBirthMonths
+            sortOrder: viewModel.sortOrder
         )
         
         // Convert groupedPhotos to a dictionary for easier lookup
@@ -147,8 +157,7 @@ struct PhotoUtils {
     static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
         let groupedPhotos = groupAndSortPhotos(
             for: person,
-            sortOrder: viewModel.sortOrder,
-            showBirthMonths: person.showBirthMonths
+            sortOrder: viewModel.sortOrder
         )
         
         // Convert groupedPhotos to a dictionary for easier lookup
@@ -171,14 +180,30 @@ struct PhotoUtils {
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
         var stacks: [String] = []
-        if person.showBirthMonths {
-            stacks.append("Birth Month")
-            stacks.append(contentsOf: (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" })
-        } else {
+        let calendar = Calendar.current
+        let currentDate = Date()
+        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
+        let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
+
+        if person.birthMonthsDisplay == .none {
             stacks.append("Birth Year")
+        } else if person.birthMonthsDisplay == .twelveMonths {
+            stacks.append("Birth Month")
+            stacks.append(contentsOf: (1...min(11, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+        } else if person.birthMonthsDisplay == .twentyFourMonths {
+            stacks.append("Birth Month")
+            stacks.append(contentsOf: (1...min(23, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
         }
-        let currentAge = Calendar.current.dateComponents([.year], from: person.dateOfBirth, to: Date()).year ?? 0
-        stacks.append(contentsOf: (1...currentAge).map { "\($0) Year\($0 == 1 ? "" : "s")" })
+
+        let currentAge = ageComponents.year ?? 0
+        let yearStacks = (1...currentAge).map { "\($0) Year\($0 == 1 ? "" : "s")" }
+        
+        if person.birthMonthsDisplay == .twentyFourMonths {
+            stacks.append(contentsOf: yearStacks.filter { $0 != "1 Year" })
+        } else {
+            stacks.append(contentsOf: yearStacks)
+        }
+        
         return stacks
     }
 }

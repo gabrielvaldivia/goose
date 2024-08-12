@@ -16,23 +16,34 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var dateOfBirth: Date
     var photos: [Photo] = []
     var syncedAlbumIdentifier: String?
-    var showBirthMonths: Bool
+    var birthMonthsDisplay: BirthMonthsDisplay = .none
+
+    enum BirthMonthsDisplay: String, Codable, CaseIterable {
+        case none = "None"
+        case twelveMonths = "12 Months"
+        case twentyFourMonths = "24 Months"
+    }
+
+    enum SortOrder: String, Codable {
+        case latestToOldest
+        case oldestToLatest
+    }
 
     init(name: String, dateOfBirth: Date) {
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.syncedAlbumIdentifier = nil
-        self.showBirthMonths = true
+        self.birthMonthsDisplay = .none
     }
 
     // Add a new initializer for migration
-    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, showBirthMonths: Bool) {
+    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay) {
         self.id = id
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.photos = photos
         self.syncedAlbumIdentifier = syncedAlbumIdentifier
-        self.showBirthMonths = showBirthMonths
+        self.birthMonthsDisplay = birthMonthsDisplay
     }
 
     static func == (lhs: Person, rhs: Person) -> Bool {
@@ -41,7 +52,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.showBirthMonths == rhs.showBirthMonths
+               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay
     }
     
     func hash(into hasher: inout Hasher) {
@@ -49,7 +60,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, showBirthMonths
+        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay
     }
     
     init(from decoder: Decoder) throws {
@@ -59,7 +70,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         dateOfBirth = try container.decode(Date.self, forKey: .dateOfBirth)
         photos = try container.decode([Photo].self, forKey: .photos)
         syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
-        showBirthMonths = try container.decodeIfPresent(Bool.self, forKey: .showBirthMonths) ?? true
+        birthMonthsDisplay = try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay) ?? .none
     }
 }
 

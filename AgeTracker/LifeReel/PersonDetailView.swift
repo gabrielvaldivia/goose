@@ -83,13 +83,13 @@ struct PersonDetailView: View {
     @State private var currentMoment: String = ""
     @State private var isCustomImagePickerPresented = false
     @State private var customImagePickerTargetDate = Date()
-    @State private var showBirthMonths: Bool
+    @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
 
     // Initializer
     init(person: Person, viewModel: PersonViewModel) {
         self._person = State(initialValue: person)
         self.viewModel = viewModel
-        self._showBirthMonths = State(initialValue: person.showBirthMonths)
+        self._birthMonthsDisplay = State(initialValue: person.birthMonthsDisplay)
     }
     
     // Main body of the view
@@ -188,8 +188,8 @@ struct PersonDetailView: View {
                     )
                 }
             }
-            .onChange(of: person.showBirthMonths) { newValue in
-                showBirthMonths = newValue
+            .onChange(of: person.birthMonthsDisplay) { newValue in
+                birthMonthsDisplay = newValue
             }
         }
     }
@@ -459,8 +459,7 @@ struct PersonDetailView: View {
     private func groupAndSortPhotos(forYearView: Bool) -> [(String, [Photo])] {
         return PhotoUtils.groupAndSortPhotos(
             for: person,
-            sortOrder: viewModel.sortOrder,
-            showBirthMonths: person.showBirthMonths
+            sortOrder: viewModel.sortOrder
         )
     }
 
@@ -607,12 +606,6 @@ struct CustomBackButton: View {
                 .font(.system(size: 14, weight: .bold))
         }
     }
-}
-
-// Add this enum outside the PersonDetailView struct
-enum SortOrder {
-    case oldestToLatest
-    case latestToOldest
 }
 
 // New preference key for scroll offset
