@@ -101,7 +101,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         
         let calendar = Calendar.current
         var adjustedStartDate = dateRange.start
-        var adjustedEndDate = dateRange.end
+        let adjustedEndDate = dateRange.end
 
         if sectionTitle == "Birth Month" {
             // For Birth Month, include the birth date
