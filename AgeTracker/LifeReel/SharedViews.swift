@@ -194,8 +194,8 @@ public struct PhotoUtils {
             stacks.append(contentsOf: (1...min(23, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
         }
 
-        let currentAge = ageComponents.year ?? 0
-        let yearStacks = (1...currentAge).map { "\($0) Year\($0 == 1 ? "" : "s")" }
+        let currentAge = max(0, ageComponents.year ?? 0)
+        let yearStacks = (1...max(1, currentAge)).map { "\($0) Year\($0 == 1 ? "" : "s")" }
         
         if person.birthMonthsDisplay == .twentyFourMonths {
             stacks.append(contentsOf: yearStacks.filter { $0 != "1 Year" })

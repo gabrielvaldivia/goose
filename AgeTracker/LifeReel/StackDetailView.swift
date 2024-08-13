@@ -165,12 +165,18 @@ struct StackDetailView: View {
         let bufferSize = 10 // Load 10 items before and after visible range
         let lowerBound = max(0, index - bufferSize)
         let upperBound = min(photos.count, index + bufferSize + 1)
-        visibleRange = lowerBound..<upperBound
+        
+        if lowerBound < upperBound {
+            visibleRange = lowerBound..<upperBound
+        } else {
+            print("Warning: Invalid range in updateVisibleRange. lowerBound: \(lowerBound), upperBound: \(upperBound)")
+            visibleRange = nil
+        }
     }
 
     private func loadVisibleThumbnails() {
-        guard let range = visibleRange else { return }
-        for index in range {
+        guard let range = visibleRange, !range.isEmpty else { return }
+        for index in range where index < photos.count {
             let photo = photos[index]
             loadThumbnail(for: photo)
         }
