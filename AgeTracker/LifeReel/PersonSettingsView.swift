@@ -72,10 +72,10 @@ struct PersonSettingsView: View {
                 }
                 .pickerStyle(DefaultPickerStyle())
                 
-                Picker("Birth Months", selection: $birthMonthsDisplay) {
-                    ForEach(Person.BirthMonthsDisplay.allCases, id: \.self) { option in
-                        Text(option.rawValue).tag(option)
-                    }
+                Picker("Group by Month", selection: $birthMonthsDisplay) {
+                    Text("Never").tag(Person.BirthMonthsDisplay.none)
+                    Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
+                    Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
                 }
                 .onChange(of: birthMonthsDisplay) {
                     updatePerson { $0.birthMonthsDisplay = birthMonthsDisplay }

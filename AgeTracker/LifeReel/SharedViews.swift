@@ -63,6 +63,7 @@ public struct PhotoUtils {
             let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
             let years = components.year ?? 0
             let months = components.month ?? 0
+            let totalMonths = years * 12 + months
 
             let sectionTitle: String
             if photo.dateTaken < person.dateOfBirth && !calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
@@ -76,17 +77,18 @@ public struct PhotoUtils {
                         sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                     }
                 case .twelveMonths:
-                    if years == 0 {
+                    if totalMonths == 0 {
                         sectionTitle = "Birth Month"
+                    } else if totalMonths <= 11 {
+                        sectionTitle = "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
                     } else {
                         sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                     }
                 case .twentyFourMonths:
-                    let totalMonths = years * 12 + months
                     if totalMonths == 0 {
                         sectionTitle = "Birth Month"
-                    } else if totalMonths > 0 && totalMonths <= 23 {
-                        sectionTitle = "\(totalMonths) Month\(totalMonths == 1 ? "" : "s")"
+                    } else if totalMonths <= 23 {
+                        sectionTitle = "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
                     } else {
                         sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                     }
@@ -175,18 +177,19 @@ public struct PhotoUtils {
     }
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
-        var stacks: [String] = ["Pregnancy"] // Add "Pregnancy" as the first stack
+        var stacks: [String] = ["Pregnancy"]
         let calendar = Calendar.current
         let currentDate = Date()
         let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
         let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
 
-        if person.birthMonthsDisplay == .none {
+        switch person.birthMonthsDisplay {
+        case .none:
             stacks.append("Birth Year")
-        } else if person.birthMonthsDisplay == .twelveMonths {
+        case .twelveMonths:
             stacks.append("Birth Month")
             stacks.append(contentsOf: (1...min(11, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
-        } else if person.birthMonthsDisplay == .twentyFourMonths {
+        case .twentyFourMonths:
             stacks.append("Birth Month")
             stacks.append(contentsOf: (1...min(23, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
         }
