@@ -18,18 +18,16 @@ struct StacksView: View {
             VStack {
                 ScrollView {
                     LazyVStack(spacing: 15) {
-                        ForEach(PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel), id: \.0) { section, photos in
-                            if !photos.isEmpty {
-                                StackSectionView(
-                                    section: section,
-                                    photos: photos,
-                                    selectedPhoto: $selectedPhoto,
-                                    person: person,
-                                    cardHeight: 300,
-                                    maxWidth: geometry.size.width - 30,
-                                    viewModel: viewModel
-                                )
-                            }
+                        ForEach(PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel), id: \.0) { section, photos in
+                            StackSectionView(
+                                section: section,
+                                photos: photos,
+                                selectedPhoto: $selectedPhoto,
+                                person: person,
+                                cardHeight: 300,
+                                maxWidth: geometry.size.width - 30,
+                                viewModel: viewModel
+                            )
                         }
                     }
                     .padding()

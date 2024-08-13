@@ -101,10 +101,16 @@ struct StackDetailView: View {
         .sheet(isPresented: $showingImagePicker) {
             CustomImagePicker(
                 isPresented: $showingImagePicker,
-                targetDate: getTargetDate(),
+                dateRange: getDateRangeForSection(sectionTitle),
                 person: person,
                 onPick: { assets in
-                    // Handle the picked assets here
+                    for asset in assets {
+                        if let newPhoto = Photo(asset: asset) {
+                            self.viewModel.addPhoto(to: &self.person, asset: asset)
+                            self.photos.append(newPhoto)
+                        }
+                    }
+                    loadAllThumbnails()
                 }
             )
         }
@@ -146,9 +152,7 @@ struct StackDetailView: View {
             }
         }
         .onTapGesture {
-            if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                selectedPhoto = photo
-            }
+            selectedPhoto = photo
         }
     }
     
@@ -208,14 +212,18 @@ struct StackDetailView: View {
     private func GridView(geometry: GeometryProxy) -> some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                ForEach(photos, id: \.id) { photo in
                     photoThumbnail(photo)
-                        .id(index)
+                        .id(photos.firstIndex(of: photo))
                         .onAppear {
-                            updateVisibleRange(index: index)
+                            if let index = photos.firstIndex(of: photo) {
+                                updateVisibleRange(index: index)
+                            }
                         }
                         .onDisappear {
-                            updateVisibleRange(index: index)
+                            if let index = photos.firstIndex(of: photo) {
+                                updateVisibleRange(index: index)
+                            }
                         }
                 }
             }
@@ -248,16 +256,6 @@ struct StackDetailView: View {
     private var addPhotoButton: some View {
         CircularButton(systemName: "plus") {
             showingImagePicker = true
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            CustomImagePicker(
-                isPresented: $showingImagePicker,
-                targetDate: getTargetDate(),
-                person: person,
-                onPick: { assets in
-                    // Handle the picked assets here
-                }
-            )
         }
     }
     
@@ -309,6 +307,17 @@ struct StackDetailView: View {
             case .oldestToLatest:
                 return photo1.dateTaken < photo2.dateTaken
             }
+        }
+    }
+    
+    private func getDateRangeForSection(_ section: String) -> (start: Date, end: Date) {
+        do {
+            print("Debug: Getting date range for section: \(section)")
+            return try PhotoUtils.getDateRangeForSection(section, person: person)
+        } catch {
+            print("Error getting date range for section \(section): \(error)")
+            // Return a default date range or handle the error as appropriate for your app
+            return (Date(), Date())
         }
     }
 }

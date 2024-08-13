@@ -25,7 +25,6 @@
 		4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */; };
 		4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */; };
 		4015B76E2C5EF927001FA4E4 /* BirthDaySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76D2C5EF927001FA4E4 /* BirthDaySheet.swift */; };
-		403C94742C665D1B003373A2 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
 		403C94762C666E26003373A2 /* ShareSlideshowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94752C666E26003373A2 /* ShareSlideshowView.swift */; };
 		4062061B2C6A7078000DE3C5 /* CustomImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */; };
 		4062061D2C6A862A000DE3C5 /* StacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061C2C6A862A000DE3C5 /* StacksView.swift */; };
@@ -35,6 +34,7 @@
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
 		40C00B5A2C630B3E00C1B076 /* PhotoDatePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B592C630B3E00C1B076 /* PhotoDatePicker.swift */; };
+		40F651542C6B0402003B9830 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -331,8 +331,8 @@
 				4062061F2C6A8980000DE3C5 /* TimelineView.swift in Sources */,
 				4015B7612C5D62E4001FA4E4 /* BulkImportView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
+				40F651542C6B0402003B9830 /* SharedViews.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */,
-				403C94742C665D1B003373A2 /* SharedViews.swift in Sources */,
 				40C00B522C604C5E00C1B076 /* AgeCalculator.swift in Sources */,
 				4062061D2C6A862A000DE3C5 /* StacksView.swift in Sources */,
 				4015B75D2C5C569F001FA4E4 /* PersonDetailView.swift in Sources */,

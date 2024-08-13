@@ -36,20 +36,23 @@ class PersonViewModel: ObservableObject {
     
     func addPhoto(to person: inout Person, asset: PHAsset) {
         print("Adding photo to \(person.name) with date: \(asset.creationDate ?? Date())")
-        let newPhoto = Photo(asset: asset)
-        if !person.photos.contains(where: { $0.assetIdentifier == newPhoto.assetIdentifier }) {
-            person.photos.append(newPhoto)
-            person.photos.sort { $0.dateTaken < $1.dateTaken }
-            if let index = people.firstIndex(where: { $0.id == person.id }) {
-                people[index] = person
-                savePeople()
-                objectWillChange.send()
-                print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+        if let newPhoto = Photo(asset: asset) {
+            if !person.photos.contains(where: { $0.assetIdentifier == newPhoto.assetIdentifier }) {
+                person.photos.append(newPhoto)
+                person.photos.sort { $0.dateTaken < $1.dateTaken }
+                if let index = people.firstIndex(where: { $0.id == person.id }) {
+                    people[index] = person
+                    savePeople()
+                    objectWillChange.send()
+                    print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+                } else {
+                    print("Failed to find person \(person.name) in people array")
+                }
             } else {
-                print("Failed to find person \(person.name) in people array")
+                print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
             }
         } else {
-            print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
+            print("Failed to create Photo object from asset")
         }
     }
     
@@ -87,9 +90,17 @@ class PersonViewModel: ObservableObject {
         return AgeCalculator.calculateAgeString(for: person, at: date)
     }
     
-    func updatePerson(_ updatedPerson: Person) {
-        if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
+    func updatePerson(_ person: Person) {
+        if let index = people.firstIndex(where: { $0.id == person.id }) {
+            var updatedPerson = person
             people[index] = updatedPerson
+            savePeople()
+        }
+    }
+    
+    func updatePersonProperties(_ person: Person) {
+        if let index = people.firstIndex(where: { $0.id == person.id }) {
+            people[index] = person
             savePeople()
         }
     }
@@ -99,7 +110,6 @@ class PersonViewModel: ObservableObject {
             let encoder = JSONEncoder()
             let data = try encoder.encode(people)
             UserDefaults.standard.set(data, forKey: "SavedPeople")
-            UserDefaults.standard.synchronize() // Force immediate save
         } catch {
             print("Failed to save people: \(error.localizedDescription)")
         }
@@ -341,8 +351,8 @@ class PersonViewModel: ObservableObject {
             
             for oldPhoto in person.photos {
                 let assets = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-                if let asset = assets.firstObject {
-                    let newPhoto = Photo(asset: asset)
+                if let asset = assets.firstObject,
+                   let newPhoto = Photo(asset: asset) {
                     newPhotos.append(newPhoto)
                     print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
                 } else {
@@ -361,14 +371,16 @@ class PersonViewModel: ObservableObject {
     private func migratePhotoStructure() {
         for personIndex in 0..<people.count {
             var person = people[personIndex]
-            person.photos = person.photos.map { oldPhoto in
+            person.photos = person.photos.compactMap { oldPhoto in
                 // Fetch the asset using the assetIdentifier
                 let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-                if let asset = fetchResult.firstObject {
-                    return Photo(asset: asset)
+                if let asset = fetchResult.firstObject,
+                   let newPhoto = Photo(asset: asset) {
+                    return newPhoto
                 } else {
-                    // If the asset can't be found, return the old photo
-                    return oldPhoto
+                    // If the asset can't be found or the Photo can't be created, return nil to remove this photo
+                    print("Failed to migrate photo: \(oldPhoto.assetIdentifier)")
+                    return nil
                 }
             }
             people[personIndex] = person

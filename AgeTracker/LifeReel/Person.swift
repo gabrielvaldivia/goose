@@ -17,7 +17,6 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var photos: [Photo] = []
     var syncedAlbumIdentifier: String?
     var birthMonthsDisplay: BirthMonthsDisplay = .none
-    var hideEmptyStacks: Bool = false
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -53,8 +52,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay &&
-               lhs.hideEmptyStacks == rhs.hideEmptyStacks
+               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay
     }
     
     func hash(into hasher: inout Hasher) {
@@ -73,6 +71,16 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         photos = try container.decode([Photo].self, forKey: .photos)
         syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
         birthMonthsDisplay = try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay) ?? .none
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(dateOfBirth, forKey: .dateOfBirth)
+        try container.encode(photos, forKey: .photos)
+        try container.encodeIfPresent(syncedAlbumIdentifier, forKey: .syncedAlbumIdentifier)
+        try container.encode(birthMonthsDisplay, forKey: .birthMonthsDisplay)
     }
 }
 
@@ -120,10 +128,13 @@ struct Photo: Identifiable, Codable, Equatable {
         return videoURL
     }
 
-    init(asset: PHAsset) {
+    init?(asset: PHAsset) {
+        guard let creationDate = asset.creationDate else {
+            return nil
+        }
         self.id = UUID()
         self.assetIdentifier = asset.localIdentifier
-        self.dateTaken = asset.creationDate ?? Date()
+        self.dateTaken = creationDate
         self.isVideo = asset.mediaType == .video
     }
 }

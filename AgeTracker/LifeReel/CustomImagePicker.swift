@@ -11,12 +11,12 @@ import Photos
 
 struct CustomImagePicker: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
-    let targetDate: Date
+    let dateRange: (start: Date, end: Date)
     let person: Person
     let onPick: ([PHAsset]) -> Void
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        let picker = CustomImagePickerViewController(targetDate: targetDate, person: person)
+        let picker = CustomImagePickerViewController(dateRange: dateRange, person: person)
         picker.delegate = context.coordinator
         let nav = UINavigationController(rootViewController: picker)
         return nav
@@ -53,14 +53,14 @@ protocol CustomImagePickerDelegate: AnyObject {
 
 class CustomImagePickerViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource {
     weak var delegate: CustomImagePickerDelegate?
-    private var targetDate: Date
+    private var dateRange: (start: Date, end: Date)
     private var person: Person
     private var collectionView: UICollectionView!
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
 
-    init(targetDate: Date, person: Person) {
-        self.targetDate = targetDate
+    init(dateRange: (start: Date, end: Date), person: Person) {
+        self.dateRange = dateRange
         self.person = person
         super.init(nibName: nil, bundle: nil)
     }
@@ -74,9 +74,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupCollectionView()
         fetchAssets()
         setupNavigationBar()
-        DispatchQueue.main.async {
-            self.scrollToTargetDate()
-        }
     }
 
     private func setupCollectionView() {
@@ -101,30 +98,13 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         
-        // Fetch assets from 40 weeks before birth onwards
-        let calendar = Calendar.current
-        let startDate = calendar.date(byAdding: .weekOfYear, value: -40, to: person.dateOfBirth) ?? person.dateOfBirth
-        let predicate = NSPredicate(format: "creationDate >= %@", startDate as NSDate)
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate <= %@", dateRange.start as NSDate, dateRange.end as NSDate)
         fetchOptions.predicate = predicate
 
         assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
         DispatchQueue.main.async {
             self.collectionView.reloadData()
-            self.scrollToTargetDate()
-        }
-    }
-
-    private func scrollToTargetDate() {
-        guard let lastIndex = assets.lastObject.flatMap({ assets.index(of: $0) }) else { return }
-        for i in 0...lastIndex {
-            let asset = assets.object(at: i)
-            if let creationDate = asset.creationDate, creationDate <= targetDate {
-                let indexPath = IndexPath(item: i, section: 0)
-                collectionView.scrollToItem(at: indexPath, at: .top, animated: false)
-                collectionView.layoutIfNeeded()
-                break
-            }
         }
     }
 
@@ -154,7 +134,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImageCell", for: indexPath) as! ImageCell
         let asset = assets.object(at: indexPath.item)
-        cell.configure(with: asset)
+        cell.configure(with: asset, personBirthDate: person.dateOfBirth)
         return cell
     }
 
@@ -177,11 +157,13 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 class ImageCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let checkmarkView = UIImageView()
+    private let ageLabel = UILabel()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupImageView()
         setupCheckmarkView()
+        setupAgeLabel()
     }
 
     required init?(coder: NSCoder) {
@@ -232,10 +214,41 @@ class ImageCell: UICollectionViewCell {
         }
     }
 
-    func configure(with asset: PHAsset) {
+    private func setupAgeLabel() {
+        ageLabel.textAlignment = .center
+        ageLabel.textColor = .white
+        ageLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        ageLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        contentView.addSubview(ageLabel)
+        ageLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            ageLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            ageLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            ageLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            ageLabel.heightAnchor.constraint(equalToConstant: 20)
+        ])
+    }
+
+    func configure(with asset: PHAsset, personBirthDate: Date) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
             self?.imageView.image = image
+        }
+
+        let age = calculateAge(birthDate: personBirthDate, photoDate: asset.creationDate ?? Date())
+        ageLabel.text = age
+    }
+
+    private func calculateAge(birthDate: Date, photoDate: Date) -> String {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: photoDate)
+        let years = ageComponents.year ?? 0
+        let months = ageComponents.month ?? 0
+
+        if years > 0 {
+            return "\(years)y"
+        } else {
+            return "\(months)m"
         }
     }
 

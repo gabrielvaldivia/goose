@@ -178,7 +178,7 @@ struct PersonDetailView: View {
                 NavigationView {
                     CustomImagePicker(
                         isPresented: $isCustomImagePickerPresented,
-                        targetDate: customImagePickerTargetDate,
+                        dateRange: getDateRangeForSection(currentMoment),
                         person: person,
                         onPick: { assets in
                             for asset in assets {
@@ -211,7 +211,9 @@ struct PersonDetailView: View {
                     person: $person,
                     selectedPhoto: $selectedPhoto,
                     currentScrollPosition: $currentScrollPosition,
-                    openImagePickerForMoment: openImagePickerForMoment,
+                    openImagePickerForMoment: { moment, dateRange in
+                        self.openImagePickerForMoment(moment, dateRange: dateRange)
+                    },
                     deletePhoto: deletePhoto,
                     scrollToSection: { section in
                         scrollToStoredPosition(proxy: scrollProxy, section: section)
@@ -295,25 +297,10 @@ struct PersonDetailView: View {
     }
 
     // New function to open image picker for a specific moment
-    private func openImagePickerForMoment(_ moment: String) {
+    private func openImagePickerForMoment(_ moment: String, dateRange: (start: Date, end: Date)) {
         currentMoment = moment
-        let calendar = Calendar.current
-        var targetDate = person.dateOfBirth
-
-        if moment == "Pregnancy" {
-            targetDate = calendar.date(byAdding: .month, value: -4, to: person.dateOfBirth) ?? person.dateOfBirth
-        } else if moment.contains("Month") {
-            if let monthNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                targetDate = calendar.date(byAdding: .month, value: monthNumber, to: person.dateOfBirth) ?? person.dateOfBirth
-            }
-        } else if moment.contains("Year") {
-            if let yearNumber = Int(moment.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) {
-                targetDate = calendar.date(byAdding: .year, value: yearNumber, to: person.dateOfBirth) ?? person.dateOfBirth
-            }
-        }
-
         isCustomImagePickerPresented = true
-        customImagePickerTargetDate = targetDate
+        customImagePickerTargetDate = dateRange.start
     }
 
     // Helper function to get the date for a specific moment
@@ -343,9 +330,10 @@ struct PersonDetailView: View {
         }
         
         for asset in selectedAssets {
-            let newPhoto = Photo(asset: asset)
-            self.viewModel.addPhoto(to: &self.person, asset: asset)
-            print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
+            if let newPhoto = Photo(asset: asset) {
+                self.viewModel.addPhoto(to: &self.person, asset: asset)
+                print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
+            }
         }
     }
 
@@ -497,6 +485,16 @@ struct PersonDetailView: View {
         }
         
         return moments
+    }
+
+    private func getDateRangeForSection(_ section: String) -> (start: Date, end: Date) {
+        do {
+            return try PhotoUtils.getDateRangeForSection(section, person: person)
+        } catch {
+            print("Error getting date range for section \(section): \(error)")
+            // Return a default date range or handle the error as appropriate for your app
+            return (Date(), Date())
+        }
     }
 }
 

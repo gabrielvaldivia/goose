@@ -22,8 +22,6 @@ struct PersonSettingsView: View {
     @State private var showingBulkImport = false
     @State private var localSortOrder: Person.SortOrder
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
-    @State private var hideEmptyStacks: Bool
-    
 
     // Alert handling
     @State private var showingAlert = false
@@ -41,30 +39,13 @@ struct PersonSettingsView: View {
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
         self._localSortOrder = State(initialValue: viewModel.sortOrder)
         self._birthMonthsDisplay = State(initialValue: person.wrappedValue.birthMonthsDisplay)
-        self._hideEmptyStacks = State(initialValue: person.wrappedValue.hideEmptyStacks)
     }
 
     var body: some View {
         Form {
             Section(header: Text("Personal Information")) {
-                HStack {
-                    Text("Name")
-                    Spacer()
-                    TextField("", text: $editedName)
-                        .multilineTextAlignment(.trailing)
-                        .foregroundColor(.secondary)
-                }
-                Button(action: {
-                    showingBirthDaySheet = true
-                }) {
-                    HStack {
-                        Text("Date of Birth")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text(formatDate(editedDateOfBirth))
-                            .foregroundColor(.secondary)
-                    }
-                }
+                TextField("Name", text: $editedName)
+                DatePicker("Date of Birth", selection: $editedDateOfBirth, displayedComponents: .date)
             }
 
             Section(header: Text("Display Options")) {
@@ -72,62 +53,39 @@ struct PersonSettingsView: View {
                     Text("Latest to Oldest").tag(Person.SortOrder.latestToOldest)
                     Text("Oldest to Latest").tag(Person.SortOrder.oldestToLatest)
                 }
-                .pickerStyle(DefaultPickerStyle())
                 
                 Picker("Birth Months", selection: $birthMonthsDisplay) {
                     ForEach(Person.BirthMonthsDisplay.allCases, id: \.self) { option in
                         Text(option.rawValue).tag(option)
                     }
                 }
-                .onChange(of: birthMonthsDisplay) { newValue in
-                    updatePerson { $0.birthMonthsDisplay = newValue }
-                }
-                
-                Toggle("Hide Empty Stacks", isOn: $hideEmptyStacks)
-                    .onChange(of: hideEmptyStacks) { newValue in
-                        updatePerson { $0.hideEmptyStacks = newValue }
-                    }
             }
 
-            Section {
+            Section(header: Text("Sync Options")) {
                 Picker("Sync Album", selection: $selectedAlbum) {
                     Text("No album synced").tag(nil as PHAssetCollection?)
                     ForEach(albums, id: \.localIdentifier) { album in
                         Text(album.localizedTitle ?? "Untitled Album").tag(album as PHAssetCollection?)
                     }
                 }
-                .pickerStyle(MenuPickerStyle())
                 
-                Button(action: {
+                Button("Bulk Import") {
                     showingBulkImport = true
-                }) {
-                    HStack {
-                        Text("Bulk Import")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text("Select Album")
-                            .foregroundColor(.secondary)
-                    }
                 }
-                .foregroundColor(.primary)
             }
 
             Section(header: Text("Danger Zone")) {
-                Button(action: {
+                Button("Delete All Photos") {
                     activeAlert = .deletePhotos
                     showingAlert = true
-                }) {
-                    Text("Delete All Photos")
-                        .foregroundColor(.red)
                 }
+                .foregroundColor(.red)
                 
-                Button(action: {
+                Button("Delete Person") {
                     activeAlert = .deletePerson
                     showingAlert = true
-                }) {
-                    Text("Delete Person")
-                        .foregroundColor(.red)
                 }
+                .foregroundColor(.red)
             }
         }
         .navigationTitle("Settings")
@@ -159,7 +117,6 @@ struct PersonSettingsView: View {
         }
         .sheet(isPresented: $showingBirthDaySheet) {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
-                .presentationDetents([.height(300)]) 
         }
         .sheet(isPresented: $showingBulkImport) {
             BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
@@ -171,10 +128,6 @@ struct PersonSettingsView: View {
         .onAppear {
             fetchAlbums()
             fetchSelectedAlbum()
-            onBulkImportComplete = { albumIdentifier in
-                self.person.syncedAlbumIdentifier = albumIdentifier
-                self.fetchSelectedAlbum()
-            }
         }
     }
 
@@ -186,14 +139,14 @@ struct PersonSettingsView: View {
     }
 
     private func saveChanges() {
-        updatePerson { person in
-            person.name = editedName
-            person.dateOfBirth = editedDateOfBirth
-            person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
-            person.birthMonthsDisplay = birthMonthsDisplay
-            person.hideEmptyStacks = hideEmptyStacks
-        }
+        var updatedPerson = Person(id: person.id,
+                                   name: editedName,
+                                   dateOfBirth: editedDateOfBirth,
+                                   photos: person.photos,
+                                   syncedAlbumIdentifier: selectedAlbum?.localIdentifier,
+                                   birthMonthsDisplay: birthMonthsDisplay)
         
+        viewModel.updatePersonProperties(updatedPerson)
         viewModel.setSortOrder(localSortOrder)
         presentationMode.wrappedValue.dismiss()
     }
@@ -240,12 +193,5 @@ struct PersonSettingsView: View {
     private func deletePerson() {
         viewModel.deletePerson(person)
         presentationMode.wrappedValue.dismiss()
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
     }
 }
