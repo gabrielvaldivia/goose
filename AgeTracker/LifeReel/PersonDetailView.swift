@@ -188,7 +188,7 @@ struct PersonDetailView: View {
                     )
                 }
             }
-            .onChange(of: person.birthMonthsDisplay) { newValue in
+            .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
                 birthMonthsDisplay = newValue
             }
         }

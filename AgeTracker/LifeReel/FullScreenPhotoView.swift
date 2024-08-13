@@ -401,7 +401,7 @@ struct ThumbnailScrubber: View {
                     viewWidth = geometry.size.width
                     scrollToCurrentIndex(proxy: scrollProxy)
                 }
-                .onChange(of: currentIndex) { _ in
+                .onChange(of: currentIndex) { oldValue, newValue in
                     if !isDragging {
                         scrollToCurrentIndex(proxy: scrollProxy)
                     }
