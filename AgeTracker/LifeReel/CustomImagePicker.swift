@@ -58,6 +58,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var collectionView: UICollectionView!
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
+    private var titleLabel: UILabel!
 
     init(dateRange: (start: Date, end: Date), person: Person) {
         self.dateRange = dateRange
@@ -73,6 +74,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         super.viewDidLoad()
         setupCollectionView()
         fetchAssets()
+        setupTitleLabel()
         setupNavigationBar()
     }
 
@@ -108,10 +110,35 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         }
     }
 
+    private func setupTitleLabel() {
+        titleLabel = UILabel()
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 2
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d ''yy"
+        let startDateString = dateFormatter.string(from: dateRange.start)
+        let endDateString = dateFormatter.string(from: dateRange.end)
+        
+        let nameFont = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        let dateFont = UIFont.systemFont(ofSize: 12, weight: .regular)
+        
+        let attributedString = NSMutableAttributedString(string: "\(person.name)\n", attributes: [.font: nameFont])
+        attributedString.append(NSAttributedString(string: "\(startDateString) — \(endDateString)", attributes: [.font: dateFont]))
+        
+        titleLabel.attributedText = attributedString
+        
+        // Ensure the label size is calculated correctly
+        titleLabel.sizeToFit()
+    }
+
     private func setupNavigationBar() {
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancelTapped))
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Add", style: .done, target: self, action: #selector(doneTapped))
         updateAddButtonState()
+        
+        // Set the titleView to the titleLabel
+        navigationItem.titleView = titleLabel
     }
 
     @objc private func cancelTapped() {
