@@ -80,6 +80,11 @@ struct PersonSettingsView: View {
                 .onChange(of: birthMonthsDisplay) {
                     updatePerson { $0.birthMonthsDisplay = birthMonthsDisplay }
                 }
+                
+                Toggle("Hide Empty Stacks", isOn: $person.hideEmptyStacks)
+                    .onChange(of: person.hideEmptyStacks) {
+                        updatePerson { $0.hideEmptyStacks = person.hideEmptyStacks }
+                    }
             }
 
             Section {

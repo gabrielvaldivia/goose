@@ -25,10 +25,12 @@ struct GridView: View {
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
                     ForEach(PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel), id: \.0) { section, photos in
-                        NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel)) {
-                            StackTileView(section: section, photos: photos, width: itemWidth)
+                        if !person.hideEmptyStacks || !photos.isEmpty {
+                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel)) {
+                                StackTileView(section: section, photos: photos, width: itemWidth)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.horizontal, 20)

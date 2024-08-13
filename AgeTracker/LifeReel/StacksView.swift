@@ -19,7 +19,7 @@ struct StacksView: View {
                 ScrollView {
                     LazyVStack(spacing: 15) {
                         ForEach(PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel), id: \.0) { section, photos in
-                            if !photos.isEmpty {
+                            if !person.hideEmptyStacks || !photos.isEmpty {
                                 StackSectionView(
                                     section: section,
                                     photos: photos,

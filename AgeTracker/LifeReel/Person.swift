@@ -17,6 +17,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var photos: [Photo] = []
     var syncedAlbumIdentifier: String?
     var birthMonthsDisplay: BirthMonthsDisplay = .none
+    var hideEmptyStacks: Bool = false
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -34,16 +35,18 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         self.dateOfBirth = dateOfBirth
         self.syncedAlbumIdentifier = nil
         self.birthMonthsDisplay = .none
+        self.hideEmptyStacks = false
     }
 
     // Add a new initializer for migration
-    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay) {
+    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay, hideEmptyStacks: Bool) {
         self.id = id
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.photos = photos
         self.syncedAlbumIdentifier = syncedAlbumIdentifier
         self.birthMonthsDisplay = birthMonthsDisplay
+        self.hideEmptyStacks = hideEmptyStacks
     }
 
     static func == (lhs: Person, rhs: Person) -> Bool {
@@ -52,7 +55,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay
+               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay &&
+               lhs.hideEmptyStacks == rhs.hideEmptyStacks
     }
     
     func hash(into hasher: inout Hasher) {
@@ -60,7 +64,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay
+        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay, hideEmptyStacks
     }
     
     init(from decoder: Decoder) throws {
@@ -71,6 +75,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         photos = try container.decode([Photo].self, forKey: .photos)
         syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
         birthMonthsDisplay = try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay) ?? .none
+        hideEmptyStacks = try container.decodeIfPresent(Bool.self, forKey: .hideEmptyStacks) ?? false
     }
     
     func encode(to encoder: Encoder) throws {
@@ -81,6 +86,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         try container.encode(photos, forKey: .photos)
         try container.encodeIfPresent(syncedAlbumIdentifier, forKey: .syncedAlbumIdentifier)
         try container.encode(birthMonthsDisplay, forKey: .birthMonthsDisplay)
+        try container.encode(hideEmptyStacks, forKey: .hideEmptyStacks)
     }
 }
 
