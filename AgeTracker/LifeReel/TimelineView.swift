@@ -18,7 +18,7 @@ struct TimelineView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
+                ForEach(sortedGroupedPhotosForAll().filter { !$0.1.isEmpty }, id: \.0) { section, photos in
                     Section(header: stickyHeader(for: section)) {
                         ForEach(sortPhotos(photos), id: \.id) { photo in
                             TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
@@ -29,10 +29,6 @@ struct TimelineView: View {
             }
             .padding(.top, 20)
             .padding(.bottom, 80) // Increased bottom padding
-        }
-        .coordinateSpace(name: "scroll")
-        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-            updateScrollPosition(value)
         }
     }
     
@@ -81,10 +77,6 @@ struct TimelineView: View {
     }
     
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        return PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel)
-    }
-    
-    private func updateScrollPosition(_ value: CGPoint) {
-        // Implement the logic to update scroll position
+        return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
     }
 }
