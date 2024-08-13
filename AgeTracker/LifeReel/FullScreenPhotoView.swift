@@ -326,9 +326,14 @@ struct ControlsOverlay: View {
                 HStack {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
-                    Text(calculateAge(for: person, at: photo.dateTaken))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
+                    VStack(spacing: 4) {
+                        Text(calculateAge(for: person, at: photo.dateTaken))
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                        Text(formatDate(photo.dateTaken))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                    }
                     Spacer()
                     CircularIconButton(icon: "trash", action: onDelete)
                 }
