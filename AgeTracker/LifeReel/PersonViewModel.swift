@@ -412,6 +412,15 @@ class PersonViewModel: ObservableObject {
             lastOpenedPersonId = uuid
         }
     }
+    
+    func deleteAllData() {
+        people.removeAll()
+        UserDefaults.standard.removeObject(forKey: "SavedPeople")
+        UserDefaults.standard.removeObject(forKey: "lastOpenedPersonId")
+        UserDefaults.standard.removeObject(forKey: "sortOrderPreference")
+        UserDefaults.standard.synchronize()
+        objectWillChange.send()
+    }
 }
 
 enum PhotoAccessError: Error {

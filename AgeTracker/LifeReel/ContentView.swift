@@ -13,31 +13,26 @@ struct ContentView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 20) {
-                    ForEach(viewModel.people, id: \.id) { person in
-                        NavigationLink(value: person) {
-                            PersonGridItem(person: person)
-                        }
+            ZStack {
+                if viewModel.people.isEmpty {
+                    VStack {
+                        Spacer()
+                        addPersonButton
+                        Spacer()
                     }
-                    
-                    // Add Person button as the last item in the grid
-                    Button(action: { showingAddPerson = true }) {
-                        VStack {
-                            Image(systemName: "plus")
-                                .font(.system(size: 40))
-                                .foregroundColor(.blue)
-                                .frame(width: 100, height: 100)
-                                .background(Color.blue.opacity(0.1))
-                                .clipShape(Circle())
-                            
-                            Text("Add Person")
-                                .font(.caption)
-                                .foregroundColor(.primary)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(viewModel.people, id: \.id) { person in
+                                NavigationLink(value: person) {
+                                    PersonGridItem(person: person)
+                                }
+                            }
+                            addPersonButton
                         }
+                        .padding()
                     }
                 }
-                .padding()
             }
             .navigationTitle("People")
             .navigationBarTitleDisplayMode(.inline)
@@ -46,6 +41,11 @@ struct ContentView: View {
                     Text("People")
                         .font(.title3)
                         .fontWeight(.bold)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SettingsView(viewModel: viewModel)) {
+                        Image(systemName: "gearshape.fill")
+                    }
                 }
             }
             .navigationDestination(for: Person.self) { person in
@@ -60,6 +60,23 @@ struct ContentView: View {
             if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
                let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
                 navigationPath.append(lastOpenedPerson)
+            }
+        }
+    }
+    
+    private var addPersonButton: some View {
+        Button(action: { showingAddPerson = true }) {
+            VStack {
+                Image(systemName: "plus")
+                    .font(.system(size: 40))
+                    .foregroundColor(.blue)
+                    .frame(width: 100, height: 100)
+                    .background(Color.blue.opacity(0.1))
+                    .clipShape(Circle())
+                
+                Text("Add Person")
+                    .font(.caption)
+                    .foregroundColor(.primary)
             }
         }
     }
@@ -117,5 +134,28 @@ struct WelcomeView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(viewModel: PersonViewModel())
+    }
+}
+
+struct SettingsView: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @State private var showingDeleteConfirmation = false
+
+    var body: some View {
+        List {
+            Button("Delete All Data") {
+                showingDeleteConfirmation = true
+            }
+            .foregroundColor(.red)
+        }
+        .navigationTitle("Settings")
+        .alert("Delete All Data", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteAllData()
+            }
+        } message: {
+            Text("Are you sure you want to delete all data? This action cannot be undone.")
+        }
     }
 }
