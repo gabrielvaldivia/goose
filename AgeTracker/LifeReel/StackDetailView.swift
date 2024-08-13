@@ -16,6 +16,7 @@ struct StackDetailView: View {
     @State private var photos: [Photo]
     var onDelete: (Photo) -> Void
     @State private var selectedPhoto: Photo?
+    var openImagePickerForMoment: (String, (Date, Date)) -> Void
     
     @State private var columns = [GridItem]()
     @State private var thumbnails: [String: UIImage] = [:]
@@ -38,12 +39,13 @@ struct StackDetailView: View {
     @State private var sortOrder: Person.SortOrder = .latestToOldest
     @State private var showingImagePicker = false
 
-    init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person, viewModel: PersonViewModel) {
+    init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person, viewModel: PersonViewModel, openImagePickerForMoment: @escaping (String, (Date, Date)) -> Void) {
         self.viewModel = viewModel
         self.sectionTitle = sectionTitle
         self._photos = State(initialValue: photos)
         self.onDelete = onDelete
         self._person = Binding.constant(person)
+        self.openImagePickerForMoment = openImagePickerForMoment
     }
 
     var body: some View {
@@ -51,6 +53,9 @@ struct StackDetailView: View {
             ZStack {
                 if photos.isEmpty {
                     emptyStateView
+                        .onTapGesture {
+                            openImagePickerForMoment(sectionTitle, getDateRangeForSection(sectionTitle))
+                        }
                 } else {
                     GridView(geometry: geometry)
                 }

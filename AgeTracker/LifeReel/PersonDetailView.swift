@@ -202,7 +202,8 @@ struct PersonDetailView: View {
                 StacksView(
                     viewModel: viewModel,
                     person: $person,
-                    selectedPhoto: $selectedPhoto
+                    selectedPhoto: $selectedPhoto,
+                    openImagePickerForMoment: openCustomImagePicker
                 )
                 .transition(.opacity)
             case 1:
@@ -211,9 +212,7 @@ struct PersonDetailView: View {
                     person: $person,
                     selectedPhoto: $selectedPhoto,
                     currentScrollPosition: $currentScrollPosition,
-                    openImagePickerForMoment: { moment, dateRange in
-                        self.openImagePickerForMoment(moment, dateRange: dateRange)
-                    },
+                    openImagePickerForMoment: openCustomImagePicker,
                     deletePhoto: deletePhoto,
                     scrollToSection: { section in
                         scrollToStoredPosition(proxy: scrollProxy, section: section)
@@ -297,7 +296,7 @@ struct PersonDetailView: View {
     }
 
     // New function to open image picker for a specific moment
-    private func openImagePickerForMoment(_ moment: String, dateRange: (start: Date, end: Date)) {
+    private func openCustomImagePicker(for moment: String, dateRange: (start: Date, end: Date)) {
         currentMoment = moment
         isCustomImagePickerPresented = true
         customImagePickerTargetDate = dateRange.start

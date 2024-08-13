@@ -197,7 +197,7 @@ struct PersonSettingsView: View {
     }
 
     private func updatePerson(_ update: (inout Person) -> Void) {
-        var updatedPerson = person
+        let updatedPerson = person
         update(&updatedPerson)
         person = updatedPerson
         viewModel.updatePerson(updatedPerson)

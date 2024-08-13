@@ -26,22 +26,24 @@ struct GridView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
                     ForEach(PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel), id: \.0) { section, photos in
                         if !person.hideEmptyStacks || !photos.isEmpty {
-                            if photos.isEmpty {
-                                StackTileView(section: section, photos: photos, width: itemWidth)
-                                    .onTapGesture {
-                                        do {
-                                            let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
-                                            openImagePickerForMoment(section, dateRange)
-                                        } catch {
-                                            print("Error getting date range for section \(section): \(error)")
-                                        }
-                                    }
-                            } else {
-                                NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel)) {
+                            Group {
+                                if photos.isEmpty {
                                     StackTileView(section: section, photos: photos, width: itemWidth)
+                                        .onTapGesture {
+                                            do {
+                                                let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
+                                                openImagePickerForMoment(section, dateRange)
+                                            } catch {
+                                                print("Error getting date range for section \(section): \(error)")
+                                            }
+                                        }
+                                } else {
+                                    NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel, openImagePickerForMoment: openImagePickerForMoment)) {
+                                        StackTileView(section: section, photos: photos, width: itemWidth)
+                                    }
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                 }

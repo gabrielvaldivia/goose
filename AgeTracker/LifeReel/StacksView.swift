@@ -12,6 +12,7 @@ struct StacksView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
+    var openImagePickerForMoment: (String, (Date, Date)) -> Void
     
     var body: some View {
         GeometryReader { geometry in
@@ -27,7 +28,8 @@ struct StacksView: View {
                                     person: person,
                                     cardHeight: 300,
                                     maxWidth: geometry.size.width - 30,
-                                    viewModel: viewModel
+                                    viewModel: viewModel,
+                                    openImagePickerForMoment: openImagePickerForMoment
                                 )
                             }
                         }
@@ -48,6 +50,7 @@ struct StackSectionView: View {
     let cardHeight: CGFloat
     let maxWidth: CGFloat
     @ObservedObject var viewModel: PersonViewModel
+    var openImagePickerForMoment: (String, (Date, Date)) -> Void
     
     var body: some View {
         NavigationLink(destination: StackDetailView(
@@ -55,7 +58,8 @@ struct StackSectionView: View {
             photos: photos,
             onDelete: { _ in },
             person: person,
-            viewModel: viewModel
+            viewModel: viewModel,
+            openImagePickerForMoment: openImagePickerForMoment
         )) {
             if let randomPhoto = photos.randomElement() {
                 ZStack(alignment: .bottom) {

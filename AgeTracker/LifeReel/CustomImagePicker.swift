@@ -134,7 +134,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImageCell", for: indexPath) as! ImageCell
         let asset = assets.object(at: indexPath.item)
-        cell.configure(with: asset, personBirthDate: person.dateOfBirth)
+        cell.configure(with: asset)
         return cell
     }
 
@@ -157,13 +157,11 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 class ImageCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let checkmarkView = UIImageView()
-    private let ageLabel = UILabel()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupImageView()
         setupCheckmarkView()
-        setupAgeLabel()
     }
 
     required init?(coder: NSCoder) {
@@ -214,41 +212,10 @@ class ImageCell: UICollectionViewCell {
         }
     }
 
-    private func setupAgeLabel() {
-        ageLabel.textAlignment = .center
-        ageLabel.textColor = .white
-        ageLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        ageLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        contentView.addSubview(ageLabel)
-        ageLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            ageLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            ageLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            ageLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            ageLabel.heightAnchor.constraint(equalToConstant: 20)
-        ])
-    }
-
-    func configure(with asset: PHAsset, personBirthDate: Date) {
+    func configure(with asset: PHAsset) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
             self?.imageView.image = image
-        }
-
-        let age = calculateAge(birthDate: personBirthDate, photoDate: asset.creationDate ?? Date())
-        ageLabel.text = age
-    }
-
-    private func calculateAge(birthDate: Date, photoDate: Date) -> String {
-        let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year, .month], from: birthDate, to: photoDate)
-        let years = ageComponents.year ?? 0
-        let months = ageComponents.month ?? 0
-
-        if years > 0 {
-            return "\(years)y"
-        } else {
-            return "\(months)m"
         }
     }
 
