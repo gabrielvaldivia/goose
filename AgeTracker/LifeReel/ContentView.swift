@@ -9,7 +9,7 @@ struct ContentView: View {
         NavigationStack(path: $navigationPath) {
             Group {
                 if !viewModel.people.isEmpty {
-                    List(viewModel.people) { person in
+                    List(viewModel.people, id: \.id) { person in
                         NavigationLink(value: person) {
                             Text(person.name)
                         }
