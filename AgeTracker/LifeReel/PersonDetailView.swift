@@ -12,14 +12,45 @@ import UniformTypeIdentifiers
 import Photos
 import UIKit
 
-enum ActiveSheet: Identifiable {
+enum ActiveSheet: Identifiable, Hashable {
     case settings
     case bulkImport
     case shareView
     case sharingComingSoon
+    case customImagePicker(moment: String, dateRange: (start: Date, end: Date))
     
-    var id: Int {
-        hashValue
+    var id: Self { self }
+    
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .settings:
+            hasher.combine(0)
+        case .bulkImport:
+            hasher.combine(1)
+        case .shareView:
+            hasher.combine(2)
+        case .sharingComingSoon:
+            hasher.combine(3)
+        case .customImagePicker(let moment, let dateRange):
+            hasher.combine(4)
+            hasher.combine(moment)
+            hasher.combine(dateRange.start)
+            hasher.combine(dateRange.end)
+        }
+    }
+    
+    static func == (lhs: ActiveSheet, rhs: ActiveSheet) -> Bool {
+        switch (lhs, rhs) {
+        case (.settings, .settings),
+             (.bulkImport, .bulkImport),
+             (.shareView, .shareView),
+             (.sharingComingSoon, .sharingComingSoon):
+            return true
+        case let (.customImagePicker(lMoment, lDateRange), .customImagePicker(rMoment, rDateRange)):
+            return lMoment == rMoment && lDateRange.start == rDateRange.start && lDateRange.end == rDateRange.end
+        default:
+            return false
+        }
     }
 }
 
@@ -251,9 +282,9 @@ struct PersonDetailView: View {
 
     // New function to open image picker for a specific moment
     private func openCustomImagePicker(for moment: String, dateRange: (start: Date, end: Date)) {
-        currentMoment = moment
         isCustomImagePickerPresented = true
         customImagePickerTargetDate = dateRange.start
+        activeSheet = .customImagePicker(moment: moment, dateRange: dateRange)
     }
 
     // Helper function to get the date for a specific moment
@@ -480,6 +511,17 @@ struct PersonDetailView: View {
             )
         case .sharingComingSoon:
             SharingComingSoonView()
+        case .customImagePicker(let moment, let dateRange):
+            CustomImagePicker(
+                isPresented: $isCustomImagePickerPresented,
+                dateRange: dateRange,
+                sectionTitle: moment,
+                onPick: { assets in
+                    for asset in assets {
+                        self.viewModel.addPhoto(to: &self.person, asset: asset)
+                    }
+                }
+            )
         }
     }
 
