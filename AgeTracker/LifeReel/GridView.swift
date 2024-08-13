@@ -16,6 +16,7 @@ struct GridView: View {
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
     var deletePhoto: (Photo) -> Void
     var scrollToSection: (String) -> Void
+    @State private var loadingStacks: Set<String> = []
 
     var body: some View {
         GeometryReader { geometry in
@@ -28,10 +29,11 @@ struct GridView: View {
                         if !person.hideEmptyStacks || !photos.isEmpty {
                             Group {
                                 if photos.isEmpty {
-                                    StackTileView(section: section, photos: photos, width: itemWidth)
+                                    StackTileView(section: section, photos: photos, width: itemWidth, isLoading: loadingStacks.contains(section))
                                         .onTapGesture {
                                             do {
                                                 let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
+                                                loadingStacks.insert(section)
                                                 openImagePickerForMoment(section, dateRange)
                                             } catch {
                                                 print("Error getting date range for section \(section): \(error)")
@@ -39,7 +41,7 @@ struct GridView: View {
                                         }
                                 } else {
                                     NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel, openImagePickerForMoment: openImagePickerForMoment)) {
-                                        StackTileView(section: section, photos: photos, width: itemWidth)
+                                        StackTileView(section: section, photos: photos, width: itemWidth, isLoading: false)
                                     }
                                 }
                             }
@@ -73,6 +75,7 @@ struct StackTileView: View {
     let section: String
     let photos: [Photo]
     let width: CGFloat
+    let isLoading: Bool
     
     var body: some View {
         VStack(spacing: 4) {
@@ -87,9 +90,16 @@ struct StackTileView: View {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                         .overlay(
-                            Image(systemName: "plus")
-                                .font(.system(size: 30))
-                                .foregroundColor(.gray)
+                            Group {
+                                if isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                                } else {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.gray)
+                                }
+                            }
                         )
                 }
                 
