@@ -282,7 +282,6 @@ struct PersonDetailView: View {
 
     // New function to open image picker for a specific moment
     private func openCustomImagePicker(for moment: String, dateRange: (start: Date, end: Date)) {
-        isCustomImagePickerPresented = true
         customImagePickerTargetDate = dateRange.start
         activeSheet = .customImagePicker(moment: moment, dateRange: dateRange)
     }
@@ -512,16 +511,22 @@ struct PersonDetailView: View {
         case .sharingComingSoon:
             SharingComingSoonView()
         case .customImagePicker(let moment, let dateRange):
-            CustomImagePicker(
-                isPresented: $isCustomImagePickerPresented,
-                dateRange: dateRange,
-                sectionTitle: moment,
-                onPick: { assets in
-                    for asset in assets {
-                        self.viewModel.addPhoto(to: &self.person, asset: asset)
+            NavigationView {
+                CustomImagePicker(
+                    isPresented: Binding(
+                        get: { self.activeSheet != nil },
+                        set: { if !$0 { self.activeSheet = nil } }
+                    ),
+                    dateRange: dateRange,
+                    sectionTitle: moment,
+                    onPick: { assets in
+                        for asset in assets {
+                            self.viewModel.addPhoto(to: &self.person, asset: asset)
+                        }
+                        self.activeSheet = nil
                     }
-                }
-            )
+                )
+            }
         }
     }
 

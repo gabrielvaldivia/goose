@@ -37,7 +37,6 @@ struct CustomImagePicker: UIViewControllerRepresentable {
 
         func imagePicker(_ picker: CustomImagePickerViewController, didSelectAssets assets: [PHAsset]) {
             parent.onPick(assets)
-            parent.isPresented = false
         }
 
         func imagePickerDidCancel(_ picker: CustomImagePickerViewController) {
@@ -142,11 +141,15 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     }
 
     @objc private func cancelTapped() {
-        delegate?.imagePickerDidCancel(self)
+        dismiss(animated: true) {
+            self.delegate?.imagePickerDidCancel(self)
+        }
     }
 
     @objc private func doneTapped() {
-        delegate?.imagePicker(self, didSelectAssets: selectedAssets)
+        dismiss(animated: true) {
+            self.delegate?.imagePicker(self, didSelectAssets: self.selectedAssets)
+        }
     }
 
     private func updateAddButtonState() {
