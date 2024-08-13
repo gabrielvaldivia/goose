@@ -92,8 +92,7 @@ class PersonViewModel: ObservableObject {
     
     func updatePerson(_ person: Person) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
-            var updatedPerson = person
-            people[index] = updatedPerson
+            people[index] = person
             savePeople()
         }
     }

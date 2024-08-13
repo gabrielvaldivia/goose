@@ -22,6 +22,7 @@ struct PersonSettingsView: View {
     @State private var showingBulkImport = false
     @State private var localSortOrder: Person.SortOrder
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
+    
 
     // Alert handling
     @State private var showingAlert = false
@@ -44,8 +45,24 @@ struct PersonSettingsView: View {
     var body: some View {
         Form {
             Section(header: Text("Personal Information")) {
-                TextField("Name", text: $editedName)
-                DatePicker("Date of Birth", selection: $editedDateOfBirth, displayedComponents: .date)
+                HStack {
+                    Text("Name")
+                    Spacer()
+                    TextField("", text: $editedName)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                }
+                Button(action: {
+                    showingBirthDaySheet = true
+                }) {
+                    HStack {
+                        Text("Date of Birth")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(formatDate(editedDateOfBirth))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
 
             Section(header: Text("Display Options")) {
@@ -53,46 +70,84 @@ struct PersonSettingsView: View {
                     Text("Latest to Oldest").tag(Person.SortOrder.latestToOldest)
                     Text("Oldest to Latest").tag(Person.SortOrder.oldestToLatest)
                 }
+                .pickerStyle(DefaultPickerStyle())
                 
                 Picker("Birth Months", selection: $birthMonthsDisplay) {
                     ForEach(Person.BirthMonthsDisplay.allCases, id: \.self) { option in
                         Text(option.rawValue).tag(option)
                     }
                 }
+                .onChange(of: birthMonthsDisplay) {
+                    updatePerson { $0.birthMonthsDisplay = birthMonthsDisplay }
+                }
             }
 
-            Section(header: Text("Sync Options")) {
-                Picker("Sync Album", selection: $selectedAlbum) {
-                    Text("No album synced").tag(nil as PHAssetCollection?)
-                    ForEach(albums, id: \.localIdentifier) { album in
-                        Text(album.localizedTitle ?? "Untitled Album").tag(album as PHAssetCollection?)
+            Section {
+                HStack {
+                    Text("Sync Album")
+                    Spacer()
+                    Menu {
+                        Button("No album synced") {
+                            selectedAlbum = nil
+                        }
+                        ForEach(albums, id: \.localIdentifier) { album in
+                            Button(album.localizedTitle ?? "Untitled Album") {
+                                selectedAlbum = album
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) { 
+                            Text(selectedAlbum?.localizedTitle ?? "No album synced")
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+                        .foregroundColor(.secondary)
                     }
                 }
                 
-                Button("Bulk Import") {
+                Button(action: {
                     showingBulkImport = true
+                }) {
+                    HStack {
+                        Text("Bulk Import")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("Select Album")
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .foregroundColor(.primary)
             }
 
             Section(header: Text("Danger Zone")) {
-                Button("Delete All Photos") {
+                Button(action: {
                     activeAlert = .deletePhotos
                     showingAlert = true
+                }) {
+                    Text("Delete All Photos")
+                        .foregroundColor(.red)
                 }
-                .foregroundColor(.red)
                 
-                Button("Delete Person") {
+                Button(action: {
                     activeAlert = .deletePerson
                     showingAlert = true
+                }) {
+                    Text("Delete Person")
+                        .foregroundColor(.red)
                 }
-                .foregroundColor(.red)
             }
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(trailing: Button("Save") {
-            saveChanges()
-        })
+        .navigationBarItems(
+            leading: Button("Cancel") {
+                presentationMode.wrappedValue.dismiss()
+            },
+            trailing: Button("Save") {
+                saveChanges()
+            }
+        )
         .alert(isPresented: $showingAlert) {
             switch activeAlert {
             case .deletePhotos:
@@ -117,6 +172,7 @@ struct PersonSettingsView: View {
         }
         .sheet(isPresented: $showingBirthDaySheet) {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
+                .presentationDetents([.height(300)]) 
         }
         .sheet(isPresented: $showingBulkImport) {
             BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
@@ -128,6 +184,10 @@ struct PersonSettingsView: View {
         .onAppear {
             fetchAlbums()
             fetchSelectedAlbum()
+            onBulkImportComplete = { albumIdentifier in
+                self.person.syncedAlbumIdentifier = albumIdentifier
+                self.fetchSelectedAlbum()
+            }
         }
     }
 
@@ -139,14 +199,13 @@ struct PersonSettingsView: View {
     }
 
     private func saveChanges() {
-        var updatedPerson = Person(id: person.id,
-                                   name: editedName,
-                                   dateOfBirth: editedDateOfBirth,
-                                   photos: person.photos,
-                                   syncedAlbumIdentifier: selectedAlbum?.localIdentifier,
-                                   birthMonthsDisplay: birthMonthsDisplay)
+        updatePerson { person in
+            person.name = editedName
+            person.dateOfBirth = editedDateOfBirth
+            person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
+            person.birthMonthsDisplay = birthMonthsDisplay
+        }
         
-        viewModel.updatePersonProperties(updatedPerson)
         viewModel.setSortOrder(localSortOrder)
         presentationMode.wrappedValue.dismiss()
     }
@@ -193,5 +252,12 @@ struct PersonSettingsView: View {
     private func deletePerson() {
         viewModel.deletePerson(person)
         presentationMode.wrappedValue.dismiss()
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
