@@ -11,17 +11,16 @@ import AVKit
 import UIKit
 
 struct FullScreenPhotoView: View {
-    // View Properties
     let photo: Photo
     @State var currentIndex: Int
     let photos: [Photo]
     var onDelete: (Photo) -> Void
+    let person: Person
     @Environment(\.presentationMode) var presentationMode
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var showControls = true
     @State private var scale: CGFloat = 1.0
-    let person: Person
     @State private var activeSheet: ActiveSheet?
     @State private var activityItems: [Any] = []
     @State private var isShareSheetPresented = false
@@ -106,6 +105,7 @@ struct FullScreenPhotoView: View {
                     showControls: showControls,
                     person: person,
                     photo: photos[currentIndex],
+                    photos: photos,
                     onClose: {
                         presentationMode.wrappedValue.dismiss()
                     },
@@ -275,13 +275,14 @@ struct ControlsOverlay: View {
     let showControls: Bool
     let person: Person
     let photo: Photo
+    let photos: [Photo]
     let onClose: () -> Void
     let onShare: () -> Void
     let onDelete: () -> Void
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
-
+    
     var body: some View {
         VStack {
             // Top Bar with Close Button
@@ -295,22 +296,25 @@ struct ControlsOverlay: View {
             
             // Bottom Bar with Share, Age, Delete, and Scrubber
             VStack(spacing: 16) {
-                // Scrubber with side fade-out effect
-                ThumbnailScrubber(
-                    photos: person.photos,
-                    currentIndex: $currentIndex,
-                    onScrub: onScrub
-                )
-                .frame(height: 60)
-                .mask(
-                    HStack(spacing: 0) {
-                        LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
-                            .frame(width: 40)
-                        Rectangle().fill(Color.white)
-                        LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
-                            .frame(width: 40)
-                    }
-                )
+                // Only show scrubber if there are at least 2 photos
+                if photos.count >= 2 {
+                    // Scrubber with side fade-out effect
+                    ThumbnailScrubber(
+                        photos: photos,
+                        currentIndex: $currentIndex,
+                        onScrub: onScrub
+                    )
+                    .frame(height: 60)
+                    .mask(
+                        HStack(spacing: 0) {
+                            LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 40)
+                            Rectangle().fill(Color.white)
+                            LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 40)
+                        }
+                    )
+                }
                 
                 HStack {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)

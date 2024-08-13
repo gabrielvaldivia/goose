@@ -15,7 +15,7 @@ struct StackDetailView: View {
     let sectionTitle: String
     @State private var photos: [Photo]
     var onDelete: (Photo) -> Void
-    @State private var selectedPhotoIndex: IdentifiableIndex?
+    @State private var selectedPhoto: Photo?
     
     @State private var columns = [GridItem]()
     @State private var thumbnails: [String: UIImage] = [:]
@@ -84,10 +84,10 @@ struct StackDetailView: View {
         .onAppear {
             loadAllThumbnails()
         }
-        .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
+        .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
-                photo: photos[identifiableIndex.index],
-                currentIndex: identifiableIndex.index,
+                photo: photo,
+                currentIndex: photos.firstIndex(of: photo) ?? 0,
                 photos: photos,
                 onDelete: { deletedPhoto in
                     viewModel.deletePhoto(deletedPhoto, from: &person)
@@ -147,7 +147,7 @@ struct StackDetailView: View {
         }
         .onTapGesture {
             if let index = photos.firstIndex(where: { $0.id == photo.id }) {
-                selectedPhotoIndex = IdentifiableIndex(index: index)
+                selectedPhoto = photo
             }
         }
     }

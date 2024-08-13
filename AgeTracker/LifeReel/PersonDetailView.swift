@@ -169,7 +169,7 @@ struct PersonDetailView: View {
             .sheet(isPresented: $isImagePickerPresented) {
                 ImagePickerRepresentable(isPresented: $isImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
                     for asset in assets {
-                        let newPhoto = Photo(asset: asset)
+                        _ = Photo(asset: asset)
                         self.viewModel.addPhoto(to: &self.person, asset: asset)
                     }
                 }
