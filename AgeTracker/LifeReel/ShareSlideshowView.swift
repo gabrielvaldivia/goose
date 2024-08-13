@@ -52,11 +52,16 @@ struct ShareSlideshowView: View {
 
         var displayName: String {
             switch self {
-            case .allPhotos: return "All Photos"
-            case .pregnancy: return "Pregnancy"
-            case .birthMonth: return "Birth Month"
-            case .month(let value): return "\(value) Month\(value == 1 ? "" : "s")"
-            case .year(let value): return "\(value) Year\(value == 1 ? "" : "s")"
+            case .allPhotos:
+                return "All Photos"
+            case .pregnancy:
+                return "Pregnancy"
+            case .birthMonth:
+                return "Birth Month"
+            case .month(let value):
+                return "\(value) Month\(value == 1 ? "" : "s")"
+            case .year(let value):
+                return "\(value) Year\(value == 1 ? "" : "s")"
             }
         }
         
@@ -132,27 +137,14 @@ struct ShareSlideshowView: View {
     }
     
     private var filteredPhotos: [Photo] {
-        switch selectedRange {
-        case .allPhotos:
+        let groupedPhotos = PhotoUtils.groupAndSortPhotos(for: person, sortOrder: .oldestToLatest)
+        
+        if selectedRange == .allPhotos {
             return photos
-        case .pregnancy:
-            return photos.filter { $0.dateTaken < person.dateOfBirth }
-        case .birthMonth:
-            return photos.filter { photo in
-                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
-                return age.years == 0 && age.months == 0
-            }
-        case .month(let month):
-            return photos.filter { photo in
-                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
-                return age.years == 0 && age.months == month
-            }
-        case .year(let year):
-            return photos.filter { photo in
-                let age = AgeCalculator.calculateAge(for: person, at: photo.dateTaken)
-                return age.years == year - 1
-            }
         }
+        
+        let selectedSectionTitle = selectedRange.displayName
+        return groupedPhotos.first { $0.0 == selectedSectionTitle }?.1 ?? []
     }
     
     // Body
@@ -337,11 +329,14 @@ struct ShareSlideshowView: View {
     }
     
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
-        if date < person.dateOfBirth {
+        let calendar = Calendar.current
+        
+        if calendar.isDate(date, inSameDayAs: person.dateOfBirth) {
+            return "Birth Month"
+        } else if date < person.dateOfBirth {
             return "Pregnancy"
         }
         
-        let calendar = Calendar.current
         let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: date)
         
         if let year = components.year, let month = components.month {
@@ -410,31 +405,7 @@ struct ShareSlideshowView: View {
     }
     
     private func groupAndSortPhotos() -> [(String, [Photo])] {
-        let calendar = Calendar.current
-        var groupedPhotos: [String: [Photo]] = [:]
-
-        for photo in photos {
-            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-
-            let sectionTitle: String
-            if photo.dateTaken >= person.dateOfBirth {
-                if years == 0 && months == 0 {
-                    sectionTitle = "Birth Month"
-                } else if years == 0 {
-                    sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                } else {
-                    sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            } else {
-                sectionTitle = "Pregnancy"
-            }
-
-            groupedPhotos[sectionTitle, default: []].append(photo)
-        }
-
-        return groupedPhotos.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
+        return PhotoUtils.groupAndSortPhotos(for: person, sortOrder: .oldestToLatest)
     }
 }
 

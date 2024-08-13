@@ -18,6 +18,10 @@ struct AgeCalculator {
         let calendar = Calendar.current
         let birthDate = person.dateOfBirth
         
+        if calendar.isDate(date, inSameDayAs: birthDate) {
+            return "Birth day"
+        }
+        
         if date >= birthDate {
             let components = calendar.dateComponents([.year, .month, .day], from: birthDate, to: date)
             let years = components.year ?? 0
@@ -48,10 +52,10 @@ struct AgeCalculator {
         } else {
             let componentsBeforeBirth = calendar.dateComponents([.day], from: date, to: birthDate)
             let daysBeforeBirth = componentsBeforeBirth.day ?? 0
-            let weeksBeforeBirth = daysBeforeBirth / 7
+            let weeksPregnant = 40 - (daysBeforeBirth / 7)
             
-            if weeksBeforeBirth <= 40 {
-                return "Pregnancy"
+            if weeksPregnant > 0 {
+                return "\(weeksPregnant) week\(weeksPregnant == 1 ? "" : "s") pregnant"
             } else {
                 return "Before pregnancy"
             }
