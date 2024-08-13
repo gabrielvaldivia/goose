@@ -10,11 +10,12 @@ import SwiftUI
 import PhotosUI
 
 struct StackDetailView: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var person: Person
     let sectionTitle: String
     @State private var photos: [Photo]
     var onDelete: (Photo) -> Void
     @State private var selectedPhotoIndex: IdentifiableIndex?
-    let person: Person
     
     @State private var columns = [GridItem]()
     @State private var thumbnails: [String: UIImage] = [:]
@@ -37,33 +38,21 @@ struct StackDetailView: View {
     @State private var sortOrder: Person.SortOrder = .latestToOldest
     @State private var showingImagePicker = false
 
-    init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person) {
+    init(sectionTitle: String, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person, viewModel: PersonViewModel) {
+        self.viewModel = viewModel
         self.sectionTitle = sectionTitle
         self._photos = State(initialValue: photos)
         self.onDelete = onDelete
-        self.person = person
+        self._person = Binding.constant(person)
     }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                VStack {
+                if photos.isEmpty {
+                    emptyStateView
+                } else {
                     GridView(geometry: geometry)
-                }
-                .navigationBarBackButtonHidden(true)
-                .navigationBarItems(leading: CustomBackButton())
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        VStack(spacing: 2) {
-                            Text(sectionTitle)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        sortButton
-                    }
                 }
                 
                 VStack {
@@ -76,23 +65,36 @@ struct StackDetailView: View {
                     .padding(.horizontal)
                 }
             }
-            .onAppear {
-                updateGridColumns(width: geometry.size.width)
-                loadAllThumbnails()
+            .navigationBarBackButtonHidden(true)
+            .navigationBarItems(leading: CustomBackButton())
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(sectionTitle)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    sortButton
+                }
             }
-            .onChange(of: geometry.size) { _, newSize in
-                updateGridColumns(width: newSize.width)
-            }
-            .onChange(of: visibleRange) { _, _ in
-                loadVisibleThumbnails()
-            }
+        }
+        .onAppear {
+            loadAllThumbnails()
         }
         .fullScreenCover(item: $selectedPhotoIndex) { identifiableIndex in
             FullScreenPhotoView(
                 photo: photos[identifiableIndex.index],
                 currentIndex: identifiableIndex.index,
                 photos: photos,
-                onDelete: onDelete,
+                onDelete: { deletedPhoto in
+                    viewModel.deletePhoto(deletedPhoto, from: &person)
+                    if let index = photos.firstIndex(where: { $0.id == deletedPhoto.id }) {
+                        photos.remove(at: index)
+                    }
+                },
                 person: person
             )
         }
@@ -108,6 +110,19 @@ struct StackDetailView: View {
         }
     }
     
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            Text("No photos in this stack")
+                .font(.headline)
+            Text("Add photos to see them here")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+    }
     
     private func updateGridColumns(width: CGFloat) {
         let minItemWidth: CGFloat = 110
@@ -205,6 +220,12 @@ struct StackDetailView: View {
                 }
             }
             .padding()
+        }
+        .onAppear {
+            updateGridColumns(width: geometry.size.width)
+        }
+        .onChange(of: geometry.size) { _, newSize in
+            updateGridColumns(width: newSize.width)
         }
     }
     

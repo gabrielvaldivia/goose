@@ -31,7 +31,7 @@ struct GridView: View {
                                 scrollToSection(section)
                             }
                         } else {
-                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person)) {
+                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel)) {
                                 StackTileView(section: section, photos: photos, width: itemWidth)
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -111,9 +111,18 @@ struct StackTileView: View {
                     Spacer()
                     HStack {
                         Spacer()
+                        if photos.count > 2 {
+                            Text("\(photos.count)")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(4)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(4)
+                                .padding(4)
+                        }
                     }
                 }
-                .padding(4)
             }
             .frame(width: width, height: width)
             .cornerRadius(8)

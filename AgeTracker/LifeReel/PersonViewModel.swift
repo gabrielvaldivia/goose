@@ -327,6 +327,17 @@ class PersonViewModel: ObservableObject {
         }
     }
     
+    func deletePhoto(_ photo: Photo, from person: inout Person) {
+        if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
+            person.photos.remove(at: index)
+            if let personIndex = people.firstIndex(where: { $0.id == person.id }) {
+                people[personIndex] = person
+                savePeople()
+                objectWillChange.send()
+            }
+        }
+    }
+    
     func migratePhotos() {
         print("Starting photo migration...")
         for personIndex in 0..<people.count {
