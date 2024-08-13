@@ -104,7 +104,7 @@ class PersonViewModel: ObservableObject {
         }
     }
     
-    private func savePeople() {
+    public func savePeople() {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(people)

@@ -11,13 +11,13 @@ import AVFoundation
 import Photos
 
 struct Person: Identifiable, Codable, Equatable, Hashable {
-    var id = UUID()
+    let id: UUID
     var name: String
     var dateOfBirth: Date
-    var photos: [Photo] = []
+    var photos: [Photo]
     var syncedAlbumIdentifier: String?
-    var birthMonthsDisplay: BirthMonthsDisplay = .none
-    var hideEmptyStacks: Bool = false
+    var birthMonthsDisplay: BirthMonthsDisplay
+    var hideEmptyStacks: Bool
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -31,8 +31,10 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     }
 
     init(name: String, dateOfBirth: Date) {
+        self.id = UUID()
         self.name = name
         self.dateOfBirth = dateOfBirth
+        self.photos = []
         self.syncedAlbumIdentifier = nil
         self.birthMonthsDisplay = .none
         self.hideEmptyStacks = false

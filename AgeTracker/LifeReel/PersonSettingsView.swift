@@ -201,6 +201,7 @@ struct PersonSettingsView: View {
         update(&updatedPerson)
         person = updatedPerson
         viewModel.updatePerson(updatedPerson)
+        viewModel.savePeople() // Add this line to save changes
     }
 
     private func saveChanges() {
@@ -209,9 +210,11 @@ struct PersonSettingsView: View {
             person.dateOfBirth = editedDateOfBirth
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
             person.birthMonthsDisplay = birthMonthsDisplay
+            person.hideEmptyStacks = person.hideEmptyStacks // Ensure this is saved
         }
         
         viewModel.setSortOrder(localSortOrder)
+        viewModel.savePeople() // Add this line to ensure all changes are saved
         presentationMode.wrappedValue.dismiss()
     }
 
