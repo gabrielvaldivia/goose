@@ -12,11 +12,11 @@ import Photos
 struct CustomImagePicker: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let dateRange: (start: Date, end: Date)
-    let person: Person
+    let sectionTitle: String
     let onPick: ([PHAsset]) -> Void
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        let picker = CustomImagePickerViewController(dateRange: dateRange, person: person)
+        let picker = CustomImagePickerViewController(dateRange: dateRange, sectionTitle: sectionTitle)
         picker.delegate = context.coordinator
         let nav = UINavigationController(rootViewController: picker)
         return nav
@@ -54,15 +54,15 @@ protocol CustomImagePickerDelegate: AnyObject {
 class CustomImagePickerViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource {
     weak var delegate: CustomImagePickerDelegate?
     private var dateRange: (start: Date, end: Date)
-    private var person: Person
+    private var sectionTitle: String
     private var collectionView: UICollectionView!
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
     private var titleLabel: UILabel!
 
-    init(dateRange: (start: Date, end: Date), person: Person) {
+    init(dateRange: (start: Date, end: Date), sectionTitle: String) {
         self.dateRange = dateRange
-        self.person = person
+        self.sectionTitle = sectionTitle
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -120,10 +120,10 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let startDateString = dateFormatter.string(from: dateRange.start)
         let endDateString = dateFormatter.string(from: dateRange.end)
         
-        let nameFont = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        let sectionFont = UIFont.systemFont(ofSize: 15, weight: .semibold)
         let dateFont = UIFont.systemFont(ofSize: 12, weight: .regular)
         
-        let attributedString = NSMutableAttributedString(string: "\(person.name)\n", attributes: [.font: nameFont])
+        let attributedString = NSMutableAttributedString(string: "\(sectionTitle)\n", attributes: [.font: sectionFont])
         attributedString.append(NSAttributedString(string: "\(startDateString) — \(endDateString)", attributes: [.font: dateFont]))
         
         titleLabel.attributedText = attributedString

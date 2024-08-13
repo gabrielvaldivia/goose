@@ -107,7 +107,7 @@ struct StackDetailView: View {
             CustomImagePicker(
                 isPresented: $showingImagePicker,
                 dateRange: getDateRangeForSection(sectionTitle),
-                person: person,
+                sectionTitle: sectionTitle,
                 onPick: { assets in
                     for asset in assets {
                         if let newPhoto = Photo(asset: asset) {

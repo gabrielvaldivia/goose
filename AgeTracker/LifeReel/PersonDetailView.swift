@@ -108,12 +108,7 @@ struct PersonDetailView: View {
                         .foregroundColor(.primary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        activeSheet = .settings
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(.blue)
-                    }
+                    settingsButton
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -123,28 +118,7 @@ struct PersonDetailView: View {
                     .edgesIgnoringSafeArea(.all)
                     .presentationDetents([.large])
             }
-            .sheet(item: $activeSheet) { item in
-                switch item {
-                case .settings:
-                    NavigationView {
-                        PersonSettingsView(viewModel: viewModel, person: $person)
-                    }
-                case .bulkImport:
-                    BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                            person = updatedPerson
-                        }
-                    })
-                case .shareView:
-                    ShareSlideshowView(
-                        photos: person.photos,
-                        person: person,
-                        sectionTitle: "All Photos"
-                    )
-                case .sharingComingSoon:
-                    SharingComingSoonView()
-                }
-            }
+            .sheet(item: $activeSheet, content: sheetContent)
             .sheet(isPresented: $isShareSheetPresented) {
                 ActivityViewController(activityItems: activityItems)
             }
@@ -166,28 +140,8 @@ struct PersonDetailView: View {
             .onAppear {
                 viewModel.setLastOpenedPerson(person)
             }
-            .sheet(isPresented: $isImagePickerPresented) {
-                ImagePickerRepresentable(isPresented: $isImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
-                    for asset in assets {
-                        _ = Photo(asset: asset)
-                        self.viewModel.addPhoto(to: &self.person, asset: asset)
-                    }
-                }
-            }
-            .sheet(isPresented: $isCustomImagePickerPresented) {
-                NavigationView {
-                    CustomImagePicker(
-                        isPresented: $isCustomImagePickerPresented,
-                        dateRange: getDateRangeForSection(currentMoment),
-                        person: person,
-                        onPick: { assets in
-                            for asset in assets {
-                                self.viewModel.addPhoto(to: &self.person, asset: asset)
-                            }
-                        }
-                    )
-                }
-            }
+            .sheet(isPresented: $isImagePickerPresented, content: imagePickerContent)
+            .sheet(isPresented: $isCustomImagePickerPresented, content: customImagePickerContent)
             .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
                 birthMonthsDisplay = newValue
             }
@@ -493,6 +447,63 @@ struct PersonDetailView: View {
             print("Error getting date range for section \(section): \(error)")
             // Return a default date range or handle the error as appropriate for your app
             return (Date(), Date())
+        }
+    }
+
+    private var settingsButton: some View {
+        Button(action: {
+            activeSheet = .settings
+        }) {
+            Image(systemName: "gearshape.fill")
+                .foregroundColor(.blue)
+        }
+    }
+
+    @ViewBuilder
+    private func sheetContent(_ item: ActiveSheet) -> some View {
+        switch item {
+        case .settings:
+            NavigationView {
+                PersonSettingsView(viewModel: viewModel, person: $person)
+            }
+        case .bulkImport:
+            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
+                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+                    person = updatedPerson
+                }
+            })
+        case .shareView:
+            ShareSlideshowView(
+                photos: person.photos,
+                person: person,
+                sectionTitle: "All Photos"
+            )
+        case .sharingComingSoon:
+            SharingComingSoonView()
+        }
+    }
+
+    private func imagePickerContent() -> some View {
+        ImagePickerRepresentable(isPresented: $isImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
+            for asset in assets {
+                _ = Photo(asset: asset)
+                self.viewModel.addPhoto(to: &self.person, asset: asset)
+            }
+        }
+    }
+
+    private func customImagePickerContent() -> some View {
+        NavigationView {
+            CustomImagePicker(
+                isPresented: $isCustomImagePickerPresented,
+                dateRange: getDateRangeForSection(currentMoment),
+                sectionTitle: currentMoment,
+                onPick: { assets in
+                    for asset in assets {
+                        self.viewModel.addPhoto(to: &self.person, asset: asset)
+                    }
+                }
+            )
         }
     }
 }
