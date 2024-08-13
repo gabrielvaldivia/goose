@@ -380,6 +380,11 @@ struct ThumbnailScrubber: View {
                             ThumbnailView(photo: photos[index], isSelected: index == currentIndex)
                                 .frame(width: thumbnailSize, height: thumbnailSize)
                                 .id(index)
+                                .onTapGesture {
+                                    currentIndex = index
+                                    onScrub(index)
+                                    scrollToCurrentIndex(proxy: scrollProxy)
+                                }
                         }
                     }
                     .padding(.horizontal, geometry.size.width / 2 - thumbnailSize / 2)
