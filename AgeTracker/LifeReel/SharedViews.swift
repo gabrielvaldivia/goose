@@ -179,7 +179,7 @@ struct PhotoUtils {
     }
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
-        var stacks: [String] = []
+        var stacks: [String] = ["Pregnancy"] // Add "Pregnancy" as the first stack
         let calendar = Calendar.current
         let currentDate = Date()
         let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)

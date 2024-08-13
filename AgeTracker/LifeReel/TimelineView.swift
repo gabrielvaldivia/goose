@@ -81,7 +81,7 @@ struct TimelineView: View {
     }
     
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
+        return PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel)
     }
     
     private func updateScrollPosition(_ value: CGPoint) {

@@ -199,8 +199,12 @@ struct PersonDetailView: View {
         ScrollViewReader { scrollProxy in
             switch selectedView {
             case 0:
-                StacksView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
-                    .transition(.opacity)
+                StacksView(
+                    viewModel: viewModel,
+                    person: $person,
+                    selectedPhoto: $selectedPhoto
+                )
+                .transition(.opacity)
             case 1:
                 GridView(
                     viewModel: viewModel,
@@ -213,12 +217,12 @@ struct PersonDetailView: View {
                         scrollToStoredPosition(proxy: scrollProxy, section: section)
                     }
                 )
-                    .transition(.opacity)
-                    .onChange(of: selectedView) { oldValue, newValue in
-                        if newValue == 1 {
-                            scrollToStoredPosition(proxy: scrollProxy)
-                        }
+                .transition(.opacity)
+                .onChange(of: selectedView) { oldValue, newValue in
+                    if newValue == 1 {
+                        scrollToStoredPosition(proxy: scrollProxy)
                     }
+                }
             default:
                 TimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
                     .transition(.opacity)
