@@ -65,7 +65,7 @@ public struct PhotoUtils {
             let months = components.month ?? 0
 
             let sectionTitle: String
-            if photo.dateTaken < person.dateOfBirth {
+            if photo.dateTaken < person.dateOfBirth && !calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
                 sectionTitle = "Pregnancy"
             } else {
                 switch person.birthMonthsDisplay {
@@ -77,11 +77,7 @@ public struct PhotoUtils {
                     }
                 case .twelveMonths:
                     if years == 0 {
-                        if months == 0 {
-                            sectionTitle = "Birth Month"
-                        } else {
-                            sectionTitle = "\(months) Month\(months == 1 ? "" : "s")"
-                        }
+                        sectionTitle = "Birth Month"
                     } else {
                         sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
                     }
@@ -208,45 +204,32 @@ public struct PhotoUtils {
     }
     
     static func getDateRangeForSection(_ section: String, person: Person) throws -> (start: Date, end: Date) {
-        print("Debug: Entering getDateRangeForSection for section: \(section)")
         let calendar = Calendar.current
-        
-        if section == "Pregnancy" {
-            guard let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) else {
-                throw DateRangeError.invalidDate("Could not calculate pregnancy start date")
+        let birthDate = person.dateOfBirth
+
+        switch section {
+        case "Pregnancy":
+            let start = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+            return (start: start, end: birthDate)
+        case "Birth Month":
+            let endOfMonth = calendar.date(byAdding: .month, value: 1, to: birthDate) ?? birthDate
+            return (start: birthDate, end: endOfMonth)
+        default:
+            if section.contains("Month") {
+                if let months = Int(section.components(separatedBy: " ").first ?? "") {
+                    let start = calendar.date(byAdding: .month, value: months - 1, to: birthDate) ?? birthDate
+                    let end = calendar.date(byAdding: .month, value: months, to: birthDate) ?? birthDate
+                    return (start: start, end: end)
+                }
+            } else if section.contains("Year") {
+                if let years = Int(section.components(separatedBy: " ").first ?? "") {
+                    let start = calendar.date(byAdding: .year, value: years - 1, to: birthDate) ?? birthDate
+                    let end = calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
+                    return (start: start, end: end)
+                }
             }
-            return (pregnancyStart, person.dateOfBirth)
-        } else if section == "Birth Month" {
-            guard let endDate = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth) else {
-                throw DateRangeError.invalidDate("Could not calculate birth month end date")
-            }
-            return (person.dateOfBirth, endDate)
-        } else if section.hasSuffix("Month") || section.hasSuffix("Months") {
-            guard let monthCount = Int(section.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) else {
-                throw DateRangeError.invalidSection("Invalid month count in section: \(section)")
-            }
-            guard let startDate = calendar.date(byAdding: .month, value: monthCount, to: person.dateOfBirth),
-                  let endDate = calendar.date(byAdding: .month, value: 1, to: startDate) else {
-                throw DateRangeError.invalidDate("Could not calculate date range for section: \(section)")
-            }
-            return (startDate, endDate)
-        } else if section == "Birth Year" {
-            guard let endDate = calendar.date(byAdding: .year, value: 1, to: person.dateOfBirth) else {
-                throw DateRangeError.invalidDate("Could not calculate birth year end date")
-            }
-            return (person.dateOfBirth, endDate)
-        } else if section.hasSuffix("Year") || section.hasSuffix("Years") {
-            guard let yearCount = Int(section.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()) else {
-                throw DateRangeError.invalidSection("Invalid year count in section: \(section)")
-            }
-            guard let startDate = calendar.date(byAdding: .year, value: yearCount, to: person.dateOfBirth),
-                  let endDate = calendar.date(byAdding: .year, value: 1, to: startDate) else {
-                throw DateRangeError.invalidDate("Could not calculate date range for section: \(section)")
-            }
-            return (startDate, endDate)
+            throw NSError(domain: "Invalid section", code: 0, userInfo: nil)
         }
-        
-        throw DateRangeError.invalidSection("Unrecognized section: \(section)")
     }
 
     enum DateRangeError: Error {

@@ -322,7 +322,7 @@ struct StackDetailView: View {
         } catch {
             print("Error getting date range for section \(section): \(error)")
             // Return a default date range or handle the error as appropriate for your app
-            return (Date(), Date())
+            return (Date.distantPast, Date())
         }
     }
 }

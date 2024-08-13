@@ -97,9 +97,21 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 
     private func fetchAssets() {
         let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         
-        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate <= %@", dateRange.start as NSDate, dateRange.end as NSDate)
+        let calendar = Calendar.current
+        var adjustedStartDate = dateRange.start
+        var adjustedEndDate = dateRange.end
+
+        if sectionTitle == "Birth Month" {
+            // For Birth Month, include the birth date
+            adjustedStartDate = calendar.startOfDay(for: dateRange.start)
+        } else {
+            // For other months, start from the day after the previous month
+            adjustedStartDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: dateRange.start)) ?? dateRange.start
+        }
+        
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", adjustedStartDate as NSDate, adjustedEndDate as NSDate)
         fetchOptions.predicate = predicate
 
         assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
