@@ -22,6 +22,7 @@ struct PersonSettingsView: View {
     @State private var showingBulkImport = false
     @State private var localSortOrder: Person.SortOrder
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
+    @State private var hideEmptyStacks: Bool
     
 
     // Alert handling
@@ -40,6 +41,7 @@ struct PersonSettingsView: View {
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
         self._localSortOrder = State(initialValue: viewModel.sortOrder)
         self._birthMonthsDisplay = State(initialValue: person.wrappedValue.birthMonthsDisplay)
+        self._hideEmptyStacks = State(initialValue: person.wrappedValue.hideEmptyStacks)
     }
 
     var body: some View {
@@ -80,6 +82,11 @@ struct PersonSettingsView: View {
                 .onChange(of: birthMonthsDisplay) { newValue in
                     updatePerson { $0.birthMonthsDisplay = newValue }
                 }
+                
+                Toggle("Hide Empty Stacks", isOn: $hideEmptyStacks)
+                    .onChange(of: hideEmptyStacks) { newValue in
+                        updatePerson { $0.hideEmptyStacks = newValue }
+                    }
             }
 
             Section {
@@ -184,6 +191,7 @@ struct PersonSettingsView: View {
             person.dateOfBirth = editedDateOfBirth
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
             person.birthMonthsDisplay = birthMonthsDisplay
+            person.hideEmptyStacks = hideEmptyStacks
         }
         
         viewModel.setSortOrder(localSortOrder)

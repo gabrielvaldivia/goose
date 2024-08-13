@@ -24,7 +24,7 @@ struct GridView: View {
             
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: 3), spacing: spacing) {
-                    ForEach(PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel), id: \.0) { section, photos in
+                    ForEach(PhotoUtils.sortedGroupedPhotosForAllIncludingEmpty(person: person, viewModel: viewModel).filter { !person.hideEmptyStacks || !$0.1.isEmpty }, id: \.0) { section, photos in
                         if photos.isEmpty {
                             EmptyStackView(section: section, width: itemWidth) {
                                 openImagePickerForMoment(section)

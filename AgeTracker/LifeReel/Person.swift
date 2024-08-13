@@ -17,6 +17,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var photos: [Photo] = []
     var syncedAlbumIdentifier: String?
     var birthMonthsDisplay: BirthMonthsDisplay = .none
+    var hideEmptyStacks: Bool = false
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -52,7 +53,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay
+               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay &&
+               lhs.hideEmptyStacks == rhs.hideEmptyStacks
     }
     
     func hash(into hasher: inout Hasher) {
