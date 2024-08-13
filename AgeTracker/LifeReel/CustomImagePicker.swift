@@ -100,15 +100,21 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         
         let calendar = Calendar.current
-        var adjustedStartDate = dateRange.start
-        let adjustedEndDate = dateRange.end
+        let adjustedStartDate: Date
+        let adjustedEndDate: Date
 
         if sectionTitle == "Birth Month" {
             // For Birth Month, include the birth date
             adjustedStartDate = calendar.startOfDay(for: dateRange.start)
+            adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
+        } else if sectionTitle == "Pregnancy" {
+            // For Pregnancy, use the date range as is
+            adjustedStartDate = dateRange.start
+            adjustedEndDate = dateRange.end
         } else {
-            // For other months, start from the day after the previous month
-            adjustedStartDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: dateRange.start)) ?? dateRange.start
+            // For other months, start one month later and end one month after that
+            adjustedStartDate = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: dateRange.start))!
+            adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
         }
         
         let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", adjustedStartDate as NSDate, adjustedEndDate as NSDate)
@@ -128,8 +134,24 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MMM d ''yy"
-        let startDateString = dateFormatter.string(from: dateRange.start)
-        let endDateString = dateFormatter.string(from: dateRange.end)
+        
+        let calendar = Calendar.current
+        let displayStartDate: Date
+        let displayEndDate: Date
+        
+        if sectionTitle == "Birth Month" {
+            displayStartDate = dateRange.start
+            displayEndDate = calendar.date(byAdding: .day, value: -1, to: calendar.date(byAdding: .month, value: 1, to: displayStartDate)!)!
+        } else if sectionTitle == "Pregnancy" {
+            displayStartDate = dateRange.start
+            displayEndDate = calendar.date(byAdding: .day, value: -1, to: dateRange.end)!
+        } else {
+            displayStartDate = calendar.date(byAdding: .month, value: 1, to: dateRange.start)!
+            displayEndDate = calendar.date(byAdding: .day, value: -1, to: calendar.date(byAdding: .month, value: 1, to: displayStartDate)!)!
+        }
+        
+        let startDateString = dateFormatter.string(from: displayStartDate)
+        let endDateString = dateFormatter.string(from: displayEndDate)
         
         let sectionFont = UIFont.systemFont(ofSize: 15, weight: .semibold)
         let dateFont = UIFont.systemFont(ofSize: 12, weight: .regular)
