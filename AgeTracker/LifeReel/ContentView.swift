@@ -74,7 +74,7 @@ struct ContentView: View {
                     .background(Color.blue.opacity(0.1))
                     .clipShape(Circle())
                 
-                Text("Add Person")
+                Text("Add Someone")
                     .font(.caption)
                     .foregroundColor(.primary)
             }
