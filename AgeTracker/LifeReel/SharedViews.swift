@@ -341,7 +341,7 @@ struct GeneralAge {
         case year
     }
     
-    static func calculate(for person: Person, at date: Date, displayOption: Person.BirthMonthsDisplay) -> GeneralAge {
+    static func calculate(for person: Person, at date: Date) -> GeneralAge {
         let calendar = Calendar.current
         
         if date < person.dateOfBirth {
@@ -351,7 +351,7 @@ struct GeneralAge {
         let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: date)
         let totalMonths = (components.year ?? 0) * 12 + (components.month ?? 0)
         
-        switch displayOption {
+        switch person.birthMonthsDisplay {
         case .none:
             return GeneralAge(value: components.year ?? 0, unit: .year)
         case .twelveMonths:
@@ -368,13 +368,13 @@ struct GeneralAge {
             }
         }
     }
-
+    
     func toString() -> String {
         switch unit {
         case .month:
-            return value == 0 ? "Birth Month" : "\(value) Month\(value == 1 ? "" : "s")"
+            return "\(value) month\(value == 1 ? "" : "s")"
         case .year:
-            return "\(value) Year\(value == 1 ? "" : "s")"
+            return "\(value) year\(value == 1 ? "" : "s")"
         }
     }
 }
