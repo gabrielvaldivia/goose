@@ -54,7 +54,11 @@ struct TimelineView: View {
         @Binding var selectedPhoto: Photo?
         
         var body: some View {
-            PhotoView(photo: photo, containerWidth: UIScreen.main.bounds.width - 40, isGridView: false, selectedPhoto: $selectedPhoto, person: person)
+            PhotoView(photo: photo, 
+                      containerWidth: UIScreen.main.bounds.width - 40, 
+                      isGridView: false, 
+                      selectedPhoto: $selectedPhoto, 
+                      person: person)
                 .aspectRatio(contentMode: .fit)
                 .cornerRadius(10)
                 .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
