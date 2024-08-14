@@ -194,6 +194,7 @@ struct PersonSettingsView: View {
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
             person.birthMonthsDisplay = birthMonthsDisplay
             person.showEmptyStacks = person.showEmptyStacks
+            // Keep the user's choice for pregnancyTracking
             person.pregnancyTracking = person.pregnancyTracking
         }
         

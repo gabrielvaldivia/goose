@@ -180,36 +180,63 @@ public struct PhotoUtils {
         var stacks: [String] = []
         let calendar = Calendar.current
         let currentDate = Date()
-        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
-        let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
-
-        // Handle pregnancy stacks
+        
+        let endDate = min(person.dateOfBirth, currentDate)
+        let pregnancyStartDate = calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
+        
+        // Include pregnancy stacks based on the tracking option
         switch person.pregnancyTracking {
         case .none:
-            break
+            if pregnancyStartDate < endDate {
+                stacks.append("Pregnancy")
+            }
         case .trimesters:
-            stacks.append(contentsOf: ["First Trimester", "Second Trimester", "Third Trimester"])
+            let trimesterDuration = TimeInterval(91 * 24 * 60 * 60) // 91 days in seconds
+            for i in 0..<3 {
+                let trimesterStart = pregnancyStartDate.addingTimeInterval(Double(i) * trimesterDuration)
+                if trimesterStart < endDate {
+                    stacks.append(["First Trimester", "Second Trimester", "Third Trimester"][i])
+                }
+            }
         case .weeks:
-            stacks.append(contentsOf: (1...40).map { "Week \($0)" })
+            for week in 1...40 {
+                let weekStart = pregnancyStartDate.addingTimeInterval(Double(week - 1) * 7 * 24 * 60 * 60)
+                if weekStart < endDate {
+                    stacks.append("Week \(week)")
+                }
+            }
         }
+        
+        // Handle past or current birth dates
+        if person.dateOfBirth <= currentDate {
+            let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
+            let currentAgeInMonths = max(0, (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0))
+            let currentAgeInYears = ageComponents.year ?? 0
 
-        switch person.birthMonthsDisplay {
-        case .none:
-            stacks.append("Birth Year")
-        case .twelveMonths:
-            stacks.append("Birth Month")
-            stacks.append(contentsOf: (1...11).map { "\($0) Month\($0 == 1 ? "" : "s")" })
-        case .twentyFourMonths:
-            stacks.append("Birth Month")
-            stacks.append(contentsOf: (1...min(23, currentAgeInMonths)).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+            switch person.birthMonthsDisplay {
+            case .none:
+                stacks.append("Birth Year")
+                stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
+            case .twelveMonths:
+                stacks.append("Birth Month")
+                let monthsToShow = min(11, currentAgeInMonths)
+                stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+                if currentAgeInMonths >= 12 {
+                    stacks.append("1 Year")
+                    if currentAgeInYears > 1 {
+                        stacks.append(contentsOf: (2...currentAgeInYears).map { "\($0) Years" })
+                    }
+                }
+            case .twentyFourMonths:
+                stacks.append("Birth Month")
+                let monthsToShow = min(23, currentAgeInMonths)
+                stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+                if currentAgeInYears >= 2 {
+                    stacks.append(contentsOf: (2...currentAgeInYears).map { "\($0) Years" })
+                }
+            }
         }
-
-        // Add year stacks
-        if person.birthMonthsDisplay != .twentyFourMonths || currentAgeInMonths >= 24 {
-            let years = (1...max(1, ageComponents.year ?? 0)).map { "\($0) Year\($0 == 1 ? "" : "s")" }
-            stacks.append(contentsOf: years)
-        }
-
+        
         return stacks
     }
     
@@ -244,22 +271,29 @@ public struct PhotoUtils {
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
         let calendar = Calendar.current
-        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-        let ageInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
-
-        if photo.dateTaken < person.dateOfBirth {
+        let currentDate = Date()
+        
+        if person.dateOfBirth > currentDate {
+            // Handle future birth dates
             switch person.pregnancyTracking {
             case .none:
                 return "Pregnancy"
             case .trimesters:
-                let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
-                let trimester = weeksBeforeBirth / 13
+                let weeksUntilBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
+                let trimester = weeksUntilBirth / 13
                 return ["Third Trimester", "Second Trimester", "First Trimester"][min(trimester, 2)]
             case .weeks:
-                let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
-                let pregnancyWeek = 40 - weeksBeforeBirth
-                return "Week \(max(1, min(40, pregnancyWeek)))"
+                let weeksUntilBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
+                let pregnancyWeek = max(1, 40 - weeksUntilBirth)
+                return "Week \(min(40, pregnancyWeek))"
             }
+        }
+
+        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+        let ageInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
+
+        if photo.dateTaken < person.dateOfBirth {
+            return "Pregnancy"
         }
 
         if calendar.isDate(photo.dateTaken, equalTo: person.dateOfBirth, toGranularity: .month) {

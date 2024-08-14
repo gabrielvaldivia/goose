@@ -35,6 +35,24 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         case none, trimesters, weeks
     }
 
+    static func defaultPregnancyTracking(for dateOfBirth: Date) -> PregnancyTracking {
+        let calendar = Calendar.current
+        let currentDate = Date()
+        
+        if dateOfBirth <= currentDate {
+            return .none
+        }
+        
+        let components = calendar.dateComponents([.month], from: currentDate, to: dateOfBirth)
+        let monthsUntilBirth = components.month ?? 0
+        
+        if monthsUntilBirth > 2 {
+            return .weeks
+        } else {
+            return .trimesters
+        }
+    }
+
     init(name: String, dateOfBirth: Date) {
         self.id = UUID()
         self.name = name
@@ -43,7 +61,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         self.syncedAlbumIdentifier = nil
         self.birthMonthsDisplay = .none
         self.showEmptyStacks = true
-        self.pregnancyTracking = .none
+        self.pregnancyTracking = Person.defaultPregnancyTracking(for: dateOfBirth)
     }
 
     // Add a new initializer for migration
