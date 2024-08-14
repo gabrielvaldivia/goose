@@ -17,7 +17,7 @@ struct GridView: View {
     @State private var loadingStacks: Set<String> = []
 
     private var stacks: [String] {
-        return PhotoUtils.getAllExpectedStacks(for: person)
+        return PhotoUtils.getGeneralAgeStacks(for: person)
     }
 
     var body: some View {

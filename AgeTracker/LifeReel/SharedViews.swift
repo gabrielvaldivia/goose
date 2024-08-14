@@ -244,32 +244,36 @@ public struct PhotoUtils {
 
         if photo.dateTaken < person.dateOfBirth && !calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
             return "Pregnancy"
+        } else if calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
+            return "Birth Month"
+        } else if totalMonths < 24 {
+            return "\(totalMonths) Month\(totalMonths == 1 ? "" : "s")"
         } else {
-            switch person.birthMonthsDisplay {
-            case .none:
-                if years == 0 {
-                    return "Birth Year"
-                } else {
-                    return "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            case .twelveMonths:
-                if totalMonths == 0 {
-                    return "Birth Month"
-                } else if totalMonths <= 11 {
-                    return "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
-                } else {
-                    return "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            case .twentyFourMonths:
-                if totalMonths == 0 {
-                    return "Birth Month"
-                } else if totalMonths <= 23 {
-                    return "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
-                } else {
-                    return "\(years) Year\(years == 1 ? "" : "s")"
-                }
-            }
+            return "\(years) Year\(years == 1 ? "" : "s")"
         }
+    }
+
+    static func getGeneralAgeStacks(for person: Person) -> [String] {
+        var stacks: [String] = ["Pregnancy"]
+        let calendar = Calendar.current
+        let currentDate = Date()
+        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
+        let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
+
+        stacks.append("Birth Month")
+        
+        // First 24 months
+        for month in 0..<min(24, currentAgeInMonths) {
+            stacks.append("\(month + 1) Month\(month == 0 ? "" : "s")")
+        }
+        
+        // Years
+        let currentAge = max(0, ageComponents.year ?? 0)
+        for year in 2...max(2, currentAge) {
+            stacks.append("\(year) Year\(year == 1 ? "" : "s")")
+        }
+        
+        return stacks
     }
 
     enum DateRangeError: Error {
