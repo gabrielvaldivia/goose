@@ -113,9 +113,9 @@ struct StackDetailView: View {
                         if let newPhoto = Photo(asset: asset) {
                             self.viewModel.addPhoto(to: &self.person, asset: asset)
                             self.photos.append(newPhoto)
+                            loadThumbnail(for: newPhoto)
                         }
                     }
-                    loadAllThumbnails()
                 }
             )
         }
@@ -198,10 +198,21 @@ struct StackDetailView: View {
         option.isNetworkAccessAllowed = true
         option.version = .current
         
-        let targetSize = CGSize(width: 220, height: 220) // Increased size for better quality
+        let targetSize = CGSize(width: 220, height: 220)
         
         let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [photo.assetIdentifier], options: nil)
-        guard let asset = fetchResult.firstObject else { return }
+        guard let asset = fetchResult.firstObject else {
+            // If the asset is not found, use the photo's image directly
+            if let image = photo.image {
+                DispatchQueue.main.async {
+                    self.thumbnails[photo.assetIdentifier] = image
+                    if self.thumbnails.count == self.photos.count {
+                        self.isLoading = false
+                    }
+                }
+            }
+            return
+        }
         
         manager.requestImage(
             for: asset,
@@ -287,7 +298,7 @@ struct StackDetailView: View {
     }
     
     private func calculateAge(for person: Person, at date: Date) -> String {
-        return AgeCalculator.calculateAgeString(for: person, at: date)
+        return ExactAge.calculate(for: person, at: date).toString()
     }
     
     private var sortButton: some View {

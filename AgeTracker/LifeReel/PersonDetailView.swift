@@ -196,12 +196,8 @@ struct PersonDetailView: View {
                     viewModel: viewModel,
                     person: $person,
                     selectedPhoto: $selectedPhoto,
-                    currentScrollPosition: $currentScrollPosition,
                     openImagePickerForMoment: openCustomImagePicker,
-                    deletePhoto: deletePhoto,
-                    scrollToSection: { section in
-                        scrollToStoredPosition(proxy: scrollProxy, section: section)
-                    }
+                    deletePhoto: deletePhoto
                 )
                 .transition(.opacity)
                 .onChange(of: selectedView) { oldValue, newValue in
@@ -447,12 +443,13 @@ struct PersonDetailView: View {
         let birthPhotos = sortedPhotos.filter { calendar.isDate($0.dateTaken, inSameDayAs: person.dateOfBirth) }
         moments.append(("Birth", birthPhotos))
         
-        // First 12 months
-        for month in 1...12 {
+        // First 24 months
+        for month in 1...24 {
             let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
             let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            moments.append(("\(month) Month\(month == 1 ? "" : "s")", monthPhotos))
+            let generalAge = GeneralAge.calculate(for: person, at: startDate)
+            moments.append((generalAge.toString(), monthPhotos))
         }
         
         // Years
@@ -460,11 +457,12 @@ struct PersonDetailView: View {
         let ageComponents = calendar.dateComponents([.year], from: person.dateOfBirth, to: currentDate)
         let age = ageComponents.year ?? 0
         
-        for year in 1...max(age, 1) {
+        for year in 2...max(age, 2) {
             let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
             let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            moments.append(("\(year) Year\(year == 1 ? "" : "s")", yearPhotos))
+            let generalAge = GeneralAge.calculate(for: person, at: startDate)
+            moments.append((generalAge.toString(), yearPhotos))
         }
         
         return moments

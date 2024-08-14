@@ -235,8 +235,146 @@ public struct PhotoUtils {
         }
     }
 
+    static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
+        let years = components.year ?? 0
+        let months = components.month ?? 0
+        let totalMonths = years * 12 + months
+
+        if photo.dateTaken < person.dateOfBirth && !calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
+            return "Pregnancy"
+        } else {
+            switch person.birthMonthsDisplay {
+            case .none:
+                if years == 0 {
+                    return "Birth Year"
+                } else {
+                    return "\(years) Year\(years == 1 ? "" : "s")"
+                }
+            case .twelveMonths:
+                if totalMonths == 0 {
+                    return "Birth Month"
+                } else if totalMonths <= 11 {
+                    return "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
+                } else {
+                    return "\(years) Year\(years == 1 ? "" : "s")"
+                }
+            case .twentyFourMonths:
+                if totalMonths == 0 {
+                    return "Birth Month"
+                } else if totalMonths <= 23 {
+                    return "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
+                } else {
+                    return "\(years) Year\(years == 1 ? "" : "s")"
+                }
+            }
+        }
+    }
+
     enum DateRangeError: Error {
         case invalidDate(String)
         case invalidSection(String)
+    }
+}
+
+struct ExactAge {
+    let years: Int
+    let months: Int
+    let days: Int
+    let isPregnancy: Bool
+    let pregnancyWeeks: Int
+
+    static func calculate(for person: Person, at date: Date) -> ExactAge {
+        let calendar = Calendar.current
+        
+        if date < person.dateOfBirth {
+            let components = calendar.dateComponents([.day], from: date, to: person.dateOfBirth)
+            let daysUntilBirth = components.day ?? 0
+            let weeksPregnant = 40 - (daysUntilBirth / 7)
+            return ExactAge(years: 0, months: 0, days: 0, isPregnancy: true, pregnancyWeeks: weeksPregnant)
+        }
+        
+        let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
+        let years = components.year ?? 0
+        let months = components.month ?? 0
+        let days = components.day ?? 0
+        
+        switch person.birthMonthsDisplay {
+        case .none:
+            return ExactAge(years: years, months: 0, days: 0, isPregnancy: false, pregnancyWeeks: 0)
+        case .twelveMonths:
+            if years == 0 || (years == 1 && months == 0 && days == 0) {
+                return ExactAge(years: 0, months: years * 12 + months, days: days, isPregnancy: false, pregnancyWeeks: 0)
+            } else {
+                return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0)
+            }
+        case .twentyFourMonths:
+            if years < 2 || (years == 2 && months == 0 && days == 0) {
+                return ExactAge(years: 0, months: years * 12 + months, days: days, isPregnancy: false, pregnancyWeeks: 0)
+            } else {
+                return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0)
+            }
+        }
+    }
+
+    func toString() -> String {
+        if isPregnancy {
+            return "\(pregnancyWeeks) week\(pregnancyWeeks == 1 ? "" : "s") pregnant"
+        }
+        
+        var parts: [String] = []
+        if years > 0 { parts.append("\(years) year\(years == 1 ? "" : "s")") }
+        if months > 0 { parts.append("\(months) month\(months == 1 ? "" : "s")") }
+        if days > 0 || parts.isEmpty { parts.append("\(days) day\(days == 1 ? "" : "s")") }
+        
+        return parts.joined(separator: ", ")
+    }
+}
+
+struct GeneralAge {
+    let value: Int
+    let unit: AgeUnit
+    
+    enum AgeUnit {
+        case month
+        case year
+    }
+    
+    static func calculate(for person: Person, at date: Date, displayOption: Person.BirthMonthsDisplay) -> GeneralAge {
+        let calendar = Calendar.current
+        
+        if date < person.dateOfBirth {
+            return GeneralAge(value: 0, unit: .month)
+        }
+        
+        let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: date)
+        let totalMonths = (components.year ?? 0) * 12 + (components.month ?? 0)
+        
+        switch displayOption {
+        case .none:
+            return GeneralAge(value: components.year ?? 0, unit: .year)
+        case .twelveMonths:
+            if totalMonths <= 11 {
+                return GeneralAge(value: totalMonths + 1, unit: .month)
+            } else {
+                return GeneralAge(value: components.year ?? 0, unit: .year)
+            }
+        case .twentyFourMonths:
+            if totalMonths <= 23 {
+                return GeneralAge(value: totalMonths + 1, unit: .month)
+            } else {
+                return GeneralAge(value: components.year ?? 0, unit: .year)
+            }
+        }
+    }
+
+    func toString() -> String {
+        switch unit {
+        case .month:
+            return value == 0 ? "Birth Month" : "\(value) Month\(value == 1 ? "" : "s")"
+        case .year:
+            return "\(value) Year\(value == 1 ? "" : "s")"
+        }
     }
 }

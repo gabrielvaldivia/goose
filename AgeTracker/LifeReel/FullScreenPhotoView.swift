@@ -180,14 +180,7 @@ struct FullScreenPhotoView: View {
     
     // Helper Functions
     private func calculateAge(for person: Person, at date: Date) -> String {
-        if date < person.dateOfBirth {
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.day], from: date, to: person.dateOfBirth)
-            let daysUntilBirth = components.day ?? 0
-            let weeksPregnant = 40 - (daysUntilBirth / 7)
-            return "\(weeksPregnant) week\(weeksPregnant == 1 ? "" : "s") pregnant"
-        }
-        return AgeCalculator.calculateAgeString(for: person, at: date)
+        return ExactAge.calculate(for: person, at: date).toString()
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -347,7 +340,7 @@ struct ControlsOverlay: View {
     
     // Helper functions
     private func calculateAge(for person: Person, at date: Date) -> String {
-        return AgeCalculator.calculateAgeString(for: person, at: date)
+        return ExactAge.calculate(for: person, at: date).toString()
     }
     
     private func formatDate(_ date: Date) -> String {

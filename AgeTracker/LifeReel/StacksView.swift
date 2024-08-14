@@ -14,15 +14,20 @@ struct StacksView: View {
     @Binding var selectedPhoto: Photo?
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
     
+    private var stacks: [String] {
+        return PhotoUtils.getAllExpectedStacks(for: person)
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             VStack {
                 ScrollView {
                     LazyVStack(spacing: 15) {
-                        ForEach(PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel), id: \.0) { section, photos in
+                        ForEach(stacks, id: \.self) { stack in
+                            let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
                             if !person.hideEmptyStacks || !photos.isEmpty {
                                 StackSectionView(
-                                    section: section,
+                                    section: stack,
                                     photos: photos,
                                     selectedPhoto: $selectedPhoto,
                                     person: person,

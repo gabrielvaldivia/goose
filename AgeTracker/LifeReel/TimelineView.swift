@@ -18,17 +18,21 @@ struct TimelineView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(sortedGroupedPhotosForAll().filter { !$0.1.isEmpty }, id: \.0) { section, photos in
-                    Section(header: stickyHeader(for: section)) {
-                        ForEach(sortPhotos(photos), id: \.id) { photo in
-                            TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
+                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
+                    if !photos.isEmpty {
+                        Section(header: stickyHeader(for: section)) {
+                            LazyVStack(spacing: 10) {
+                                ForEach(sortPhotos(photos), id: \.id) { photo in
+                                    TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
+                                }
+                            }
                         }
+                        .id(section)
                     }
-                    .id(section)
                 }
             }
             .padding(.top, 20)
-            .padding(.bottom, 80) // Increased bottom padding
+            .padding(.bottom, 80)
         }
     }
     
@@ -82,5 +86,9 @@ struct TimelineView: View {
     
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
         return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
+    }
+    
+    private func calculateAge(for person: Person, at date: Date) -> String {
+        return ExactAge.calculate(for: person, at: date).toString()
     }
 }

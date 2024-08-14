@@ -188,30 +188,8 @@ struct AddPersonView: View {
     }
     
     private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
-        let calendar = Calendar.current
-        
-        if photoDate >= dob {
-            let components = calendar.dateComponents([.year, .month, .day], from: dob, to: photoDate)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-            let days = components.day ?? 0
-            
-            var ageComponents: [String] = []
-            if years > 0 { ageComponents.append("\(years) year\(years == 1 ? "" : "s")") }
-            if months > 0 { ageComponents.append("\(months) month\(months == 1 ? "" : "s")") }
-            if days > 0 || ageComponents.isEmpty { ageComponents.append("\(days) day\(days == 1 ? "" : "s")") }
-            
-            return "\(name) is \(ageComponents.joined(separator: ", ")) old"
-        } else {
-            let weeksBeforeBirth = calendar.dateComponents([.weekOfYear], from: photoDate, to: dob).weekOfYear ?? 0
-            let pregnancyWeek = max(40 - weeksBeforeBirth, 0)
-            
-            if pregnancyWeek > 0 {
-                return "\(name)'s mom is \(pregnancyWeek) week\(pregnancyWeek == 1 ? "" : "s") pregnant"
-            } else {
-                return "\(name)'s mom is not yet pregnant"
-            }
-        }
+        let exactAge = ExactAge.calculate(for: Person(name: name, dateOfBirth: dob), at: photoDate)
+        return "\(name) is \(exactAge.toString())"
     }
     
     private func loadImages(from assets: [PHAsset]) {
