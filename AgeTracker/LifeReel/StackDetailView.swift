@@ -52,10 +52,15 @@ struct StackDetailView: View {
         GeometryReader { geometry in
             ZStack {
                 if photos.isEmpty {
-                    emptyStateView
-                        .onTapGesture {
+                    EmptyStateView(
+                        title: "No photos in this stack",
+                        subtitle: "Add photos to see them here",
+                        systemImageName: "photo.on.rectangle.angled",
+                        action: {
                             openImagePickerForMoment(sectionTitle, getDateRangeForSection(sectionTitle))
                         }
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
                     GridView(geometry: geometry)
                 }
@@ -119,20 +124,6 @@ struct StackDetailView: View {
                 }
             )
         }
-    }
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            Text("No photos in this stack")
-                .font(.headline)
-            Text("Add photos to see them here")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
     }
     
     private func updateGridColumns(width: CGFloat) {

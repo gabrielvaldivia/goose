@@ -14,7 +14,6 @@ import UIKit
 
 enum ActiveSheet: Identifiable, Hashable {
     case settings
-    case bulkImport
     case shareView
     case sharingComingSoon
     case customImagePicker(moment: String, dateRange: (start: Date, end: Date))
@@ -25,14 +24,12 @@ enum ActiveSheet: Identifiable, Hashable {
         switch self {
         case .settings:
             hasher.combine(0)
-        case .bulkImport:
-            hasher.combine(1)
         case .shareView:
-            hasher.combine(2)
+            hasher.combine(1)
         case .sharingComingSoon:
-            hasher.combine(3)
+            hasher.combine(2)
         case .customImagePicker(let moment, let dateRange):
-            hasher.combine(4)
+            hasher.combine(3)
             hasher.combine(moment)
             hasher.combine(dateRange.start)
             hasher.combine(dateRange.end)
@@ -42,7 +39,6 @@ enum ActiveSheet: Identifiable, Hashable {
     static func == (lhs: ActiveSheet, rhs: ActiveSheet) -> Bool {
         switch (lhs, rhs) {
         case (.settings, .settings),
-             (.bulkImport, .bulkImport),
              (.shareView, .shareView),
              (.sharingComingSoon, .sharingComingSoon):
             return true
@@ -494,12 +490,6 @@ struct PersonDetailView: View {
             NavigationView {
                 PersonSettingsView(viewModel: viewModel, person: $person)
             }
-        case .bulkImport:
-            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                    person = updatedPerson
-                }
-            })
         case .shareView:
             ShareSlideshowView(
                 photos: person.photos,

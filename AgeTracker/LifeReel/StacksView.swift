@@ -13,6 +13,7 @@ struct StacksView: View {
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
+    @State var showingImagePicker = false
     
     private var stacks: [String] {
         return PhotoUtils.getAllExpectedStacks(for: person)
@@ -20,12 +21,22 @@ struct StacksView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            VStack {
+            if stacks.isEmpty || person.photos.isEmpty {
+                EmptyStateView(
+                    title: "No photos in stacks",
+                    subtitle: "Add photos to create stacks",
+                    systemImageName: "photo.on.rectangle.angled",
+                    action: {
+                        showingImagePicker = true
+                    }
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
                 ScrollView {
                     LazyVStack(spacing: 15) {
                         ForEach(stacks, id: \.self) { stack in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
-                            if !person.hideEmptyStacks || !photos.isEmpty {
+                            if !photos.isEmpty {
                                 StackSectionView(
                                     section: stack,
                                     photos: photos,
@@ -40,7 +51,7 @@ struct StacksView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 80) // Increased bottom padding
+                    .padding(.bottom, 80)
                 }
             }
         }

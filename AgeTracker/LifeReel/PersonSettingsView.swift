@@ -17,9 +17,7 @@ struct PersonSettingsView: View {
     @State private var albums: [PHAssetCollection] = []
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
-    @State private var onBulkImportComplete: ((String?) -> Void)?
     @State private var showingBirthDaySheet = false
-    @State private var showingBulkImport = false
     @State private var localSortOrder: Person.SortOrder
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     
@@ -73,7 +71,7 @@ struct PersonSettingsView: View {
                 .pickerStyle(DefaultPickerStyle())
                 
                 Picker("Group by Month", selection: $birthMonthsDisplay) {
-                    Text("Never").tag(Person.BirthMonthsDisplay.none)
+                    Text("None").tag(Person.BirthMonthsDisplay.none)
                     Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
                     Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
                 }
@@ -81,9 +79,18 @@ struct PersonSettingsView: View {
                     updatePerson { $0.birthMonthsDisplay = birthMonthsDisplay }
                 }
                 
-                Toggle("Hide Empty Stacks", isOn: $person.hideEmptyStacks)
-                    .onChange(of: person.hideEmptyStacks) {
-                        updatePerson { $0.hideEmptyStacks = person.hideEmptyStacks }
+                Picker("Track Pregnancy", selection: $person.pregnancyTracking) {
+                    Text("None").tag(Person.PregnancyTracking.none)
+                    Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
+                    Text("Weeks").tag(Person.PregnancyTracking.weeks)
+                }
+                .onChange(of: person.pregnancyTracking) {
+                    updatePerson { $0.pregnancyTracking = person.pregnancyTracking }
+                }
+                
+                Toggle("Show Empty Stacks", isOn: $person.showEmptyStacks)
+                    .onChange(of: person.showEmptyStacks) {
+                        updatePerson { $0.showEmptyStacks = person.showEmptyStacks }
                     }
             }
 
@@ -110,19 +117,6 @@ struct PersonSettingsView: View {
                         .foregroundColor(.secondary)
                     }
                 }
-                
-                Button(action: {
-                    showingBulkImport = true
-                }) {
-                    HStack {
-                        Text("Bulk Import")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text("Select Album")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .foregroundColor(.primary)
             }
 
             Section(header: Text("Danger Zone")) {
@@ -179,20 +173,9 @@ struct PersonSettingsView: View {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
                 .presentationDetents([.height(300)]) 
         }
-        .sheet(isPresented: $showingBulkImport) {
-            BulkImportView(viewModel: viewModel, person: $person, onImportComplete: {
-                if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-                    person = updatedPerson
-                }
-            })
-        }
         .onAppear {
             fetchAlbums()
             fetchSelectedAlbum()
-            onBulkImportComplete = { albumIdentifier in
-                self.person.syncedAlbumIdentifier = albumIdentifier
-                self.fetchSelectedAlbum()
-            }
         }
     }
 
@@ -201,7 +184,7 @@ struct PersonSettingsView: View {
         update(&updatedPerson)
         person = updatedPerson
         viewModel.updatePerson(updatedPerson)
-        viewModel.savePeople() // Add this line to save changes
+        viewModel.savePeople()
     }
 
     private func saveChanges() {
@@ -210,11 +193,12 @@ struct PersonSettingsView: View {
             person.dateOfBirth = editedDateOfBirth
             person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
             person.birthMonthsDisplay = birthMonthsDisplay
-            person.hideEmptyStacks = person.hideEmptyStacks // Ensure this is saved
+            person.showEmptyStacks = person.showEmptyStacks
+            person.pregnancyTracking = person.pregnancyTracking
         }
         
         viewModel.setSortOrder(localSortOrder)
-        viewModel.savePeople() // Add this line to ensure all changes are saved
+        viewModel.savePeople()
         presentationMode.wrappedValue.dismiss()
     }
 
@@ -251,7 +235,6 @@ struct PersonSettingsView: View {
                     self.viewModel.updatePerson(self.person)
                 case .failure(let error):
                     print("Failed to delete photos: \(error.localizedDescription)")
-                    // Optionally, show an alert to the user about the failure
                 }
             }
         }

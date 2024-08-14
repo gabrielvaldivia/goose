@@ -15,44 +15,85 @@ struct GridView: View {
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
     var deletePhoto: (Photo) -> Void
     @State private var loadingStacks: Set<String> = []
+    @State private var orientation = UIDeviceOrientation.unknown
 
     private var stacks: [String] {
-        return PhotoUtils.getGeneralAgeStacks(for: person)
+        return PhotoUtils.getAllExpectedStacks(for: person)
     }
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 20) {
-                    ForEach(stacks, id: \.self) { section in
-                        let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == section }
-                        let itemWidth = (geometry.size.width - 40) / 2
-                        
-                        if photos.isEmpty {
-                            StackTileView(section: section, photos: photos, width: itemWidth, isLoading: loadingStacks.contains(section))
-                                .onTapGesture {
-                                    do {
-                                        let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
-                                        loadingStacks.insert(section)
-                                        openImagePickerForMoment(section, dateRange)
-                                    } catch {
-                                        print("Error getting date range for section \(section): \(error)")
+            if stacks.isEmpty || (!person.showEmptyStacks && person.photos.isEmpty) {
+                EmptyStateView(
+                    title: "No photos in grid",
+                    subtitle: "Add photos to create stacks",
+                    systemImageName: "photo.on.rectangle.angled",
+                    action: {
+                        openImagePickerForEmptyState()
+                    }
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: gridItems(for: geometry.size), spacing: 20) {
+                        ForEach(stacks, id: \.self) { section in
+                            let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == section }
+                            let itemWidth = gridItemWidth(for: geometry.size)
+                            
+                            if !photos.isEmpty || person.showEmptyStacks {
+                                if photos.isEmpty {
+                                    StackTileView(section: section, photos: photos, width: itemWidth, isLoading: loadingStacks.contains(section))
+                                        .onTapGesture {
+                                            do {
+                                                let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
+                                                loadingStacks.insert(section)
+                                                openImagePickerForMoment(section, dateRange)
+                                            } catch {
+                                                print("Error getting date range for section \(section): \(error)")
+                                            }
+                                        }
+                                } else {
+                                    NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel, openImagePickerForMoment: openImagePickerForMoment)) {
+                                        StackTileView(section: section, photos: photos, width: itemWidth, isLoading: false)
                                     }
                                 }
-                        } else {
-                            NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel, openImagePickerForMoment: openImagePickerForMoment)) {
-                                StackTileView(section: section, photos: photos, width: itemWidth, isLoading: false)
                             }
                         }
                     }
+                    .padding()
+                    .padding(.bottom, 60) // Add extra bottom padding
                 }
-                .padding()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            orientation = UIDevice.current.orientation
+        }
+    }
+
+    private func gridItems(for size: CGSize) -> [GridItem] {
+        let isLandscape = size.width > size.height
+        let columnCount = isLandscape ? 6 : 3
+        return Array(repeating: GridItem(.flexible(), spacing: 20), count: columnCount)
+    }
+
+    private func gridItemWidth(for size: CGSize) -> CGFloat {
+        let isLandscape = size.width > size.height
+        let columnCount = CGFloat(isLandscape ? 6 : 3)
+        let totalSpacing = CGFloat(20 * (Int(columnCount) - 1))
+        return (size.width - totalSpacing - 40) / columnCount
     }
 
     private func deletePhoto(_ photo: Photo) {
         viewModel.deletePhoto(photo, from: &person)
+    }
+
+    private func openImagePickerForEmptyState() {
+        do {
+            let dateRange = try PhotoUtils.getDateRangeForSection("Birth Month", person: person)
+            openImagePickerForMoment("Birth Month", dateRange)
+        } catch {
+            print("Error getting date range for Birth Month: \(error)")
+        }
     }
 }
 
@@ -63,39 +104,49 @@ struct StackTileView: View {
     let isLoading: Bool
     
     var body: some View {
-        VStack {
-            if let photo = photos.randomElement() {
-                Image(uiImage: photo.image ?? UIImage())
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: width, height: width)
-                    .clipped()
-                    .cornerRadius(10)
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: width, height: width)
-                    .cornerRadius(10)
-                    .overlay(
-                        Group {
-                            if isLoading {
-                                ProgressView()
-                            } else {
-                                Image(systemName: "plus")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 30))
+        VStack(spacing: 8) {
+            ZStack(alignment: .bottomTrailing) {
+                if let latestPhoto = photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first {
+                    Image(uiImage: latestPhoto.image ?? UIImage())
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: width, height: width)
+                        .clipped()
+                        .cornerRadius(10)
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: width, height: width)
+                        .cornerRadius(10)
+                        .overlay(
+                            Group {
+                                if isLoading {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "plus")
+                                        .foregroundColor(.gray)
+                                        .font(.system(size: 30))
+                                }
                             }
-                        }
-                    )
+                        )
+                }
+                
+                if !photos.isEmpty {
+                    Text("\(photos.count)")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(4)
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(5)
+                        .padding(4)
+                }
             }
             
             Text(section)
                 .font(.caption)
                 .lineLimit(1)
-            
-            Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .frame(width: width)
         }
     }
 }

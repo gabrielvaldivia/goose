@@ -16,23 +16,37 @@ struct TimelineView: View {
     @Binding var selectedPhoto: Photo?
     
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
-                    if !photos.isEmpty {
-                        Section(header: stickyHeader(for: section)) {
-                            LazyVStack(spacing: 10) {
-                                ForEach(sortPhotos(photos), id: \.id) { photo in
-                                    TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
+        GeometryReader { geometry in
+            if sortedGroupedPhotosForAll().isEmpty {
+                EmptyStateView(
+                    title: "No photos in timeline",
+                    subtitle: "Add photos to see them here",
+                    systemImageName: "photo.on.rectangle.angled",
+                    action: {
+                        // You might want to add an action here, like opening the image picker
+                    }
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
+                        ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
+                            if !photos.isEmpty {
+                                Section(header: stickyHeader(for: section)) {
+                                    LazyVStack(spacing: 10) {
+                                        ForEach(sortPhotos(photos), id: \.id) { photo in
+                                            TimelineItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto)
+                                        }
+                                    }
                                 }
+                                .id(section)
                             }
                         }
-                        .id(section)
                     }
+                    .padding(.top, 20)
+                    .padding(.bottom, 80)
                 }
             }
-            .padding(.top, 20)
-            .padding(.bottom, 80)
         }
     }
     

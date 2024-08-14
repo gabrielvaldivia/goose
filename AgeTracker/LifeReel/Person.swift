@@ -17,7 +17,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var photos: [Photo]
     var syncedAlbumIdentifier: String?
     var birthMonthsDisplay: BirthMonthsDisplay
-    var hideEmptyStacks: Bool
+    var showEmptyStacks: Bool
+    var pregnancyTracking: PregnancyTracking
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -30,6 +31,10 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         case oldestToLatest
     }
 
+    enum PregnancyTracking: String, Codable {
+        case none, trimesters, weeks
+    }
+
     init(name: String, dateOfBirth: Date) {
         self.id = UUID()
         self.name = name
@@ -37,18 +42,20 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         self.photos = []
         self.syncedAlbumIdentifier = nil
         self.birthMonthsDisplay = .none
-        self.hideEmptyStacks = false
+        self.showEmptyStacks = true
+        self.pregnancyTracking = .none
     }
 
     // Add a new initializer for migration
-    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay, hideEmptyStacks: Bool) {
+    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay, showEmptyStacks: Bool, pregnancyTracking: PregnancyTracking) {
         self.id = id
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.photos = photos
         self.syncedAlbumIdentifier = syncedAlbumIdentifier
         self.birthMonthsDisplay = birthMonthsDisplay
-        self.hideEmptyStacks = hideEmptyStacks
+        self.showEmptyStacks = showEmptyStacks
+        self.pregnancyTracking = pregnancyTracking
     }
 
     static func == (lhs: Person, rhs: Person) -> Bool {
@@ -58,7 +65,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
                lhs.photos == rhs.photos &&
                lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
                lhs.birthMonthsDisplay == rhs.birthMonthsDisplay &&
-               lhs.hideEmptyStacks == rhs.hideEmptyStacks
+               lhs.showEmptyStacks == rhs.showEmptyStacks &&
+               lhs.pregnancyTracking == rhs.pregnancyTracking
     }
     
     func hash(into hasher: inout Hasher) {
@@ -66,7 +74,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay, hideEmptyStacks
+        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay, showEmptyStacks, pregnancyTracking
     }
     
     init(from decoder: Decoder) throws {
@@ -77,7 +85,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         photos = try container.decode([Photo].self, forKey: .photos)
         syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
         birthMonthsDisplay = try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay) ?? .none
-        hideEmptyStacks = try container.decodeIfPresent(Bool.self, forKey: .hideEmptyStacks) ?? false
+        showEmptyStacks = try container.decodeIfPresent(Bool.self, forKey: .showEmptyStacks) ?? true
+        pregnancyTracking = try container.decodeIfPresent(PregnancyTracking.self, forKey: .pregnancyTracking) ?? .none
     }
     
     func encode(to encoder: Encoder) throws {
@@ -88,7 +97,8 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         try container.encode(photos, forKey: .photos)
         try container.encodeIfPresent(syncedAlbumIdentifier, forKey: .syncedAlbumIdentifier)
         try container.encode(birthMonthsDisplay, forKey: .birthMonthsDisplay)
-        try container.encode(hideEmptyStacks, forKey: .hideEmptyStacks)
+        try container.encode(showEmptyStacks, forKey: .showEmptyStacks)
+        try container.encode(pregnancyTracking, forKey: .pregnancyTracking)
     }
 }
 
