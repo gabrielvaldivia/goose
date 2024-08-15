@@ -411,20 +411,30 @@ struct ExactAge {
         let months = components.month ?? 0
         let days = components.day ?? 0
         
+        // Adjust days and months if necessary
+        var adjustedMonths = months
+        var adjustedDays = days
+        if days < 0 {
+            adjustedMonths -= 1
+            let previousMonth = calendar.date(byAdding: .month, value: -1, to: date) ?? date
+            let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonth)?.count ?? 0
+            adjustedDays += daysInPreviousMonth
+        }
+        
         switch person.birthMonthsDisplay {
         case .none:
             return ExactAge(years: years, months: 0, days: 0, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
         case .twelveMonths:
-            if years == 0 || (years == 1 && months == 0 && days == 0) {
-                return ExactAge(years: 0, months: years * 12 + months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+            if years == 0 || (years == 1 && adjustedMonths == 0 && adjustedDays == 0) {
+                return ExactAge(years: 0, months: years * 12 + adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
             } else {
-                return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+                return ExactAge(years: years, months: adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
             }
         case .twentyFourMonths:
-            if years < 2 || (years == 2 && months == 0 && days == 0) {
-                return ExactAge(years: 0, months: years * 12 + months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+            if years < 2 || (years == 2 && adjustedMonths == 0 && adjustedDays == 0) {
+                return ExactAge(years: 0, months: years * 12 + adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
             } else {
-                return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+                return ExactAge(years: years, months: adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
             }
         }
     }

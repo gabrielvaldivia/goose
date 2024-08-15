@@ -18,53 +18,66 @@ struct StackDetailView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                LazyVGrid(columns: gridItems(for: geometry.size), spacing: 10) {
-                    ForEach(photosForCurrentSection()) { photo in
-                        PhotoTile(photo: photo, size: tileSize(for: geometry.size))
-                            .onTapGesture {
-                                selectedPhoto = photo
-                            }
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle(sectionTitle)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+            if photosForCurrentSection().isEmpty {
+                EmptyStateView(
+                    title: "This stack is empty",
+                    subtitle: "Add photos and they'll show up here",
+                    systemImageName: "photo.on.rectangle.angled",
+                    action: {
                         showingImagePicker = true
-                    }) {
-                        Image(systemName: "plus")
                     }
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: gridItems(for: geometry.size), spacing: 10) {
+                        ForEach(photosForCurrentSection()) { photo in
+                            PhotoTile(photo: photo, size: tileSize(for: geometry.size))
+                                .onTapGesture {
+                                    selectedPhoto = photo
+                                }
+                        }
+                    }
+                    .padding()
                 }
             }
-            .sheet(isPresented: $showingImagePicker) {
-                CustomImagePicker(
-                    viewModel: viewModel,
-                    person: $person,
-                    sectionTitle: sectionTitle,
-                    isPresented: $showingImagePicker,
-                    onPhotosAdded: { newPhotos in
-                        // Handle the newly added photos here
-                        // For example, you might want to refresh the view
-                        // or update some state
-                    }
-                )
+        }
+        .navigationTitle(sectionTitle)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showingImagePicker = true
+                }) {
+                    Image(systemName: "plus")
+                }
             }
-            .fullScreenCover(item: $selectedPhoto) { photo in
-                FullScreenPhotoView(
-                    photo: photo,
-                    currentIndex: photosForCurrentSection().firstIndex(of: photo) ?? 0,
-                    photos: photosForCurrentSection(),
-                    onDelete: { deletedPhoto in
-                        if let index = person.photos.firstIndex(where: { $0.id == deletedPhoto.id }) {
-                            person.photos.remove(at: index)
-                        }
-                    },
-                    person: person
-                )
-            }
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            CustomImagePicker(
+                viewModel: viewModel,
+                person: $person,
+                sectionTitle: sectionTitle,
+                isPresented: $showingImagePicker,
+                onPhotosAdded: { newPhotos in
+                    // Handle the newly added photos here
+                    // For example, you might want to refresh the view
+                    // or update some state
+                }
+            )
+        }
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            FullScreenPhotoView(
+                photo: photo,
+                currentIndex: photosForCurrentSection().firstIndex(of: photo) ?? 0,
+                photos: photosForCurrentSection(),
+                onDelete: { deletedPhoto in
+                    viewModel.deletePhoto(deletedPhoto, from: &person)
+                    selectedPhoto = nil  // Close the full screen view
+                    // Force view update
+                    viewModel.objectWillChange.send()
+                },
+                person: person
+            )
         }
     }
 

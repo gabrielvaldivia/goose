@@ -87,6 +87,20 @@ struct GridView: View {
                 )
             }
         }
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            FullScreenPhotoView(
+                photo: photo,
+                currentIndex: photosForCurrentSection().firstIndex(of: photo) ?? 0,
+                photos: photosForCurrentSection(),
+                onDelete: { deletedPhoto in
+                    viewModel.deletePhoto(deletedPhoto, from: &person)
+                    selectedPhoto = nil  // Close the full screen view
+                    // Force view update
+                    viewModel.objectWillChange.send()
+                },
+                person: person
+            )
+        }
     }
 
     private func gridItems(for size: CGSize) -> [GridItem] {
@@ -119,6 +133,10 @@ struct GridView: View {
         currentSection = section
         currentDateRange = dateRange
         isImagePickerPresented = true
+    }
+    
+    private func photosForCurrentSection() -> [Photo] {
+        return person.photos
     }
 }
 
