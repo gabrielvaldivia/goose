@@ -28,8 +28,6 @@ struct PhotoView: View {
     }
 }
 
-
-
 struct ShareButton: View {
     var body: some View {
         Button(action: {
@@ -347,25 +345,16 @@ struct ExactAge {
             return ExactAge(years: 0, months: 0, days: 0, isPregnancy: true, pregnancyWeeks: weeksPregnant, isNewborn: false)
         }
         
-        var components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
+        let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
         
-        // Adjust for exact month boundaries
-        if calendar.component(.day, from: date) < calendar.component(.day, from: person.dateOfBirth) {
-            components.month = (components.month ?? 0) - 1
-            if components.month ?? 0 < 0 {
-                components.year = (components.year ?? 0) - 1
-                components.month = 11
-            }
-            let previousMonthDate = calendar.date(byAdding: .month, value: -1, to: date)!
-            let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonthDate)!.count
-            components.day = (components.day ?? 0) + daysInPreviousMonth
-        }
-        
-        let years = components.year ?? 0
-        let months = components.month ?? 0
-        let days = components.day ?? 0
-        
-        return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+        return ExactAge(
+            years: components.year ?? 0,
+            months: components.month ?? 0,
+            days: components.day ?? 0,
+            isPregnancy: false,
+            pregnancyWeeks: 0,
+            isNewborn: false
+        )
     }
 
     func toString() -> String {
@@ -379,7 +368,7 @@ struct ExactAge {
         var parts: [String] = []
         if years > 0 { parts.append("\(years) year\(years == 1 ? "" : "s")") }
         if months > 0 { parts.append("\(months) month\(months == 1 ? "" : "s")") }
-        if days > 0 || parts.isEmpty { parts.append("\(days) day\(days == 1 ? "" : "s")") }
+        if days > 0 { parts.append("\(days) day\(days == 1 ? "" : "s")") }
         
         return parts.joined(separator: ", ")
     }
@@ -467,5 +456,79 @@ struct PhotoDatePickerSheet: View {
             Spacer()
         }
         .background(Color(UIColor.systemBackground))
+    }
+}
+
+struct SharedTimelineView: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var person: Person
+    @Binding var selectedPhoto: Photo?
+    let photos: [Photo]
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(sortPhotos(photos)) { photo in
+                        FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: geometry)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
+            }
+            .background(Color(UIColor.systemBackground))
+        }
+    }
+    
+    private func sortPhotos(_ photos: [Photo]) -> [Photo] {
+        photos.sorted { photo1, photo2 in
+            viewModel.sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
+        }
+    }
+}
+
+struct FilmReelItemView: View {
+    let photo: Photo
+    let person: Person
+    @Binding var selectedPhoto: Photo?
+    let geometry: GeometryProxy
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        Image(uiImage: photo.image ?? UIImage())
+            .resizable()
+            .scaledToFill()
+            .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.vertical, 2)
+            .onTapGesture {
+                selectedPhoto = photo
+            }
+            .background(colorScheme == .dark ? Color.black : Color.white)
+    }
+}
+
+struct SharedGridView: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var person: Person
+    @Binding var selectedPhoto: Photo?
+    let photos: [Photo]
+    var openImagePickerForMoment: ((String, (Date, Date)) -> Void)?
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
+                    ForEach(photos) { photo in
+                        PhotoTile(photo: photo, size: GridLayoutHelper.gridItemWidth(for: geometry.size))
+                            .onTapGesture {
+                                selectedPhoto = photo
+                            }
+                    }
+                }
+                .padding()
+                .padding(.bottom, 40)
+            }
+        }
     }
 }

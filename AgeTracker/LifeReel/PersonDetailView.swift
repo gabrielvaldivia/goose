@@ -91,12 +91,12 @@ struct ImagePickerRepresentable: UIViewControllerRepresentable {
 struct PersonDetailView: View {
     // State and observed properties
     @ObservedObject var viewModel: PersonViewModel
-    @State private var person: Person
+    @Binding var person: Person
     @State private var showingImagePicker = false
     @State private var selectedAssets: [PHAsset] = []
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
-    @State private var selectedView = 2 
+    @State private var selectedTab = 1 // Changed from 0 to 1 for Timeline
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil 
     @State private var isShareSheetPresented = false
@@ -111,137 +111,172 @@ struct PersonDetailView: View {
     @State private var isCustomImagePickerPresented = false
     @State private var customImagePickerTargetDate = Date()
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
+    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
+    @State private var currentSection: String?
 
     // Initializer
-    init(person: Person, viewModel: PersonViewModel) {
-        self._person = State(initialValue: person)
+    init(person: Binding<Person>, viewModel: PersonViewModel) {
+        self._person = person
         self.viewModel = viewModel
-        self._birthMonthsDisplay = State(initialValue: person.birthMonthsDisplay)
+        self._birthMonthsDisplay = State(initialValue: person.wrappedValue.birthMonthsDisplay)
     }
     
     // Main body of the view
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                mainContent(geometry)
-                bottomControls
+        ZStack(alignment: .bottom) {
+            PageViewController(
+                pages: [
+                    AnyView(StacksGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment)),
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos))
+                ],
+                currentPage: $selectedTab,
+                animationDirection: $animationDirection
+            )
+            .edgesIgnoringSafeArea(.all)
+
+            bottomControls
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(person.name)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(person.name)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    settingsButton
-                }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                settingsButton
             }
-            .navigationBarBackButtonHidden(true)
-            .navigationBarItems(leading: CustomBackButton())
-            .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
-                ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
-                    .edgesIgnoringSafeArea(.all)
-                    .presentationDetents([.large])
-            }
-            .sheet(item: $activeSheet, content: sheetContent)
-            .sheet(isPresented: $isShareSheetPresented) {
-                ActivityViewController(activityItems: activityItems)
-            }
-            .onChange(of: selectedAssets) { oldValue, newValue in
-                handleSelectedAssetsChange(oldValue: oldValue, newValue: newValue)
-            }
-            .onAppear(perform: handleOnAppear)
-            .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
-            .fullScreenCover(item: $selectedPhoto) { photo in
-                FullScreenPhotoView(
-                    photo: photo,
-                    currentIndex: person.photos.firstIndex(of: photo) ?? 0,
-                    photos: person.photos,
-                    onDelete: deletePhoto,
-                    person: person
-                )
-            }
-            .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
-            .onAppear {
-                viewModel.setLastOpenedPerson(person)
-            }
-            .sheet(isPresented: $isImagePickerPresented, content: imagePickerContent)
-            .sheet(isPresented: $isCustomImagePickerPresented) {
+        }
+        .navigationBarBackButtonHidden(true)
+        .navigationBarItems(leading: CustomBackButton())
+        .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
+            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
+                .edgesIgnoringSafeArea(.all)
+                .presentationDetents([.large])
+        }
+        .sheet(item: $activeSheet, content: sheetContent)
+        .sheet(isPresented: $isShareSheetPresented) {
+            ActivityViewController(activityItems: activityItems)
+        }
+        .onChange(of: selectedAssets) { oldValue, newValue in
+            handleSelectedAssetsChange(oldValue: oldValue, newValue: newValue)
+        }
+        .onAppear(perform: handleOnAppear)
+        .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            FullScreenPhotoView(
+                photo: photo,
+                currentIndex: person.photos.firstIndex(of: photo) ?? 0,
+                photos: person.photos,
+                onDelete: deletePhoto,
+                person: person
+            )
+        }
+        .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
+        .onAppear {
+            viewModel.setLastOpenedPerson(person)
+        }
+        .sheet(isPresented: $isImagePickerPresented) {
+            if let section = currentSection {
                 CustomImagePicker(
                     viewModel: viewModel,
                     person: $person,
-                    sectionTitle: currentMoment,
-                    isPresented: $isCustomImagePickerPresented,
+                    sectionTitle: section,
+                    isPresented: $isImagePickerPresented,
                     onPhotosAdded: { newPhotos in
-                        // Handle newly added photos
                         viewModel.updatePerson(person)
                     }
                 )
             }
-            .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
-                birthMonthsDisplay = newValue
-            }
         }
-    }
-    
-    @ViewBuilder
-    private func mainContent(_ geometry: GeometryProxy) -> some View {
-        ScrollViewReader { scrollProxy in
-            switch selectedView {
-            case 0:
-                StacksView(
-                    viewModel: viewModel,
-                    person: $person,
-                    selectedPhoto: $selectedPhoto,
-                    openImagePickerForMoment: openCustomImagePicker
-                )
-                .transition(.opacity)
-            case 1:
-                GridView(
-                    viewModel: viewModel,
-                    person: $person,
-                    selectedPhoto: $selectedPhoto,
-                    openImagePickerForMoment: openCustomImagePicker,
-                    deletePhoto: deletePhoto
-                )
-                .transition(.opacity)
-                .onChange(of: selectedView) { oldValue, newValue in
-                    if newValue == 1 {
-                        scrollToStoredPosition(proxy: scrollProxy)
-                    }
+        .sheet(isPresented: $isCustomImagePickerPresented) {
+            CustomImagePicker(
+                viewModel: viewModel,
+                person: $person,
+                sectionTitle: currentMoment,
+                isPresented: $isCustomImagePickerPresented,
+                onPhotosAdded: { newPhotos in
+                    // Handle newly added photos
+                    viewModel.updatePerson(person)
                 }
-            default:
-                TimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto)
-                    .transition(.opacity)
-                    .onChange(of: selectedView) { oldValue, newValue in
-                        if newValue == 2 {
-                            scrollToStoredPosition(proxy: scrollProxy)
-                        }
-                    }
-            }
+            )
+        }
+        .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
+            birthMonthsDisplay = newValue
+        }
+        .onChange(of: viewModel.sortOrder) { _ in
+            viewModel.objectWillChange.send()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            // Force view update on orientation change
+            viewModel.objectWillChange.send()
         }
     }
 
     // Bottom controls
     private var bottomControls: some View {
-        VStack {
+        HStack {
+            shareButton
+
             Spacer()
-            HStack {
-                shareButton
 
-                Spacer()
+            SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
 
-                SegmentedControlView(selectedView: $selectedView)
+            Spacer()
 
-                Spacer()
+            CircularButton(systemName: "plus") {
+                showingImagePicker = true
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+    }
 
-                CircularButton(systemName: "plus") {
-                    showingImagePicker = true
+    // Updated SegmentedControlView
+    struct SegmentedControlView: View {
+        @Binding var selectedTab: Int
+        @Binding var animationDirection: UIPageViewController.NavigationDirection
+        @Namespace private var animation
+        @Environment(\.colorScheme) var colorScheme
+        
+        let options = ["square.grid.2x2", "calendar.day.timeline.leading"]
+        
+        var body: some View {
+            HStack(spacing: 8) {
+                ForEach(options.indices, id: \.self) { index in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.15)) {
+                            animationDirection = index > selectedTab ? .forward : .reverse
+                            selectedTab = index
+                        }
+                    }) {
+                        Image(systemName: options[index])
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 60, height: 36)
+                            .background(
+                                ZStack {
+                                    if selectedTab == index {
+                                        Capsule()
+                                            .fill(Color.primary.opacity(0.3))
+                                            .matchedGeometryEffect(id: "SelectedSegment", in: animation)
+                                    }
+                                }
+                            )
+                            .foregroundColor(colorScheme == .dark ? (selectedTab == index ? .white : .white.opacity(0.5)) : (selectedTab == index ? .white : .black.opacity(0.5)))
+                    }
                 }
             }
-            .padding(.horizontal)
+            .padding(4)
+            .background(
+                ZStack {
+                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                    if colorScheme == .light {
+                        Color.black.opacity(0.1)
+                    }
+                }
+            )
+            .clipShape(Capsule())
         }
     }
 
@@ -284,9 +319,10 @@ struct PersonDetailView: View {
     }
 
     // New function to open image picker for a specific moment
-    private func openCustomImagePicker(for moment: String, dateRange: (start: Date, end: Date)) {
-        currentMoment = moment
-        isCustomImagePickerPresented = true
+    private func openImagePickerForMoment(_ section: String, _ dateRange: (Date, Date)) {
+        currentSection = section
+        currentMoment = section
+        isImagePickerPresented = true
     }
 
     // Helper function to get the date for a specific moment
@@ -561,77 +597,6 @@ struct SharingComingSoonView: View {
     }
 }
 
-// New SegmentedControlView
-struct SegmentedControlView: View {
-    @Binding var selectedView: Int
-    @Namespace private var animation
-    @Environment(\.colorScheme) var colorScheme
-    
-    let options = ["Stacks", "Grid", "Timeline"]
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(options.indices, id: \.self) { index in
-                Button(action: {
-                    withAnimation(.spring(response: 0.15)) {
-                        selectedView = index
-                    }
-                }) {
-                    Text(options[index])
-                        .font(.system(size: 14, weight: .bold))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(
-                            ZStack {
-                                if selectedView == index {
-                                    Capsule()
-                                        .fill(Color.primary.opacity(0.3))
-                                        .matchedGeometryEffect(id: "SelectedSegment", in: animation)
-                                }
-                            }
-                        )
-                        .foregroundColor(colorScheme == .dark ? (selectedView == index ? .white : .white.opacity(0.5)) : (selectedView == index ? .white : .black.opacity(0.5)))
-                }
-            }
-        }
-        .padding(4)
-        .background(
-            ZStack {
-                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                if colorScheme == .light {
-                    Color.black.opacity(0.1)
-                }
-            }
-        )
-        .clipShape(Capsule())
-    }
-}
-
-// Circular Button
-struct CircularButton: View {
-    let systemName: String
-    let action: () -> Void
-    @Environment(\.colorScheme) var colorScheme
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
-                .font(.system(size: 14, weight: .bold))
-                .frame(width: 40, height: 40)
-        }
-        .background(
-            ZStack {
-                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                if colorScheme == .light {
-                    Color.black.opacity(0.1)
-                }
-            }
-        )
-        .clipShape(Circle())
-    }
-}
-
 struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
     func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
@@ -683,5 +648,66 @@ struct ScrollOffsetModifier: ViewModifier {
 extension View {
     func trackScrollOffset(coordinateSpace: String, offset: Binding<CGPoint>) -> some View {
         modifier(ScrollOffsetModifier(coordinateSpace: coordinateSpace, offset: offset))
+    }
+}
+
+// Custom PageViewController
+struct PageViewController: UIViewControllerRepresentable {
+    var pages: [AnyView]
+    @Binding var currentPage: Int
+    @Binding var animationDirection: UIPageViewController.NavigationDirection
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let pageViewController = UIPageViewController(
+            transitionStyle: .scroll,
+            navigationOrientation: .horizontal)
+        pageViewController.dataSource = context.coordinator
+        pageViewController.delegate = context.coordinator
+        return pageViewController
+    }
+
+    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
+        pageViewController.setViewControllers(
+            [context.coordinator.controllers[currentPage]], 
+            direction: animationDirection,
+            animated: true)
+    }
+
+    class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
+        var parent: PageViewController
+        var controllers = [UIViewController]()
+
+        init(_ pageViewController: PageViewController) {
+            parent = pageViewController
+            controllers = parent.pages.map { UIHostingController(rootView: $0) }
+        }
+
+        func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+            guard let index = controllers.firstIndex(of: viewController) else { return nil }
+            if index == 0 {
+                return nil // Return nil instead of the last controller
+            }
+            return controllers[index - 1]
+        }
+
+        func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+            guard let index = controllers.firstIndex(of: viewController) else { return nil }
+            if index + 1 == controllers.count {
+                return nil // Return nil instead of the first controller
+            }
+            return controllers[index + 1]
+        }
+
+        func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+            if completed,
+               let visibleViewController = pageViewController.viewControllers?.first,
+               let index = controllers.firstIndex(of: visibleViewController) {
+                parent.currentPage = index
+            }
+        }
     }
 }

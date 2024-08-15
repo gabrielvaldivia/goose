@@ -49,7 +49,7 @@ struct ContentView: View {
                 }
             }
             .navigationDestination(for: Person.self) { person in
-                PersonDetailView(person: person, viewModel: viewModel)
+                PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
             }
         }
         .environmentObject(viewModel)

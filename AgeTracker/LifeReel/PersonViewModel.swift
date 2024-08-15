@@ -8,6 +8,7 @@
 import Foundation
 import UIKit
 import Photos
+import SwiftUI
 
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
@@ -427,6 +428,17 @@ class PersonViewModel: ObservableObject {
         DispatchQueue.main.async {
             self.loadingStacks.remove(section)
         }
+    }
+    
+    func bindingForPerson(_ person: Person) -> Binding<Person> {
+        Binding<Person>(
+            get: { self.people.first(where: { $0.id == person.id }) ?? person },
+            set: { newValue in
+                if let index = self.people.firstIndex(where: { $0.id == person.id }) {
+                    self.people[index] = newValue
+                }
+            }
+        )
     }
 }
 

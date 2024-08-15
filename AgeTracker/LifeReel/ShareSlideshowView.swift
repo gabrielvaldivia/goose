@@ -10,6 +10,98 @@ import SwiftUI
 import AVKit
 import Photos
 
+enum SlideshowRange: Hashable, CaseIterable {
+    case allPhotos
+    case pregnancy
+    case birthMonth
+    case month(Int)
+    case year(Int)
+    case custom(String)
+
+    var displayName: String {
+        switch self {
+        case .allPhotos:
+            return "All Photos"
+        case .pregnancy:
+            return "Pregnancy"
+        case .birthMonth:
+            return "Birth Month"
+        case .month(let value):
+            return "\(value) Month\(value == 1 ? "" : "s")"
+        case .year(let value):
+            return "\(value) Year\(value == 1 ? "" : "s")"
+        case .custom(let value):
+            return value
+        }
+    }
+    
+    static var allCases: [SlideshowRange] {
+        var cases: [SlideshowRange] = [.allPhotos, .pregnancy, .birthMonth]
+        for month in 1...12 {
+            cases.append(.month(month))
+        }
+        for year in 1...18 {
+            cases.append(.year(year))
+        }
+        return cases
+    }
+
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .allPhotos:
+            hasher.combine(0)
+        case .pregnancy:
+            hasher.combine(1)
+        case .birthMonth:
+            hasher.combine(2)
+        case .month(let value):
+            hasher.combine(3)
+            hasher.combine(value)
+        case .year(let value):
+            hasher.combine(4)
+            hasher.combine(value)
+        case .custom(let value):
+            hasher.combine(5)
+            hasher.combine(value)
+        }
+    }
+
+    static func == (lhs: SlideshowRange, rhs: SlideshowRange) -> Bool {
+        switch (lhs, rhs) {
+        case (.allPhotos, .allPhotos),
+             (.pregnancy, .pregnancy),
+             (.birthMonth, .birthMonth):
+            return true
+        case let (.month(lhsValue), .month(rhsValue)):
+            return lhsValue == rhsValue
+        case let (.year(lhsValue), .year(rhsValue)):
+            return lhsValue == rhsValue
+        case let (.custom(lhsValue), .custom(rhsValue)):
+            return lhsValue == rhsValue
+        default:
+            return false
+        }
+    }
+}
+
+struct StackPicker: View {
+    @Binding var selectedRange: SlideshowRange
+    let availableStacks: [String]
+    let onRangeChange: (SlideshowRange, SlideshowRange) -> Void
+
+    var body: some View {
+        Picker("Stack", selection: $selectedRange) {
+            ForEach(availableStacks, id: \.self) { stack in
+                Text(stack).tag(SlideshowRange.custom(stack))
+            }
+        }
+        .pickerStyle(MenuPickerStyle())
+        .onChange(of: selectedRange) { oldValue, newValue in
+            onRangeChange(oldValue, newValue)
+        }
+    }
+}
+
 // ShareSlideshowView
 struct ShareSlideshowView: View {
     // Properties
@@ -32,81 +124,14 @@ struct ShareSlideshowView: View {
     @State private var isMusicSelectionPresented = false
     @State private var showAppIcon: Bool = true
     @State private var titleOption: TitleOption = .name
-    @State private var subtitleOption: TitleOption = .age
+    @State private var subtitleOption: TitleOption = .stackName
     @State private var speedOptions = [1.0, 2.0, 3.0]
     
     init(photos: [Photo], person: Person, sectionTitle: String) {
         self.photos = photos
         self.person = person
         self.sectionTitle = sectionTitle
-        let initialRange = SlideshowRange.allCases.first { $0.displayName == sectionTitle } ?? .allPhotos
-        _selectedRange = State(initialValue: initialRange)
-    }
-    
-    enum SlideshowRange: Hashable, CaseIterable {
-        case allPhotos
-        case pregnancy
-        case birthMonth
-        case month(Int)
-        case year(Int)
-
-        var displayName: String {
-            switch self {
-            case .allPhotos:
-                return "All Photos"
-            case .pregnancy:
-                return "Pregnancy"
-            case .birthMonth:
-                return "Birth Month"
-            case .month(let value):
-                return "\(value) Month\(value == 1 ? "" : "s")"
-            case .year(let value):
-                return "\(value) Year\(value == 1 ? "" : "s")"
-            }
-        }
-        
-        static var allCases: [SlideshowRange] {
-            var cases: [SlideshowRange] = [.allPhotos, .pregnancy, .birthMonth]
-            for month in 1...12 {
-                cases.append(.month(month))
-            }
-            for year in 1...18 {
-                cases.append(.year(year))
-            }
-            return cases
-        }
-
-        func hash(into hasher: inout Hasher) {
-            switch self {
-            case .allPhotos:
-                hasher.combine(0)
-            case .pregnancy:
-                hasher.combine(1)
-            case .birthMonth:
-                hasher.combine(2)
-            case .month(let value):
-                hasher.combine(3)
-                hasher.combine(value)
-            case .year(let value):
-                hasher.combine(4)
-                hasher.combine(value)
-            }
-        }
-
-        static func == (lhs: SlideshowRange, rhs: SlideshowRange) -> Bool {
-            switch (lhs, rhs) {
-            case (.allPhotos, .allPhotos),
-                 (.pregnancy, .pregnancy),
-                 (.birthMonth, .birthMonth):
-                return true
-            case let (.month(lhsValue), .month(rhsValue)):
-                return lhsValue == rhsValue
-            case let (.year(lhsValue), .year(rhsValue)):
-                return lhsValue == rhsValue
-            default:
-                return false
-            }
-        }
+        _selectedRange = State(initialValue: .custom(sectionTitle))
     }
     
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -114,6 +139,7 @@ struct ShareSlideshowView: View {
         case name = "Name"
         case age = "Age"
         case date = "Date"
+        case stackName = "Stack Name"
         
         var description: String { self.rawValue }
     }
@@ -132,194 +158,241 @@ struct ShareSlideshowView: View {
                 return groupedPhotos.contains { $0.0 == "\(value) Month\(value == 1 ? "" : "s")" }
             case .year(let value):
                 return groupedPhotos.contains { $0.0 == "\(value) Year\(value == 1 ? "" : "s")" }
+            case .custom(let value):
+                return groupedPhotos.contains { $0.0 == value }
             }
         }
     }
     
     private var filteredPhotos: [Photo] {
-        let groupedPhotos = PhotoUtils.groupAndSortPhotos(for: person, sortOrder: .oldestToLatest)
-        
-        if selectedRange == .allPhotos {
-            return photos
+        let filtered: [Photo]
+        switch selectedRange {
+        case .custom(let stack):
+            filtered = photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
+        case .allPhotos:
+            filtered = photos
+        default:
+            filtered = photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == selectedRange.displayName }
         }
-        
-        let selectedSectionTitle = selectedRange.displayName
-        return groupedPhotos.first { $0.0 == selectedSectionTitle }?.1 ?? []
+        return filtered.isEmpty ? photos : filtered
+    }
+    
+    private var availableStacks: [String] {
+        let allStacks = PhotoUtils.getAllExpectedStacks(for: person)
+        return allStacks.filter { stack in
+            let stackPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
+            if person.pregnancyTracking == .none {
+                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week") && stackPhotos.count >= 2
+            }
+            return stackPhotos.count >= 2
+        }
     }
     
     // Body
     var body: some View {   
         VStack(alignment: .center, spacing: 10) {
-            // Navigation bar
-            HStack {
-                Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-                Spacer()
-                if !availableRanges.isEmpty {
-                    VStack {
-                        Picker("Range", selection: $selectedRange) {
-                            ForEach(availableRanges, id: \.self) { range in
-                                Text(range.displayName).tag(range)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .onChange(of: selectedRange) { oldValue, newValue in
-                            currentFilteredPhotoIndex = 0
-                            scrubberPosition = 0
-                            loadImagesAround(index: currentFilteredPhotoIndex)
-                        }
-                    }
-                }
-                Spacer()
-                Button("Share") {
-                    showComingSoonAlert = true
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top, 10)
-
-            // Single Photo View (replacing TabView)
+            navigationBar
+            
             if filteredPhotos.isEmpty {
-                Text("No photos available for this range")
-                    .foregroundColor(.secondary)
-                    .padding()
+                emptyStateView
             } else {
-                Spacer()
-                LazyImage(
-                    photo: filteredPhotos[currentFilteredPhotoIndex],
-                    loadedImage: loadedImages[filteredPhotos[currentFilteredPhotoIndex].id.uuidString],
-                    aspectRatio: aspectRatio.value,
-                    showAppIcon: showAppIcon,
-                    titleText: getTitleText(for: filteredPhotos[currentFilteredPhotoIndex]),
-                    subtitleText: getSubtitleText(for: filteredPhotos[currentFilteredPhotoIndex])
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-
-                Spacer()
-                
-                // Playback Controls
-                if filteredPhotos.count > 1 {
-                    HStack(spacing: 20) {
-                        PlayButton(isPlaying: $isPlaying)
-                            .frame(width: 40, height: 40)
-                        
-                        Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
-                            .onChange(of: scrubberPosition) { oldValue, newValue in
-                                if !isPlaying {
-                                    currentFilteredPhotoIndex = Int(newValue.rounded())
-                                    loadImagesAround(index: currentFilteredPhotoIndex)
-                                }
-                            }
-                    }
-                    .padding(.leading, 20)
-                    .padding(.trailing, 40)
-                }
-
-                Spacer()
-
-                // Bottom controls
-                VStack(spacing: 20) {
-                    Divider()
-                    
-                    HStack(spacing: 20) {
-                        SimplifiedCustomizationButton(
-                            icon: "textformat",
-                            title: "Title",
-                            options: TitleOption.allCases,
-                            selection: $titleOption
-                        )
-                        
-                        SimplifiedCustomizationButton(
-                            icon: "text.alignleft",
-                            title: "Subtitle",
-                            options: TitleOption.allCases.filter { $0 != titleOption || $0 == .none },
-                            selection: $subtitleOption
-                        )
-                        
-                        SimplifiedCustomizationButton(
-                            icon: "aspectratio",
-                            title: "Aspect Ratio",
-                            options: [AspectRatio.square, AspectRatio.portrait],
-                            selection: $aspectRatio
-                        )
-                        
-                        SimplifiedCustomizationButton(
-                            icon: "speedometer",
-                            title: "Speed",
-                            options: speedOptions.map { "\(Int($0))x" },
-                            selection: Binding(
-                                get: { "\(Int(self.playbackSpeed))x" },
-                                set: { newValue in
-                                    if let speed = Double(newValue.dropLast()) {
-                                        self.playbackSpeed = speed
-                                    }
-                                }
-                            )
-                        )
-                        
-                        // App Icon toggle
-                        Button(action: { showAppIcon.toggle() }) {
-                            VStack(spacing: 8) {
-                                Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
-                                    .font(.system(size: 24))
-                                    .frame(height: 24)
-                                Text("App Icon")
-                                    .font(.caption)
-                            }
-                            .frame(width: 70)
-                        }
-                        .foregroundColor(.primary)
-                    }
-                    .padding(.horizontal, 10)
-                }
-                .padding(.vertical, 10)
-                .frame(height: 80)
-                .background(Color(UIColor.secondarySystemBackground))
+                photoView
+                playbackControls
+                bottomControls
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(UIColor.secondarySystemBackground))
-        .onAppear {
-            loadImagesAround(index: currentFilteredPhotoIndex)
-        }
+        .onAppear(perform: onAppear)
         .onChange(of: isPlaying) { oldValue, newValue in
-            if newValue {
-                startTimer()
-            } else {
-                stopTimer()
-            }
+            handlePlayingChange(oldValue: oldValue, newValue: newValue)
         }
         .onChange(of: playbackSpeed) { oldValue, newValue in
-            if isPlaying {
-                stopTimer()
-                startTimer()
-            }
+            handleSpeedChange(oldValue: oldValue, newValue: newValue)
         }
         .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in
-            if !isPlaying {
-                scrubberPosition = Double(newValue)
-            }
+            handleIndexChange(oldValue: oldValue, newValue: newValue)
         }
         .onChange(of: selectedRange) { oldValue, newValue in
-            currentFilteredPhotoIndex = 0
-            scrubberPosition = 0
-            loadImagesAround(index: currentFilteredPhotoIndex)
+            handleRangeChange(oldValue: oldValue, newValue: newValue)
         }
-        .alert("Coming Soon", isPresented: $showComingSoonAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Sharing functionality will be available in a future update.")
-        }
+        .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
         .sheet(isPresented: $isMusicSelectionPresented) {
             MusicSelectionView()
         }
     }
     
+    private var navigationBar: some View {
+        HStack {
+            cancelButton
+            Spacer()
+            stackPicker
+            Spacer()
+            shareButton
+        }
+        .padding(.horizontal)
+        .padding(.top, 10)
+    }
+
+    private var emptyStateView: some View {
+        Text("No photos available for this range")
+            .foregroundColor(.secondary)
+            .padding()
+    }
+
+    private var photoView: some View {
+        VStack {
+            Spacer()
+            if !photos.isEmpty {
+                let safeIndex = min(currentFilteredPhotoIndex, filteredPhotos.count - 1)
+                if safeIndex >= 0 && safeIndex < filteredPhotos.count {
+                    LazyImage(
+                        photo: filteredPhotos[safeIndex],
+                        loadedImage: loadedImages[filteredPhotos[safeIndex].id.uuidString] ?? UIImage(),
+                        aspectRatio: aspectRatio.value,
+                        showAppIcon: showAppIcon,
+                        titleText: getTitleText(for: filteredPhotos[safeIndex]),
+                        subtitleText: getSubtitleText(for: filteredPhotos[safeIndex])
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
+                } else {
+                    Text("No photos available")
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                Text("No photos available")
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    private var playbackControls: some View {
+        Group {
+            if filteredPhotos.count > 1 {
+                HStack(spacing: 20) {
+                    PlayButton(isPlaying: $isPlaying)
+                        .frame(width: 40, height: 40)
+                    
+                    Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
+                        .onChange(of: scrubberPosition) { oldValue, newValue in
+                            if !isPlaying {
+                                currentFilteredPhotoIndex = Int(newValue.rounded())
+                                loadImagesAround(index: currentFilteredPhotoIndex)
+                            }
+                        }
+                }
+                .padding(.leading, 20)
+                .padding(.trailing, 40)
+            }
+        }
+    }
+
+    private var bottomControls: some View {
+        VStack(spacing: 20) {
+            Divider()
+            
+            HStack(spacing: 20) {
+                SimplifiedCustomizationButton(
+                    icon: "textformat",
+                    title: "Title",
+                    options: TitleOption.allCases,
+                    selection: $titleOption
+                )
+                
+                SimplifiedCustomizationButton(
+                    icon: "text.alignleft",
+                    title: "Subtitle",
+                    options: TitleOption.allCases.filter { $0 != titleOption || $0 == .none },
+                    selection: $subtitleOption
+                )
+                
+                SimplifiedCustomizationButton(
+                    icon: "aspectratio",
+                    title: "Aspect Ratio",
+                    options: [AspectRatio.square, AspectRatio.portrait],
+                    selection: $aspectRatio
+                )
+                
+                SimplifiedCustomizationButton(
+                    icon: "speedometer",
+                    title: "Speed",
+                    options: speedOptions.map { "\(Int($0))x" },
+                    selection: Binding(
+                        get: { "\(Int(self.playbackSpeed))x" },
+                        set: { newValue in
+                            if let speed = Double(newValue.dropLast()) {
+                                self.playbackSpeed = speed
+                            }
+                        }
+                    )
+                )
+                
+                Button(action: { showAppIcon.toggle() }) {
+                    VStack(spacing: 8) {
+                        Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                            .font(.system(size: 24))
+                            .frame(height: 24)
+                        Text("App Icon")
+                            .font(.caption)
+                    }
+                    .frame(width: 70)
+                }
+                .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 10)
+        }
+        .padding(.vertical, 10)
+        .frame(height: 80)
+        .background(Color(UIColor.secondarySystemBackground))
+    }
+
+    private func onAppear() {
+        loadImagesAround(index: currentFilteredPhotoIndex)
+    }
+
+    private func handlePlayingChange(oldValue: Bool, newValue: Bool) {
+        if newValue {
+            startTimer()
+        } else {
+            stopTimer()
+        }
+    }
+
+    private func handleSpeedChange(oldValue: Double, newValue: Double) {
+        if isPlaying {
+            stopTimer()
+            startTimer()
+        }
+    }
+
+    private func handleIndexChange(oldValue: Int, newValue: Int) {
+        if !isPlaying {
+            scrubberPosition = Double(newValue)
+        }
+    }
+
+    private func handleRangeChange(oldValue: SlideshowRange, newValue: SlideshowRange) {
+        currentFilteredPhotoIndex = 0
+        scrubberPosition = 0
+        if filteredPhotos.isEmpty {
+            selectedRange = oldValue
+        } else {
+            loadImagesAround(index: currentFilteredPhotoIndex)
+        }
+    }
+
+    private func comingSoonAlert() -> some View {
+        Button("OK", role: .cancel) { }
+    }
+
     // Helper Methods
     private func loadImagesAround(index: Int) {
-        let range = max(0, index - 5)...min(filteredPhotos.count - 1, index + 5)
+        guard !filteredPhotos.isEmpty else { return }
+        let count = filteredPhotos.count
+        let safeIndex = (index + count) % count
+        let range = (-5...5).map { (safeIndex + $0 + count) % count }
         for i in range {
             let photo = filteredPhotos[i]
             if loadedImages[photo.id.uuidString] == nil {
@@ -367,6 +440,7 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
+        case .stackName: return sectionTitle
         }
     }
     
@@ -376,6 +450,7 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
+        case .stackName: return sectionTitle
         }
     }
     
@@ -383,16 +458,16 @@ struct ShareSlideshowView: View {
     private func startTimer() {
         guard filteredPhotos.count > 1 else { return }
         let interval = 0.016
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
             withAnimation(.linear(duration: interval)) {
-                scrubberPosition += interval * playbackSpeed
-                if scrubberPosition >= Double(filteredPhotos.count) {
-                    scrubberPosition = 0
+                self.scrubberPosition += interval * self.playbackSpeed
+                if self.scrubberPosition >= Double(self.filteredPhotos.count) {
+                    self.scrubberPosition = 0
                 }
-                let newPhotoIndex = Int(scrubberPosition.rounded())
-                if newPhotoIndex != currentFilteredPhotoIndex {
-                    currentFilteredPhotoIndex = newPhotoIndex
-                    loadImagesAround(index: currentFilteredPhotoIndex)
+                let newPhotoIndex = Int(self.scrubberPosition) % max(1, self.filteredPhotos.count)
+                if newPhotoIndex != self.currentFilteredPhotoIndex {
+                    self.currentFilteredPhotoIndex = newPhotoIndex
+                    self.loadImagesAround(index: self.currentFilteredPhotoIndex)
                 }
             }
         }
@@ -406,6 +481,26 @@ struct ShareSlideshowView: View {
     
     private func groupAndSortPhotos() -> [(String, [Photo])] {
         return PhotoUtils.groupAndSortPhotos(for: person, sortOrder: .oldestToLatest)
+    }
+
+    private var cancelButton: some View {
+        Button("Cancel") {
+            presentationMode.wrappedValue.dismiss()
+        }
+    }
+
+    private var stackPicker: some View {
+        StackPicker(
+            selectedRange: $selectedRange,
+            availableStacks: availableStacks,
+            onRangeChange: handleRangeChange
+        )
+    }
+
+    private var shareButton: some View {
+        Button("Share") {
+            showComingSoonAlert = true
+        }
     }
 }
 

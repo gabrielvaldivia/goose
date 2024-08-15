@@ -15,32 +15,38 @@ struct StackDetailView: View {
     let sectionTitle: String
     @State private var showingImagePicker = false
     @State private var selectedPhoto: Photo? = nil
+    @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
+    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
+    @State private var isShareSlideshowPresented = false
+    @State private var currentPage = 1 // 0 for Grid, 1 for Timeline
 
     var body: some View {
-        GeometryReader { geometry in
-            if photosForCurrentSection().isEmpty {
-                EmptyStateView(
-                    title: "This stack is empty",
-                    subtitle: "Add photos and they'll show up here",
-                    systemImageName: "photo.on.rectangle.angled",
-                    action: {
-                        showingImagePicker = true
-                    }
-                )
-                .frame(width: geometry.size.width, height: geometry.size.height)
-            } else {
-                ScrollView {
-                    LazyVGrid(columns: gridItems(for: geometry.size), spacing: 10) {
-                        ForEach(photosForCurrentSection()) { photo in
-                            PhotoTile(photo: photo, size: tileSize(for: geometry.size))
-                                .onTapGesture {
-                                    selectedPhoto = photo
-                                }
+        ZStack(alignment: .bottom) {
+            GeometryReader { geometry in
+                if photosForCurrentSection().isEmpty {
+                    EmptyStateView(
+                        title: "This stack is empty",
+                        subtitle: "Add photos and they'll show up here",
+                        systemImageName: "photo.on.rectangle.angled",
+                        action: {
+                            showingImagePicker = true
                         }
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                } else {
+                    TabView(selection: $currentPage) {
+                        SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection())
+                            .tag(0)
+                        
+                        SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection())
+                            .tag(1)
                     }
-                    .padding()
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .animation(.easeInOut, value: currentPage)
                 }
             }
+            
+            bottomControls
         }
         .navigationTitle(sectionTitle)
         .toolbar {
@@ -59,9 +65,7 @@ struct StackDetailView: View {
                 sectionTitle: sectionTitle,
                 isPresented: $showingImagePicker,
                 onPhotosAdded: { newPhotos in
-                    // Handle the newly added photos here
-                    // For example, you might want to refresh the view
-                    // or update some state
+                    viewModel.objectWillChange.send()
                 }
             )
         }
@@ -72,11 +76,17 @@ struct StackDetailView: View {
                 photos: photosForCurrentSection(),
                 onDelete: { deletedPhoto in
                     viewModel.deletePhoto(deletedPhoto, from: &person)
-                    selectedPhoto = nil  // Close the full screen view
-                    // Force view update
+                    selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
                 person: person
+            )
+        }
+        .sheet(isPresented: $isShareSlideshowPresented) {
+            ShareSlideshowView(
+                photos: photosForCurrentSection(),
+                person: person,
+                sectionTitle: sectionTitle
             )
         }
     }
@@ -85,17 +95,38 @@ struct StackDetailView: View {
         return person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
     }
 
-    private func gridItems(for size: CGSize) -> [GridItem] {
-        let isLandscape = size.width > size.height
-        let columnCount = isLandscape ? 6 : 3
-        return Array(repeating: GridItem(.flexible(), spacing: 10), count: columnCount)
+    private var bottomControls: some View {
+        HStack {
+            shareButton
+
+            Spacer()
+
+            SegmentedControlView(selectedTab: $currentPage, animationDirection: $animationDirection)
+                .onChange(of: currentPage) { oldValue, newValue in
+                    withAnimation {
+                        selectedTab = newValue
+                        viewModel.objectWillChange.send()
+                    }
+                }
+
+            Spacer()
+
+            CircularButton(systemName: "plus") {
+                showingImagePicker = true
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 
-    private func tileSize(for size: CGSize) -> CGFloat {
-        let isLandscape = size.width > size.height
-        let columnCount = CGFloat(isLandscape ? 6 : 3)
-        let totalSpacing = CGFloat(10 * (Int(columnCount) - 1))
-        return (size.width - totalSpacing - 32) / columnCount // 32 is for the padding (16 on each side)
+    private var shareButton: some View {
+        CircularButton(systemName: "square.and.arrow.up") {
+            if !photosForCurrentSection().isEmpty {
+                isShareSlideshowPresented = true
+            } else {
+                print("No photos available to share")
+            }
+        }
     }
 }
 
@@ -109,5 +140,75 @@ struct PhotoTile: View {
             .aspectRatio(contentMode: .fill)
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct CircularButton: View {
+    let systemName: String
+    let action: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                .font(.system(size: 14, weight: .bold))
+                .frame(width: 40, height: 40)
+        }
+        .background(
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                if colorScheme == .light {
+                    Color.black.opacity(0.1)
+                }
+            }
+        )
+        .clipShape(Circle())
+    }
+}
+
+struct SegmentedControlView: View {
+    @Binding var selectedTab: Int
+    @Binding var animationDirection: UIPageViewController.NavigationDirection
+    @Namespace private var animation
+    @Environment(\.colorScheme) var colorScheme
+    
+    let options = ["square.grid.2x2", "list.bullet"]
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(options.indices, id: \.self) { index in
+                Button(action: {
+                    withAnimation(.spring(response: 0.15)) {
+                        animationDirection = index > selectedTab ? .forward : .reverse
+                        selectedTab = index
+                    }
+                }) {
+                    Image(systemName: options[index])
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(width: 60, height: 36)
+                        .background(
+                            ZStack {
+                                if selectedTab == index {
+                                    Capsule()
+                                        .fill(Color.primary.opacity(0.3))
+                                        .matchedGeometryEffect(id: "SelectedSegment", in: animation)
+                                }
+                            }
+                        )
+                        .foregroundColor(colorScheme == .dark ? (selectedTab == index ? .white : .white.opacity(0.5)) : (selectedTab == index ? .white : .black.opacity(0.5)))
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                if colorScheme == .light {
+                    Color.black.opacity(0.1)
+                }
+            }
+        )
+        .clipShape(Capsule())
     }
 }

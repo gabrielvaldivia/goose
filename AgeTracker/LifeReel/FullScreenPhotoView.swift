@@ -26,7 +26,7 @@ struct FullScreenPhotoView: View {
     @State private var isShareSheetPresented = false
     @State private var lastScale: CGFloat = 1.0
     @GestureState private var magnifyBy = CGFloat(1.0)
-    @GestureState private var dragOffset: CGSize = .zero
+    @GestureState private var dragState = DragState.inactive
     @State private var isDragging = false
     @State private var showDeleteConfirmation = false
     @State private var dismissProgress: CGFloat = 0.0
@@ -59,31 +59,28 @@ struct FullScreenPhotoView: View {
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .offset(calculateImageOffset(geometry: geometry))
                         .scaleEffect(scale * magnifyBy)
-                        .offset(x: isDragging ? dragOffset.width : 0)
+                        .offset(x: isDragging ? dragState.translation.width : 0)
                         .gesture(dragGesture(geometry: geometry))
                         .gesture(magnificationGesture())
                         .gesture(
                             DragGesture()
-                                .updating($dragOffset) { value, state, _ in
-                                    if scale <= 1.0 {
-                                        state = value.translation
-                                    }
-                                }
-                                .onChanged { _ in
-                                    if scale <= 1.0 {
-                                        isDragging = true
-                                    }
+                                .updating($dragState) { value, state, _ in
+                                    state = .dragging(translation: value.translation)
                                 }
                                 .onEnded { value in
                                     if scale <= 1.0 {
                                         let threshold: CGFloat = 50
                                         if value.translation.width > threshold {
-                                            goToPreviousPhoto()
+                                            withAnimation {
+                                                goToPreviousPhoto()
+                                            }
                                         } else if value.translation.width < -threshold {
-                                            goToNextPhoto()
+                                            withAnimation {
+                                                goToNextPhoto()
+                                            }
                                         }
-                                        isDragging = false
                                     }
+                                    isDragging = false
                                 }
                         )
                         .gesture(
@@ -198,23 +195,16 @@ struct FullScreenPhotoView: View {
         let excessWidth = max(0, imageSize.width - geometry.size.width)
         let excessHeight = max(0, imageSize.height - geometry.size.height)
 
-        let newOffsetX = min(max(offset.width + dragOffset.width, -excessWidth / 2), excessWidth / 2)
-        let newOffsetY = min(max(offset.height + dragOffset.height, -excessHeight / 2), excessHeight / 2)
+        let newOffsetX = min(max(offset.width + dragState.translation.width, -excessWidth / 2), excessWidth / 2)
+        let newOffsetY = min(max(offset.height + dragState.translation.height, -excessHeight / 2), excessHeight / 2)
         
         return CGSize(width: newOffsetX, height: newOffsetY)
     }
 
     private func dragGesture(geometry: GeometryProxy) -> some Gesture {
         DragGesture()
-            .updating($dragOffset) { value, state, _ in
-                if scale > 1.0 {
-                    state = CGSize(
-                        width: value.translation.width / scale,
-                        height: value.translation.height / scale
-                    )
-                }
-                // Update dismissProgress based on drag
-                dismissProgress = min(abs(value.translation.height) / 200, 1.0)
+            .updating($dragState) { value, state, _ in
+                state = .dragging(translation: value.translation)
             }
             .onEnded { value in
                 if abs(value.translation.height) > 100 && scale <= 1.0 {
@@ -255,16 +245,16 @@ struct FullScreenPhotoView: View {
     }
 
     private func goToPreviousPhoto() {
-        if currentIndex > 0 {
-            withAnimation(.spring()) {
+        withAnimation(.spring()) {
+            if currentIndex > 0 {
                 currentIndex -= 1
             }
         }
     }
 
     private func goToNextPhoto() {
-        if currentIndex < photos.count - 1 {
-            withAnimation(.spring()) {
+        withAnimation(.spring()) {
+            if currentIndex < photos.count - 1 {
                 currentIndex += 1
             }
         }
@@ -521,5 +511,19 @@ struct PillButton: View {
         }
 
         func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+    }
+}
+
+enum DragState {
+    case inactive
+    case dragging(translation: CGSize)
+
+    var translation: CGSize {
+        switch self {
+        case .inactive:
+            return .zero
+        case .dragging(let translation):
+            return translation
+        }
     }
 }

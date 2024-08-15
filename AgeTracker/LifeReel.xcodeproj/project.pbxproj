@@ -22,12 +22,10 @@
 		4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */; };
 		4015B7682C5D7DFB001FA4E4 /* StackDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7672C5D7DFB001FA4E4 /* StackDetailView.swift */; };
 		4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */; };
-		4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */; };
+		402EF17B2C6EAB2000156F55 /* StackGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402EF17A2C6EAB2000156F55 /* StackGridView.swift */; };
 		403C94762C666E26003373A2 /* ShareSlideshowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94752C666E26003373A2 /* ShareSlideshowView.swift */; };
 		4062061B2C6A7078000DE3C5 /* CustomImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */; };
 		4062061D2C6A862A000DE3C5 /* StacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061C2C6A862A000DE3C5 /* StacksView.swift */; };
-		4062061F2C6A8980000DE3C5 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061E2C6A8980000DE3C5 /* TimelineView.swift */; };
-		406206212C6A8B9B000DE3C5 /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406206202C6A8B9B000DE3C5 /* GridView.swift */; };
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
 		40F651542C6B0402003B9830 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
@@ -70,13 +68,11 @@
 		4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonSettingsView.swift; sourceTree = "<group>"; };
 		4015B7672C5D7DFB001FA4E4 /* StackDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackDetailView.swift; sourceTree = "<group>"; };
 		4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenPhotoView.swift; sourceTree = "<group>"; };
-		4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
+		402EF17A2C6EAB2000156F55 /* StackGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackGridView.swift; sourceTree = "<group>"; };
 		403C94732C665D1B003373A2 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		403C94752C666E26003373A2 /* ShareSlideshowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSlideshowView.swift; sourceTree = "<group>"; };
 		4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomImagePicker.swift; sourceTree = "<group>"; };
 		4062061C2C6A862A000DE3C5 /* StacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StacksView.swift; sourceTree = "<group>"; };
-		4062061E2C6A8980000DE3C5 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
-		406206202C6A8B9B000DE3C5 /* GridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridView.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -137,20 +133,18 @@
 				40C00B572C61691400C1B076 /* ActivityViewController.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
+				402EF17A2C6EAB2000156F55 /* StackGridView.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
-				4062061E2C6A8980000DE3C5 /* TimelineView.swift */,
-				406206202C6A8B9B000DE3C5 /* GridView.swift */,
 				4062061C2C6A862A000DE3C5 /* StacksView.swift */,
 				4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */,
+				403C94732C665D1B003373A2 /* SharedViews.swift */,
 				403C94752C666E26003373A2 /* ShareSlideshowView.swift */,
-				4015B76B2C5D80BA001FA4E4 /* VideoPlayerView.swift */,
 				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
+				4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */,
+				4015B7672C5D7DFB001FA4E4 /* StackDetailView.swift */,
 				4015B7302C5C5628001FA4E4 /* Assets.xcassets */,
 				4015B7322C5C5628001FA4E4 /* Preview Content */,
-				4015B7672C5D7DFB001FA4E4 /* StackDetailView.swift */,
-				403C94732C665D1B003373A2 /* SharedViews.swift */,
-				4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */,
 			);
 			path = LifeReel;
 			sourceTree = "<group>";
@@ -314,9 +308,8 @@
 				4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */,
 				4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */,
 				40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */,
-				406206212C6A8B9B000DE3C5 /* GridView.swift in Sources */,
+				402EF17B2C6EAB2000156F55 /* StackGridView.swift in Sources */,
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
-				4062061F2C6A8980000DE3C5 /* TimelineView.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				40F651542C6B0402003B9830 /* SharedViews.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */,
@@ -327,7 +320,6 @@
 				4015B7592C5C5663001FA4E4 /* PersonViewModel.swift in Sources */,
 				4015B7682C5D7DFB001FA4E4 /* StackDetailView.swift in Sources */,
 				40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */,
-				4015B76C2C5D80BA001FA4E4 /* VideoPlayerView.swift in Sources */,
 				403C94762C666E26003373A2 /* ShareSlideshowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
