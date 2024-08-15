@@ -62,10 +62,9 @@ struct GridView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 60) // Add extra bottom padding
+                    .padding(.bottom, 60) 
                 }
                 .onChange(of: person.photos) { _ in
-                    // Reset loading state for all stacks when photos change
                     viewModel.loadingStacks.removeAll()
                 }
             }
@@ -188,6 +187,7 @@ struct StackTileView: View {
             
             Text(section)
                 .font(.caption)
+                .foregroundColor(.primary)
                 .lineLimit(1)
                 .frame(width: width)
         }

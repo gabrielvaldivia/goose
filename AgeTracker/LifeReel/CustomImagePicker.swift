@@ -93,6 +93,8 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var titleLabel: UILabel!
     private var birthDate: Date
     private var viewModel: PersonViewModel
+    private var displayStartDate: Date!
+    private var displayEndDate: Date!
 
     init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel) {
         self.sectionTitle = sectionTitle
@@ -110,7 +112,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         super.viewDidLoad()
         setupCollectionView()
         fetchAssets()
-        setupTitleLabel()
         setupNavigationBar()
     }
 
@@ -137,32 +138,38 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         view.addSubview(collectionView)
     }
 
+    private func setupDateRange() {
+        let calendar = Calendar.current
+
+        if sectionTitle == "Birth Month" {
+            displayStartDate = calendar.startOfDay(for: dateRange.start)
+            displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
+        } else if sectionTitle == "Pregnancy" {
+            displayStartDate = dateRange.start
+            displayEndDate = dateRange.end
+        } else {
+            displayStartDate = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: dateRange.start))!
+            displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
+        }
+        
+        // Adjust the end date to be one day before
+        displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate)!
+    }
+
     private func fetchAssets() {
+        setupDateRange()
+        
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         
-        let calendar = Calendar.current
-        let adjustedStartDate: Date
-        let adjustedEndDate: Date
-
-        if sectionTitle == "Birth Month" {
-            adjustedStartDate = calendar.startOfDay(for: dateRange.start)
-            adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
-        } else if sectionTitle == "Pregnancy" {
-            adjustedStartDate = dateRange.start
-            adjustedEndDate = dateRange.end
-        } else {
-            adjustedStartDate = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: dateRange.start))!
-            adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
-        }
-        
-        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", adjustedStartDate as NSDate, adjustedEndDate as NSDate)
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate <= %@", displayStartDate as NSDate, displayEndDate as NSDate)
         fetchOptions.predicate = predicate
 
         assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
         DispatchQueue.main.async {
             self.collectionView.reloadData()
+            self.setupTitleLabel()
         }
     }
 
@@ -173,21 +180,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MMM d ''yy"
-        
-        let calendar = Calendar.current
-        let displayStartDate: Date
-        let displayEndDate: Date
-        
-        if sectionTitle == "Birth Month" {
-            displayStartDate = dateRange.start
-            displayEndDate = calendar.date(byAdding: .day, value: -1, to: calendar.date(byAdding: .month, value: 1, to: displayStartDate)!)!
-        } else if sectionTitle == "Pregnancy" {
-            displayStartDate = dateRange.start
-            displayEndDate = calendar.date(byAdding: .day, value: -1, to: dateRange.end)!
-        } else {
-            displayStartDate = calendar.date(byAdding: .month, value: 1, to: dateRange.start)!
-            displayEndDate = calendar.date(byAdding: .day, value: -1, to: calendar.date(byAdding: .month, value: 1, to: displayStartDate)!)!
-        }
         
         let startDateString = dateFormatter.string(from: displayStartDate)
         let endDateString = dateFormatter.string(from: displayEndDate)
@@ -201,6 +193,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         titleLabel.attributedText = attributedString
         
         titleLabel.sizeToFit()
+        navigationItem.titleView = titleLabel
     }
 
     private func setupNavigationBar() {
