@@ -16,7 +16,7 @@ struct StacksView: View {
     @State var showingImagePicker = false
     
     private var stacks: [String] {
-        return PhotoUtils.getAllExpectedStacks(for: person)
+        return Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
     }
     
     var body: some View {

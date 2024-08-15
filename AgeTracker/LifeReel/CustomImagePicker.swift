@@ -14,7 +14,7 @@ struct CustomImagePicker: View {
     @Binding var person: Person
     let sectionTitle: String
     @Binding var isPresented: Bool
-    var onPhotosAdded: ([Photo]) -> Void  // Added this line
+    var onPhotosAdded: ([Photo]) -> Void
 
     var body: some View {
         CustomImagePickerRepresentable(
@@ -22,7 +22,7 @@ struct CustomImagePicker: View {
             person: $person,
             sectionTitle: sectionTitle,
             isPresented: $isPresented,
-            onPhotosAdded: onPhotosAdded  // Added this line
+            onPhotosAdded: onPhotosAdded
         )
         .onAppear {
             viewModel.loadingStacks.insert(sectionTitle)
@@ -38,14 +38,20 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
     @Binding var person: Person
     let sectionTitle: String
     @Binding var isPresented: Bool
-    var onPhotosAdded: ([Photo]) -> Void  // Added this line
+    var onPhotosAdded: ([Photo]) -> Void
 
     func makeUIViewController(context: Context) -> UINavigationController {
+        guard !sectionTitle.isEmpty else {
+            print("Error: Section title is empty")
+            return UINavigationController()
+        }
+
         let dateRange = try? PhotoUtils.getDateRangeForSection(sectionTitle, person: person)
         let picker = CustomImagePickerViewController(
             sectionTitle: sectionTitle,
             dateRange: dateRange ?? (start: Date(), end: Date()),
-            viewModel: viewModel
+            viewModel: viewModel,
+            person: person
         )
         picker.delegate = context.coordinator
         let navigationController = UINavigationController(rootViewController: picker)
@@ -70,6 +76,9 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
                 parent.viewModel.addPhoto(to: &parent.person, asset: asset)
             }
             parent.isPresented = false
+            parent.onPhotosAdded(parent.person.photos)
+            
+            print("Added \(assets.count) photos to \(parent.person.name) for section: \(parent.sectionTitle)")
         }
 
         func imagePickerDidCancel(_ picker: CustomImagePickerViewController) {
@@ -91,15 +100,15 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
     private var titleLabel: UILabel!
-    private var birthDate: Date
+    private var person: Person
     private var viewModel: PersonViewModel
     private var displayStartDate: Date!
     private var displayEndDate: Date!
 
-    init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel) {
+    init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person) {
         self.sectionTitle = sectionTitle
         self.dateRange = dateRange
-        self.birthDate = dateRange.start
+        self.person = person
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
@@ -141,19 +150,40 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private func setupDateRange() {
         let calendar = Calendar.current
 
-        if sectionTitle == "Birth Month" {
-            displayStartDate = calendar.startOfDay(for: dateRange.start)
-            displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
-        } else if sectionTitle == "Pregnancy" {
-            displayStartDate = dateRange.start
-            displayEndDate = dateRange.end
-        } else {
-            displayStartDate = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: dateRange.start))!
-            displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
+        guard !sectionTitle.isEmpty else {
+            print("Error: Section title is empty")
+            displayStartDate = calendar.startOfDay(for: Date())
+            displayEndDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: displayStartDate) ?? displayStartDate
+            return
         }
-        
-        // Adjust the end date to be one day before
-        displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate)!
+
+        do {
+            let range = try PhotoUtils.getDateRangeForSection(sectionTitle, person: person)
+            displayStartDate = range.start
+            displayEndDate = range.end
+            
+            // Ensure the end date is at the end of the day
+            displayEndDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: displayEndDate) ?? displayEndDate
+            
+            print("Date range for \(sectionTitle): \(displayStartDate) to \(displayEndDate)")
+        } catch {
+            print("Error setting up date range for section \(sectionTitle): \(error)")
+            // Fallback to default behavior
+            if sectionTitle == "Birth Month" {
+                displayStartDate = calendar.startOfDay(for: dateRange.start)
+                displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
+            } else if sectionTitle == "Pregnancy" {
+                displayStartDate = dateRange.start
+                displayEndDate = dateRange.end
+            } else {
+                displayStartDate = calendar.startOfDay(for: dateRange.start)
+                displayEndDate = calendar.date(byAdding: .day, value: 1, to: endOfDay(for: dateRange.end))!
+            }
+        }
+    }
+
+    private func endOfDay(for date: Date) -> Date {
+        return Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: date)!
     }
 
     private func fetchAssets() {
@@ -162,7 +192,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
         
-        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate <= %@", displayStartDate as NSDate, displayEndDate as NSDate)
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
         fetchOptions.predicate = predicate
 
         assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
@@ -171,6 +201,10 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             self.collectionView.reloadData()
             self.setupTitleLabel()
         }
+        
+        print("Fetching assets for \(sectionTitle)")
+        print("Date range: \(displayStartDate) to \(displayEndDate)")
+        print("Fetched \(assets.count) assets for \(sectionTitle)")
     }
 
     private func setupTitleLabel() {
@@ -227,7 +261,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImageCell", for: indexPath) as! ImageCell
         let asset = assets.object(at: indexPath.item)
-        cell.configure(with: asset, birthDate: birthDate)
+        cell.configure(with: asset, person: person)
         return cell
     }
 
@@ -249,11 +283,13 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 class ImageCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let checkmarkView = UIImageView()
+    private let ageLabel = UILabel()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupImageView()
         setupCheckmarkView()
+        setupAgeLabel()
     }
 
     required init?(coder: NSCoder) {
@@ -303,11 +339,36 @@ class ImageCell: UICollectionViewCell {
         }
     }
 
-    func configure(with asset: PHAsset, birthDate: Date) {
+    private func setupAgeLabel() {
+        ageLabel.textAlignment = .center
+        ageLabel.textColor = .white
+        ageLabel.font = UIFont.systemFont(ofSize: 10, weight: .medium)
+        ageLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        ageLabel.layer.cornerRadius = 4
+        ageLabel.clipsToBounds = true
+        ageLabel.numberOfLines = 2
+        contentView.addSubview(ageLabel)
+        ageLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            ageLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 4),
+            ageLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
+            ageLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -4)
+        ])
+    }
+
+    func configure(with asset: PHAsset, person: Person) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
             self?.imageView.image = image
         }
+
+        let exactAge = ExactAge.calculate(for: person, at: asset.creationDate ?? Date())
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d, yyyy"
+        let dateString = dateFormatter.string(from: asset.creationDate ?? Date())
+        
+        ageLabel.text = "\(exactAge.toString())\n\(dateString)"
     }
 
     override var isSelected: Bool {

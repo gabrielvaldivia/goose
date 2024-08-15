@@ -271,7 +271,7 @@ struct FullScreenPhotoView: View {
     }
 }
 
-struct ControlsOverlay: View {
+private struct ControlsOverlay: View {
     let showControls: Bool
     let person: Person
     let photo: Photo
@@ -320,7 +320,7 @@ struct ControlsOverlay: View {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
                     VStack(spacing: 4) {
-                        Text(calculateAge(for: person, at: photo.dateTaken))
+                        Text(ExactAge.calculate(for: person, at: photo.dateTaken).toString())
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                         Text(formatDate(photo.dateTaken))
@@ -336,11 +336,6 @@ struct ControlsOverlay: View {
         }
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
-    }
-    
-    // Helper functions
-    private func calculateAge(for person: Person, at date: Date) -> String {
-        return ExactAge.calculate(for: person, at: date).toString()
     }
     
     private func formatDate(_ date: Date) -> String {

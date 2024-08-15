@@ -187,9 +187,8 @@ public struct PhotoUtils {
         // Include pregnancy stacks based on the tracking option
         switch person.pregnancyTracking {
         case .none:
-            if pregnancyStartDate < endDate {
-                stacks.append("Pregnancy")
-            }
+            // Don't add any pregnancy stacks
+            break
         case .trimesters:
             let trimesterDuration = TimeInterval(91 * 24 * 60 * 60) // 91 days in seconds
             for i in 0..<3 {
@@ -290,55 +289,38 @@ public struct PhotoUtils {
     }
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
-        let calendar = Calendar.current
-        let currentDate = Date()
+        let exactAge = ExactAge.calculate(for: person, at: photo.dateTaken)
         
-        if person.dateOfBirth > currentDate {
-            // Handle future birth dates
+        if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
-                return "Pregnancy"
+                return "Before Birth"
             case .trimesters:
-                let weeksUntilBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
-                let trimester = weeksUntilBirth / 13
-                return ["Third Trimester", "Second Trimester", "First Trimester"][min(trimester, 2)]
+                let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
+                return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
             case .weeks:
-                let weeksUntilBirth = calendar.dateComponents([.weekOfYear], from: photo.dateTaken, to: person.dateOfBirth).weekOfYear ?? 0
-                let pregnancyWeek = max(1, 40 - weeksUntilBirth)
-                return "Week \(min(40, pregnancyWeek))"
+                return "Week \(exactAge.pregnancyWeeks)"
             }
         }
-
-        if calendar.isDate(photo.dateTaken, equalTo: person.dateOfBirth, toGranularity: .day) {
+        
+        if exactAge.isNewborn {
             return "Birth Month"
         }
-
-        let ageComponents = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: photo.dateTaken)
-        let ageInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
-        let ageInDays = ageComponents.day ?? 0
-
-        if photo.dateTaken < person.dateOfBirth {
-            return "Pregnancy"
-        }
-
-        if calendar.isDate(photo.dateTaken, equalTo: person.dateOfBirth, toGranularity: .month) {
-            return "Birth Month"
-        }
-
+        
         switch person.birthMonthsDisplay {
         case .none:
-            return ageInMonths < 12 ? "Birth Year" : "\(ageComponents.year ?? 0) Year\(ageComponents.year == 1 ? "" : "s")"
+            return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
-            if ageInMonths < 12 {
-                return "\(ageInMonths) Month\(ageInMonths == 1 ? "" : "s")"
+            if exactAge.months < 12 {
+                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
             } else {
-                return "\(ageComponents.year ?? 0) Year\(ageComponents.year == 1 ? "" : "s")"
+                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
         case .twentyFourMonths:
-            if ageInMonths < 24 {
-                return "\(ageInMonths) Month\(ageInMonths == 1 ? "" : "s")"
+            if exactAge.months < 24 {
+                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
             } else {
-                return "\(ageComponents.year ?? 0) Year\(ageComponents.year == 1 ? "" : "s")"
+                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
         }
     }
@@ -389,7 +371,7 @@ struct ExactAge {
     let days: Int
     let isPregnancy: Bool
     let pregnancyWeeks: Int
-    let isNewborn: Bool  // Add this new property
+    let isNewborn: Bool
 
     static func calculate(for person: Person, at date: Date) -> ExactAge {
         let calendar = Calendar.current
@@ -406,37 +388,25 @@ struct ExactAge {
             return ExactAge(years: 0, months: 0, days: 0, isPregnancy: true, pregnancyWeeks: weeksPregnant, isNewborn: false)
         }
         
-        let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
+        var components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
+        
+        // Adjust for exact month boundaries
+        if calendar.component(.day, from: date) < calendar.component(.day, from: person.dateOfBirth) {
+            components.month = (components.month ?? 0) - 1
+            if components.month ?? 0 < 0 {
+                components.year = (components.year ?? 0) - 1
+                components.month = 11
+            }
+            let previousMonthDate = calendar.date(byAdding: .month, value: -1, to: date)!
+            let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonthDate)!.count
+            components.day = (components.day ?? 0) + daysInPreviousMonth
+        }
+        
         let years = components.year ?? 0
         let months = components.month ?? 0
         let days = components.day ?? 0
         
-        // Adjust days and months if necessary
-        var adjustedMonths = months
-        var adjustedDays = days
-        if days < 0 {
-            adjustedMonths -= 1
-            let previousMonth = calendar.date(byAdding: .month, value: -1, to: date) ?? date
-            let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonth)?.count ?? 0
-            adjustedDays += daysInPreviousMonth
-        }
-        
-        switch person.birthMonthsDisplay {
-        case .none:
-            return ExactAge(years: years, months: 0, days: 0, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
-        case .twelveMonths:
-            if years == 0 || (years == 1 && adjustedMonths == 0 && adjustedDays == 0) {
-                return ExactAge(years: 0, months: years * 12 + adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
-            } else {
-                return ExactAge(years: years, months: adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
-            }
-        case .twentyFourMonths:
-            if years < 2 || (years == 2 && adjustedMonths == 0 && adjustedDays == 0) {
-                return ExactAge(years: 0, months: years * 12 + adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
-            } else {
-                return ExactAge(years: years, months: adjustedMonths, days: adjustedDays, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
-            }
-        }
+        return ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
     }
 
     func toString() -> String {

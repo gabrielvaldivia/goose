@@ -20,7 +20,7 @@ struct GridView: View {
     @State private var currentDateRange: (Date, Date)?
 
     private var stacks: [String] {
-        return PhotoUtils.getAllExpectedStacks(for: person)
+        return Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
     }
 
     var body: some View {
