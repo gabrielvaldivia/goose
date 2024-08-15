@@ -13,6 +13,7 @@ class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
     @Published var sortOrder: Person.SortOrder = .latestToOldest
     @Published var lastOpenedPersonId: UUID?
+    @Published var loadingStacks: Set<String> = []
 
     init() {
         loadPeople()
@@ -420,6 +421,12 @@ class PersonViewModel: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "sortOrderPreference")
         UserDefaults.standard.synchronize()
         objectWillChange.send()
+    }
+    
+    func resetLoadingState(for section: String) {
+        DispatchQueue.main.async {
+            self.loadingStacks.remove(section)
+        }
     }
 }
 

@@ -168,7 +168,18 @@ struct PersonDetailView: View {
                 viewModel.setLastOpenedPerson(person)
             }
             .sheet(isPresented: $isImagePickerPresented, content: imagePickerContent)
-            .sheet(isPresented: $isCustomImagePickerPresented, content: customImagePickerContent)
+            .sheet(isPresented: $isCustomImagePickerPresented) {
+                CustomImagePicker(
+                    viewModel: viewModel,
+                    person: $person,
+                    sectionTitle: currentMoment,
+                    isPresented: $isCustomImagePickerPresented,
+                    onPhotosAdded: { newPhotos in
+                        // Handle newly added photos
+                        viewModel.updatePerson(person)
+                    }
+                )
+            }
             .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
                 birthMonthsDisplay = newValue
             }
@@ -274,8 +285,8 @@ struct PersonDetailView: View {
 
     // New function to open image picker for a specific moment
     private func openCustomImagePicker(for moment: String, dateRange: (start: Date, end: Date)) {
-        customImagePickerTargetDate = dateRange.start
-        activeSheet = .customImagePicker(moment: moment, dateRange: dateRange)
+        currentMoment = moment
+        isCustomImagePickerPresented = true
     }
 
     // Helper function to get the date for a specific moment
@@ -444,8 +455,8 @@ struct PersonDetailView: View {
             let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
             let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let generalAge = GeneralAge.calculate(for: person, at: startDate)
-            moments.append((generalAge.toString(), monthPhotos))
+            let exactAge = ExactAge.calculate(for: person, at: startDate)
+            moments.append((exactAge.toString(), monthPhotos))
         }
         
         // Years
@@ -457,8 +468,8 @@ struct PersonDetailView: View {
             let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
             let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let generalAge = GeneralAge.calculate(for: person, at: startDate)
-            moments.append((generalAge.toString(), yearPhotos))
+            let exactAge = ExactAge.calculate(for: person, at: startDate)
+            moments.append((exactAge.toString(), yearPhotos))
         }
         
         return moments
@@ -501,17 +512,16 @@ struct PersonDetailView: View {
         case .customImagePicker(let moment, let dateRange):
             NavigationView {
                 CustomImagePicker(
+                    viewModel: viewModel,
+                    person: $person,
+                    sectionTitle: moment,
                     isPresented: Binding(
                         get: { self.activeSheet != nil },
                         set: { if !$0 { self.activeSheet = nil } }
                     ),
-                    dateRange: dateRange,
-                    sectionTitle: moment,
-                    onPick: { assets in
-                        for asset in assets {
-                            self.viewModel.addPhoto(to: &self.person, asset: asset)
-                        }
-                        self.activeSheet = nil
+                    onPhotosAdded: { newPhotos in
+                        // Handle newly added photos
+                        viewModel.updatePerson(person)
                     }
                 )
             }
@@ -519,27 +529,16 @@ struct PersonDetailView: View {
     }
 
     private func imagePickerContent() -> some View {
-        ImagePickerRepresentable(isPresented: $isImagePickerPresented, targetDate: dateForMoment(currentMoment)) { assets in
-            for asset in assets {
-                _ = Photo(asset: asset)
-                self.viewModel.addPhoto(to: &self.person, asset: asset)
+        CustomImagePicker(
+            viewModel: viewModel,
+            person: $person,
+            sectionTitle: currentMoment,
+            isPresented: $isImagePickerPresented,
+            onPhotosAdded: { newPhotos in
+                // Handle newly added photos
+                viewModel.updatePerson(person)
             }
-        }
-    }
-
-    private func customImagePickerContent() -> some View {
-        NavigationView {
-            CustomImagePicker(
-                isPresented: $isCustomImagePickerPresented,
-                dateRange: getDateRangeForSection(currentMoment),
-                sectionTitle: currentMoment,
-                onPick: { assets in
-                    for asset in assets {
-                        self.viewModel.addPhoto(to: &self.person, asset: asset)
-                    }
-                }
-            )
-        }
+        )
     }
 }
 

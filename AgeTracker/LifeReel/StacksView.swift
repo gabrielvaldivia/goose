@@ -41,7 +41,7 @@ struct StacksView: View {
                                     section: stack,
                                     photos: photos,
                                     selectedPhoto: $selectedPhoto,
-                                    person: person,
+                                    person: $person,
                                     cardHeight: 300,
                                     maxWidth: geometry.size.width - 30,
                                     viewModel: viewModel,
@@ -62,7 +62,7 @@ struct StackSectionView: View {
     let section: String
     let photos: [Photo]
     @Binding var selectedPhoto: Photo?
-    let person: Person
+    @Binding var person: Person
     let cardHeight: CGFloat
     let maxWidth: CGFloat
     @ObservedObject var viewModel: PersonViewModel
@@ -70,12 +70,9 @@ struct StackSectionView: View {
     
     var body: some View {
         NavigationLink(destination: StackDetailView(
-            sectionTitle: section,
-            photos: photos,
-            onDelete: { _ in },
-            person: person,
             viewModel: viewModel,
-            openImagePickerForMoment: openImagePickerForMoment
+            person: $person,
+            sectionTitle: section
         )) {
             if let randomPhoto = photos.randomElement() {
                 ZStack(alignment: .bottom) {

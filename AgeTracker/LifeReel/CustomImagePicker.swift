@@ -9,17 +9,47 @@ import Foundation
 import SwiftUI
 import Photos
 
-struct CustomImagePicker: UIViewControllerRepresentable {
-    @Binding var isPresented: Bool
-    let dateRange: (start: Date, end: Date)
+struct CustomImagePicker: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var person: Person
     let sectionTitle: String
-    let onPick: ([PHAsset]) -> Void
+    @Binding var isPresented: Bool
+    var onPhotosAdded: ([Photo]) -> Void  // Added this line
+
+    var body: some View {
+        CustomImagePickerRepresentable(
+            viewModel: viewModel,
+            person: $person,
+            sectionTitle: sectionTitle,
+            isPresented: $isPresented,
+            onPhotosAdded: onPhotosAdded  // Added this line
+        )
+        .onAppear {
+            viewModel.loadingStacks.insert(sectionTitle)
+        }
+        .onDisappear {
+            viewModel.loadingStacks.remove(sectionTitle)
+        }
+    }
+}
+
+struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var person: Person
+    let sectionTitle: String
+    @Binding var isPresented: Bool
+    var onPhotosAdded: ([Photo]) -> Void  // Added this line
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        let picker = CustomImagePickerViewController(dateRange: dateRange, sectionTitle: sectionTitle)
+        let dateRange = try? PhotoUtils.getDateRangeForSection(sectionTitle, person: person)
+        let picker = CustomImagePickerViewController(
+            sectionTitle: sectionTitle,
+            dateRange: dateRange ?? (start: Date(), end: Date()),
+            viewModel: viewModel
+        )
         picker.delegate = context.coordinator
-        let nav = UINavigationController(rootViewController: picker)
-        return nav
+        let navigationController = UINavigationController(rootViewController: picker)
+        return navigationController
     }
 
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
@@ -29,14 +59,17 @@ struct CustomImagePicker: UIViewControllerRepresentable {
     }
 
     class Coordinator: NSObject, CustomImagePickerDelegate {
-        let parent: CustomImagePicker
+        let parent: CustomImagePickerRepresentable
 
-        init(_ parent: CustomImagePicker) {
+        init(_ parent: CustomImagePickerRepresentable) {
             self.parent = parent
         }
 
         func imagePicker(_ picker: CustomImagePickerViewController, didSelectAssets assets: [PHAsset]) {
-            parent.onPick(assets)
+            for asset in assets {
+                parent.viewModel.addPhoto(to: &parent.person, asset: asset)
+            }
+            parent.isPresented = false
         }
 
         func imagePickerDidCancel(_ picker: CustomImagePickerViewController) {
@@ -58,10 +91,14 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var assets: PHFetchResult<PHAsset>!
     private var selectedAssets: [PHAsset] = []
     private var titleLabel: UILabel!
+    private var birthDate: Date
+    private var viewModel: PersonViewModel
 
-    init(dateRange: (start: Date, end: Date), sectionTitle: String) {
-        self.dateRange = dateRange
+    init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel) {
         self.sectionTitle = sectionTitle
+        self.dateRange = dateRange
+        self.birthDate = dateRange.start
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -77,11 +114,16 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupNavigationBar()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        viewModel.loadingStacks.insert(sectionTitle)
+    }
+
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.minimumInteritemSpacing = 1
         layout.minimumLineSpacing = 1
-        let width = (view.bounds.width - 3) / 4
+        let width = (view.bounds.width - 2) / 3 // Changed from 4 to 3 columns
         layout.itemSize = CGSize(width: width, height: width)
 
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
@@ -104,15 +146,12 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let adjustedEndDate: Date
 
         if sectionTitle == "Birth Month" {
-            // For Birth Month, include the birth date
             adjustedStartDate = calendar.startOfDay(for: dateRange.start)
             adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
         } else if sectionTitle == "Pregnancy" {
-            // For Pregnancy, use the date range as is
             adjustedStartDate = dateRange.start
             adjustedEndDate = dateRange.end
         } else {
-            // For other months, start one month later and end one month after that
             adjustedStartDate = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: dateRange.start))!
             adjustedEndDate = calendar.date(byAdding: .month, value: 1, to: adjustedStartDate)!
         }
@@ -161,26 +200,24 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         
         titleLabel.attributedText = attributedString
         
-        // Ensure the label size is calculated correctly
         titleLabel.sizeToFit()
     }
 
     private func setupNavigationBar() {
-        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancelTapped))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancelButtonTapped))
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Add", style: .done, target: self, action: #selector(doneTapped))
         updateAddButtonState()
         
-        // Set the titleView to the titleLabel
         navigationItem.titleView = titleLabel
     }
 
-    @objc private func cancelTapped() {
-        dismiss(animated: true) {
-            self.delegate?.imagePickerDidCancel(self)
-        }
+    @objc private func cancelButtonTapped() {
+        viewModel.loadingStacks.remove(sectionTitle)
+        dismiss(animated: true, completion: nil)
     }
 
     @objc private func doneTapped() {
+        viewModel.loadingStacks.remove(sectionTitle)
         dismiss(animated: true) {
             self.delegate?.imagePicker(self, didSelectAssets: self.selectedAssets)
         }
@@ -190,7 +227,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         navigationItem.rightBarButtonItem?.isEnabled = !selectedAssets.isEmpty
     }
 
-    // UICollectionViewDataSource methods
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return assets.count
     }
@@ -198,11 +234,10 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ImageCell", for: indexPath) as! ImageCell
         let asset = assets.object(at: indexPath.item)
-        cell.configure(with: asset)
+        cell.configure(with: asset, birthDate: birthDate)
         return cell
     }
 
-    // UICollectionViewDelegate methods
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let asset = assets.object(at: indexPath.item)
         selectedAssets.append(asset)
@@ -257,7 +292,6 @@ class ImageCell: UICollectionViewCell {
             checkmarkView.heightAnchor.constraint(equalToConstant: 24)
         ])
         
-        // Create a blue checkmark with white circle background
         let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .bold)
         let checkmark = UIImage(systemName: "checkmark.circle.fill", withConfiguration: config)?
             .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
@@ -276,7 +310,7 @@ class ImageCell: UICollectionViewCell {
         }
     }
 
-    func configure(with asset: PHAsset) {
+    func configure(with asset: PHAsset, birthDate: Date) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
             self?.imageView.image = image

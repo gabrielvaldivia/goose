@@ -99,7 +99,17 @@ struct TimelineView: View {
     }
     
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
-        return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
+        let groupedPhotos = Dictionary(grouping: person.photos) { photo in
+            PhotoUtils.sectionForPhoto(photo, person: person)
+        }
+        
+        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
+            let date1 = group1.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            let date2 = group2.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            return date1 > date2
+        }
+        
+        return sortedGroups.map { ($0.key, $0.value.sorted(by: { $0.dateTaken > $1.dateTaken })) }
     }
     
     private func calculateAge(for person: Person, at date: Date) -> String {

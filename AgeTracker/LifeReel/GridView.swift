@@ -14,8 +14,10 @@ struct GridView: View {
     @Binding var selectedPhoto: Photo?
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
     var deletePhoto: (Photo) -> Void
-    @State private var loadingStacks: Set<String> = []
     @State private var orientation = UIDeviceOrientation.unknown
+    @State private var isImagePickerPresented = false
+    @State private var currentSection: String?
+    @State private var currentDateRange: (Date, Date)?
 
     private var stacks: [String] {
         return PhotoUtils.getAllExpectedStacks(for: person)
@@ -42,18 +44,17 @@ struct GridView: View {
                             
                             if !photos.isEmpty || person.showEmptyStacks {
                                 if photos.isEmpty {
-                                    StackTileView(section: section, photos: photos, width: itemWidth, isLoading: loadingStacks.contains(section))
+                                    StackTileView(section: section, photos: photos, width: itemWidth, isLoading: viewModel.loadingStacks.contains(section))
                                         .onTapGesture {
                                             do {
                                                 let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
-                                                loadingStacks.insert(section)
                                                 openImagePickerForMoment(section, dateRange)
                                             } catch {
                                                 print("Error getting date range for section \(section): \(error)")
                                             }
                                         }
                                 } else {
-                                    NavigationLink(destination: StackDetailView(sectionTitle: section, photos: photos, onDelete: deletePhoto, person: person, viewModel: viewModel, openImagePickerForMoment: openImagePickerForMoment)) {
+                                    NavigationLink(destination: StackDetailView(viewModel: viewModel, person: $person, sectionTitle: section)) {
                                         StackTileView(section: section, photos: photos, width: itemWidth, isLoading: false)
                                     }
                                 }
@@ -63,10 +64,28 @@ struct GridView: View {
                     .padding()
                     .padding(.bottom, 60) // Add extra bottom padding
                 }
+                .onChange(of: person.photos) { _ in
+                    // Reset loading state for all stacks when photos change
+                    viewModel.loadingStacks.removeAll()
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             orientation = UIDevice.current.orientation
+        }
+        .sheet(isPresented: $isImagePickerPresented) {
+            if let section = currentSection {
+                CustomImagePicker(
+                    viewModel: viewModel,
+                    person: $person,
+                    sectionTitle: section,
+                    isPresented: $isImagePickerPresented,
+                    onPhotosAdded: { newPhotos in
+                        // Handle newly added photos
+                        viewModel.updatePerson(person)
+                    }
+                )
+            }
         }
     }
 
@@ -94,6 +113,12 @@ struct GridView: View {
         } catch {
             print("Error getting date range for Birth Month: \(error)")
         }
+    }
+    
+    func openImagePickerForMoment(_ section: String, _ dateRange: (Date, Date)) {
+        currentSection = section
+        currentDateRange = dateRange
+        isImagePickerPresented = true
     }
 }
 
