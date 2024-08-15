@@ -67,7 +67,7 @@ struct StacksView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 80)
+                    .padding(.bottom, 40)
                 }
             }
         }

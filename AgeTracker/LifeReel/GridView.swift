@@ -58,7 +58,7 @@ struct GridView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 60) 
+                    .padding(.bottom, 40) 
                 }
                 .onChange(of: person.photos) { _ in
                     viewModel.loadingStacks.removeAll()

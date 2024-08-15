@@ -46,7 +46,7 @@ struct TimelineView: View {
                         }
                     }
                     .padding(.top, 20)
-                    .padding(.bottom, 80)
+                    .padding(.bottom, 60)
                 }
             }
         }
