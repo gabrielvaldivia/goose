@@ -19,13 +19,9 @@ struct GridView: View {
     @State private var currentSection: String?
     @State private var currentDateRange: (Date, Date)?
 
-    private var stacks: [String] {
-        return Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
-    }
-
     var body: some View {
         GeometryReader { geometry in
-            if stacks.isEmpty || (!person.showEmptyStacks && person.photos.isEmpty) {
+            if person.photos.isEmpty && !person.showEmptyStacks {
                 EmptyStateView(
                     title: "No photos in grid",
                     subtitle: "Add photos to create stacks",
@@ -38,7 +34,7 @@ struct GridView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: gridItems(for: geometry.size), spacing: 20) {
-                        ForEach(stacks, id: \.self) { section in
+                        ForEach(sortedStacks(), id: \.self) { section in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == section }
                             let itemWidth = gridItemWidth(for: geometry.size)
                             
@@ -67,7 +63,13 @@ struct GridView: View {
                 .onChange(of: person.photos) { _ in
                     viewModel.loadingStacks.removeAll()
                 }
+                .onChange(of: viewModel.sortOrder) { _ in
+                    viewModel.objectWillChange.send()
+                }
             }
+        }
+        .onChange(of: viewModel.sortOrder) { _ in
+            viewModel.objectWillChange.send()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             orientation = UIDevice.current.orientation
@@ -136,6 +138,17 @@ struct GridView: View {
     
     private func photosForCurrentSection() -> [Photo] {
         return person.photos
+    }
+    
+    private func sortedStacks() -> [String] {
+        let stacks = PhotoUtils.getAllExpectedStacks(for: person)
+        let filteredStacks = person.pregnancyTracking == .none ? stacks.filter { !$0.contains("Pregnancy") && !$0.contains("Trimester") && !$0.contains("Week") } : stacks
+        
+        return filteredStacks.sorted { stack1, stack2 in
+            let order1 = PhotoUtils.orderFromSectionTitle(stack1, sortOrder: viewModel.sortOrder)
+            let order2 = PhotoUtils.orderFromSectionTitle(stack2, sortOrder: viewModel.sortOrder)
+            return viewModel.sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
+        }
     }
 }
 

@@ -30,7 +30,9 @@ struct TimelineView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 20, pinnedViews: [.sectionHeaders]) {
-                        ForEach(sortedGroupedPhotosForAll(), id: \.0) { section, photos in
+                        ForEach(sortedGroupedPhotosForAll().filter { section, _ in
+                            person.pregnancyTracking != .none || (!section.contains("Pregnancy") && !section.contains("Trimester") && !section.contains("Week"))
+                        }, id: \.0) { section, photos in
                             if !photos.isEmpty {
                                 Section(header: stickyHeader(for: section)) {
                                     LazyVStack(spacing: 10) {
@@ -103,13 +105,20 @@ struct TimelineView: View {
             PhotoUtils.sectionForPhoto(photo, person: person)
         }
         
-        let sortedGroups = groupedPhotos.sorted { (group1, group2) -> Bool in
-            let date1 = group1.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
-            let date2 = group2.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
-            return date1 > date2
+        let filteredGroups = groupedPhotos.filter { key, _ in
+            if person.pregnancyTracking == .none {
+                return key != "Before Birth" && !key.contains("Trimester") && !key.contains("Week")
+            }
+            return true
         }
         
-        return sortedGroups.map { ($0.key, $0.value.sorted(by: { $0.dateTaken > $1.dateTaken })) }
+        let sortedGroups = filteredGroups.sorted { (group1, group2) -> Bool in
+            let date1 = group1.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            let date2 = group2.value.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            return viewModel.sortOrder == .latestToOldest ? date1 > date2 : date1 < date2
+        }
+        
+        return sortedGroups.map { ($0.key, sortPhotos($0.value)) }
     }
     
     private func calculateAge(for person: Person, at date: Date) -> String {

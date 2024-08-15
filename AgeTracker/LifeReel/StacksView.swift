@@ -16,7 +16,23 @@ struct StacksView: View {
     @State var showingImagePicker = false
     
     private var stacks: [String] {
-        return Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
+        let allStacks = Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
+        return allStacks.filter { stack in
+            if person.pregnancyTracking == .none {
+                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week")
+            }
+            return true
+        }
+    }
+    
+    private func sortedStacks() -> [String] {
+        return stacks.sorted { stack1, stack2 in
+            let photos1 = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack1 }
+            let photos2 = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack2 }
+            let date1 = photos1.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            let date2 = photos2.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
+            return viewModel.sortOrder == .latestToOldest ? date1 > date2 : date1 < date2
+        }
     }
     
     var body: some View {
@@ -34,7 +50,7 @@ struct StacksView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 15) {
-                        ForEach(stacks, id: \.self) { stack in
+                        ForEach(sortedStacks(), id: \.self) { stack in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
                             if !photos.isEmpty {
                                 StackSectionView(

@@ -69,6 +69,9 @@ struct PersonSettingsView: View {
                     Text("Oldest to Latest").tag(Person.SortOrder.oldestToLatest)
                 }
                 .pickerStyle(DefaultPickerStyle())
+                .onChange(of: localSortOrder) { newValue in
+                    viewModel.setSortOrder(newValue)
+                }
                 
                 Picker("Group by Month", selection: $birthMonthsDisplay) {
                     Text("None").tag(Person.BirthMonthsDisplay.none)

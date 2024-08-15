@@ -60,41 +60,7 @@ public struct PhotoUtils {
         var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
-            let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: photo.dateTaken)
-            let years = components.year ?? 0
-            let months = components.month ?? 0
-            let totalMonths = years * 12 + months
-
-            let sectionTitle: String
-            if photo.dateTaken < person.dateOfBirth && !calendar.isDate(photo.dateTaken, inSameDayAs: person.dateOfBirth) {
-                sectionTitle = "Pregnancy"
-            } else {
-                switch person.birthMonthsDisplay {
-                case .none:
-                    if years == 0 {
-                        sectionTitle = "Birth Year"
-                    } else {
-                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                    }
-                case .twelveMonths:
-                    if totalMonths == 0 {
-                        sectionTitle = "Birth Month"
-                    } else if totalMonths <= 11 {
-                        sectionTitle = "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
-                    } else {
-                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                    }
-                case .twentyFourMonths:
-                    if totalMonths == 0 {
-                        sectionTitle = "Birth Month"
-                    } else if totalMonths <= 23 {
-                        sectionTitle = "\(totalMonths + 1) Month\(totalMonths == 0 ? "" : "s")"
-                    } else {
-                        sectionTitle = "\(years) Year\(years == 1 ? "" : "s")"
-                    }
-                }
-            }
-
+            let sectionTitle = sectionForPhoto(photo, person: person)
             groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
@@ -102,7 +68,7 @@ public struct PhotoUtils {
         let sortedGroups = groupedPhotos.sorted { (group1, group2) in
             let order1 = orderFromSectionTitle(group1.key, sortOrder: sortOrder)
             let order2 = orderFromSectionTitle(group2.key, sortOrder: sortOrder)
-            return order1 < order2
+            return sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
         }
 
         return sortedGroups
@@ -112,15 +78,29 @@ public struct PhotoUtils {
         if title == "Pregnancy" {
             return sortOrder == .oldestToLatest ? Int.min : Int.max
         }
-        if title == "Birth Month" { return sortOrder == .oldestToLatest ? 1001 : -1 }
-        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1002 : -2 }
+        if title.starts(with: "First Trimester") {
+            return sortOrder == .oldestToLatest ? -300 : 300
+        }
+        if title.starts(with: "Second Trimester") {
+            return sortOrder == .oldestToLatest ? -200 : 200
+        }
+        if title.starts(with: "Third Trimester") {
+            return sortOrder == .oldestToLatest ? -100 : 100
+        }
+        if title.starts(with: "Week") {
+            if let week = Int(title.components(separatedBy: " ").last ?? "") {
+                return sortOrder == .oldestToLatest ? week : -week + 400
+            }
+        }
+        if title == "Birth Month" { return sortOrder == .oldestToLatest ? 1001 : -1001 }
+        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1002 : -1002 }
         if title.contains("Month") {
             let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return sortOrder == .oldestToLatest ? 1001 + months : -1 - months
+            return sortOrder == .oldestToLatest ? 1001 + months : -1001 - months
         }
         if title.contains("Year") {
             let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return sortOrder == .oldestToLatest ? 2000 + years : -1000 - years
+            return sortOrder == .oldestToLatest ? 2000 + years : -2000 - years
         }
         return 3000 // Default value for unknown titles
     }
@@ -131,49 +111,28 @@ public struct PhotoUtils {
             sortOrder: viewModel.sortOrder
         )
         
-        // Convert groupedPhotos to a dictionary for easier lookup
-        let groupedPhotosDict = Dictionary(groupedPhotos, uniquingKeysWith: { (first, _) in first })
-        
-        // Ensure all expected stacks are present, even if empty
-        let allStacks = getAllExpectedStacks(for: person)
-        let completeGroupedPhotos = allStacks.map { stack in
-            (stack, groupedPhotosDict[stack] ?? [])
-        }
-        
-        let sortedGroups = completeGroupedPhotos.sorted { (group1, group2) -> Bool in
-            let order1 = orderFromSectionTitle(group1.0, sortOrder: viewModel.sortOrder)
-            let order2 = orderFromSectionTitle(group2.0, sortOrder: viewModel.sortOrder)
-            return order1 < order2
-        }
-        
-        // Filter out empty stacks
-        let nonEmptyGroups = sortedGroups.filter { !$0.1.isEmpty }
-        
-        return nonEmptyGroups
+        return sortGroupsBasedOnSettings(groupedPhotos, sortOrder: viewModel.sortOrder)
     }
 
     static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(
-            for: person,
-            sortOrder: viewModel.sortOrder
-        )
-        
-        // Convert groupedPhotos to a dictionary for easier lookup
-        let groupedPhotosDict = Dictionary(groupedPhotos, uniquingKeysWith: { (first, _) in first })
-        
-        // Ensure all expected stacks are present, even if empty
         let allStacks = getAllExpectedStacks(for: person)
+        let groupedPhotos = Dictionary(grouping: person.photos) { photo in
+            PhotoUtils.sectionForPhoto(photo, person: person)
+        }
+        
         let completeGroupedPhotos = allStacks.map { stack in
-            (stack, groupedPhotosDict[stack] ?? [])
+            (stack, groupedPhotos[stack] ?? [])
         }
         
-        let sortedGroups = completeGroupedPhotos.sorted { (group1, group2) -> Bool in
-            let order1 = orderFromSectionTitle(group1.0, sortOrder: viewModel.sortOrder)
-            let order2 = orderFromSectionTitle(group2.0, sortOrder: viewModel.sortOrder)
-            return order1 < order2
+        return sortGroupsBasedOnSettings(completeGroupedPhotos, sortOrder: viewModel.sortOrder)
+    }
+
+    private static func sortGroupsBasedOnSettings(_ groups: [(String, [Photo])], sortOrder: Person.SortOrder) -> [(String, [Photo])] {
+        return groups.sorted { (group1, group2) in
+            let order1 = orderFromSectionTitle(group1.0, sortOrder: sortOrder)
+            let order2 = orderFromSectionTitle(group2.0, sortOrder: sortOrder)
+            return sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
         }
-        
-        return sortedGroups
     }
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
@@ -184,11 +143,8 @@ public struct PhotoUtils {
         let endDate = min(person.dateOfBirth, currentDate)
         let pregnancyStartDate = calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
         
-        // Include pregnancy stacks based on the tracking option
+        // Include pregnancy stacks only if tracking is set to trimesters or weeks
         switch person.pregnancyTracking {
-        case .none:
-            // Don't add any pregnancy stacks
-            break
         case .trimesters:
             let trimesterDuration = TimeInterval(91 * 24 * 60 * 60) // 91 days in seconds
             for i in 0..<3 {
@@ -204,6 +160,9 @@ public struct PhotoUtils {
                     stacks.append("Week \(week)")
                 }
             }
+        case .none:
+            // Don't add any pregnancy stacks
+            break
         }
         
         // Handle past or current birth dates
