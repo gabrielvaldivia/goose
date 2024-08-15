@@ -18,10 +18,11 @@ struct StacksView: View {
     private var stacks: [String] {
         let allStacks = Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
         return allStacks.filter { stack in
+            let stackPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
             if person.pregnancyTracking == .none {
-                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week")
+                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week") && stackPhotos.count >= 2
             }
-            return true
+            return stackPhotos.count >= 2
         }
     }
     
@@ -37,10 +38,10 @@ struct StacksView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            if stacks.isEmpty || person.photos.isEmpty {
+            if stacks.isEmpty {
                 EmptyStateView(
-                    title: "No photos in stacks",
-                    subtitle: "Add photos to create stacks",
+                    title: "No stacks available",
+                    subtitle: "Add at least 2 photos to a stack to see it here",
                     systemImageName: "photo.on.rectangle.angled",
                     action: {
                         showingImagePicker = true
@@ -52,7 +53,7 @@ struct StacksView: View {
                     LazyVStack(spacing: 15) {
                         ForEach(sortedStacks(), id: \.self) { stack in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
-                            if !photos.isEmpty {
+                            if photos.count >= 2 {
                                 StackSectionView(
                                     section: stack,
                                     photos: photos,
@@ -83,13 +84,12 @@ struct StackSectionView: View {
     let maxWidth: CGFloat
     @ObservedObject var viewModel: PersonViewModel
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
+    @State private var isShareSlideshowPresented = false
     
     var body: some View {
-        NavigationLink(destination: StackDetailView(
-            viewModel: viewModel,
-            person: $person,
-            sectionTitle: section
-        )) {
+        Button(action: {
+            isShareSlideshowPresented = true
+        }) {
             if let randomPhoto = photos.randomElement() {
                 ZStack(alignment: .bottom) {
                     if let image = randomPhoto.image {
@@ -148,6 +148,13 @@ struct StackSectionView: View {
                     .frame(height: cardHeight)
                     .frame(maxWidth: maxWidth)
             }
+        }
+        .sheet(isPresented: $isShareSlideshowPresented) {
+            ShareSlideshowView(
+                photos: photos,
+                person: person,
+                sectionTitle: section
+            )
         }
     }
 }
