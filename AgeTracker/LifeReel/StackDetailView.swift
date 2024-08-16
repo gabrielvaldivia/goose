@@ -15,53 +15,40 @@ struct StackDetailView: View {
     let sectionTitle: String
     @State private var showingImagePicker = false
     @State private var selectedPhoto: Photo? = nil
-    @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
-    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var isShareSlideshowPresented = false
-    @State private var currentPage = 1 // 0 for Grid, 1 for Timeline
+    @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
     @State private var sortOrder: SortOrder = .latestToOldest
     @State private var forceUpdate: Bool = false
+    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            GeometryReader { geometry in
-                if photosForCurrentSection().isEmpty {
-                    EmptyStateView(
-                        title: "This stack is empty",
-                        subtitle: "Add photos and they'll show up here",
-                        systemImageName: "photo.on.rectangle.angled",
-                        action: {
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                PageViewController(pages: [
+                    AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)),
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate))
+                ], currentPage: $selectedTab, animationDirection: $animationDirection)
+                .edgesIgnoringSafeArea(.bottom)
+
+                VStack(spacing: 0) {
+                    Spacer()
+                    BottomControls(
+                        shareAction: {
+                            if !photosForCurrentSection().isEmpty {
+                                isShareSlideshowPresented = true
+                            } else {
+                                print("No photos available to share")
+                            }
+                        },
+                        addPhotoAction: {
                             showingImagePicker = true
-                        }
+                        },
+                        selectedTab: $selectedTab,
+                        animationDirection: $animationDirection
                     )
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                } else {
-                    TabView(selection: $currentPage) {
-                        SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)
-                            .tag(0)
-                        
-                        SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)
-                            .tag(1)
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .animation(.easeInOut, value: currentPage)
+                    // .background(Color(UIColor.systemBackground).edgesIgnoringSafeArea(.bottom))
                 }
             }
-            
-            BottomControls(
-                shareAction: {
-                    if !photosForCurrentSection().isEmpty {
-                        isShareSlideshowPresented = true
-                    } else {
-                        print("No photos available to share")
-                    }
-                },
-                addPhotoAction: {
-                    showingImagePicker = true
-                },
-                selectedTab: $currentPage,
-                animationDirection: $animationDirection
-            )
         }
         .navigationTitle(sectionTitle)
         .toolbar {
