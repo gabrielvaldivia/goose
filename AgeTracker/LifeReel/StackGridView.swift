@@ -70,7 +70,49 @@ struct StacksGridView: View {
         let stacks = PhotoUtils.getAllExpectedStacks(for: person)
         let filteredStacks = person.pregnancyTracking == .none ? stacks.filter { !$0.contains("Pregnancy") && !$0.contains("Trimester") && !$0.contains("Week") } : stacks
         
-        return filteredStacks.sorted()
+        return filteredStacks.sorted { (stack1, stack2) -> Bool in
+            let order: [String] = [
+                "First Trimester", "Second Trimester", "Third Trimester",
+                "Week", "Birth Month", "Month", "Year"
+            ]
+            
+            func priority(for stack: String) -> Int {
+                if stack.contains("Week") {
+                    return 0
+                }
+                return order.firstIndex(where: { stack.contains($0) }) ?? order.count
+            }
+            
+            let priority1 = priority(for: stack1)
+            let priority2 = priority(for: stack2)
+            
+            if priority1 != priority2 {
+                return priority1 < priority2
+            }
+            
+            // For weeks, sort numerically
+            if stack1.contains("Week") && stack2.contains("Week") {
+                let week1 = Int(stack1.components(separatedBy: " ")[1]) ?? 0
+                let week2 = Int(stack2.components(separatedBy: " ")[1]) ?? 0
+                return week1 < week2
+            }
+            
+            // For months, sort numerically
+            if stack1.contains("Month") && stack2.contains("Month") {
+                let month1 = Int(stack1.components(separatedBy: " ")[0]) ?? 0
+                let month2 = Int(stack2.components(separatedBy: " ")[0]) ?? 0
+                return month1 < month2
+            }
+            
+            // For years, sort numerically
+            if stack1.contains("Year") && stack2.contains("Year") {
+                let year1 = Int(stack1.components(separatedBy: " ")[0]) ?? 0
+                let year2 = Int(stack2.components(separatedBy: " ")[0]) ?? 0
+                return year1 < year2
+            }
+            
+            return stack1 < stack2
+        }
     }
 
     private func openImagePickerForEmptyState() {

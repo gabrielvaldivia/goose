@@ -182,7 +182,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         } catch {
             print("Error setting up date range for section \(sectionTitle): \(error)")
             // Fallback to default behavior
-            if sectionTitle == "0 Months" {
+            if sectionTitle == "Birth Month" {
                 displayStartDate = calendar.startOfDay(for: person.dateOfBirth)
                 displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
                 displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate)!

@@ -112,7 +112,7 @@ public struct PhotoUtils {
                 stacks.append("Birth Year")
                 stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
             case .twelveMonths:
-                stacks.append("0 Months")
+                stacks.append("Birth Month")
                 let monthsToShow = min(11, currentAgeInMonths)
                 stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
                 if currentAgeInMonths >= 12 {
@@ -122,7 +122,7 @@ public struct PhotoUtils {
                     }
                 }
             case .twentyFourMonths:
-                stacks.append("0 Months")
+                stacks.append("Birth Month")
                 let monthsToShow = min(23, currentAgeInMonths)
                 stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
                 if currentAgeInYears >= 2 {
@@ -155,9 +155,11 @@ public struct PhotoUtils {
             let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             let start = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
             return (start: start, end: birthDate)
-        case "0 Months":
-            let endOfMonth = calendar.date(byAdding: .month, value: 1, to: birthDate) ?? birthDate
-            return (start: birthDate, end: endOfMonth)
+        case "Birth Month":
+            let start = person.dateOfBirth
+            let nextMonth = calendar.date(byAdding: .month, value: 1, to: start)!
+            let end = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+            return (start: start, end: end)
         default:
             if section.contains("Month") {
                 if let months = Int(section.components(separatedBy: " ").first ?? "") {
@@ -189,7 +191,7 @@ public struct PhotoUtils {
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
-                return "Before Birth"
+                return "" // Return an empty string for photos before birth when tracking is off
             case .trimesters:
                 let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
                 return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
@@ -198,8 +200,12 @@ public struct PhotoUtils {
             }
         }
         
-        if exactAge.isNewborn {
-            return "0 Months"
+        // Check if the photo is within the birth month
+        let calendar = Calendar.current
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
+        let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+        if photo.dateTaken >= person.dateOfBirth && photo.dateTaken <= endOfBirthMonth {
+            return "Birth Month"
         }
         
         switch person.birthMonthsDisplay {
@@ -233,7 +239,7 @@ public struct PhotoUtils {
             stacks.append("Birth Year")
             stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
         case .twelveMonths:
-            stacks.append("0 Months")
+            stacks.append("Birth Month")
             let monthsToShow = min(11, currentAgeInMonths)
             stacks.append(contentsOf: (0...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
             if currentAgeInMonths >= 12 {
@@ -243,7 +249,7 @@ public struct PhotoUtils {
                 }
             }
         case .twentyFourMonths:
-            stacks.append("0 Months")
+            stacks.append("Birth Month")
             let monthsToShow = min(23, currentAgeInMonths)
             stacks.append(contentsOf: (0...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
             if currentAgeInYears >= 2 {
@@ -344,7 +350,7 @@ struct SharedTimelineView: View {
         GeometryReader { outerGeometry in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(sortPhotos(photos)) { photo in
+                    ForEach(filteredPhotos()) { photo in
                         FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
                             .id(photo.id)
                     }
@@ -356,8 +362,18 @@ struct SharedTimelineView: View {
         .id(forceUpdate)
     }
     
+    private func filteredPhotos() -> [Photo] {
+        let filteredPhotos = photos.filter { photo in
+            if person.pregnancyTracking == .none {
+                return photo.dateTaken >= person.dateOfBirth
+            }
+            return true
+        }
+        return sortPhotos(filteredPhotos)
+    }
+    
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { $0.dateTaken < $1.dateTaken }
+        photos.sorted { $0.dateTaken > $1.dateTaken }
     }
 }
 

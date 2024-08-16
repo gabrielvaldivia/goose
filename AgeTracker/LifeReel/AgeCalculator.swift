@@ -53,11 +53,12 @@ struct AgeCalculator {
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
         let exactAge = calculate(for: person, at: photo.dateTaken)
+        let calendar = Calendar.current
         
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
-                return "Before Birth"
+                return "" // Return an empty string for photos before birth when tracking is off
             case .trimesters:
                 let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
                 return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
@@ -66,7 +67,10 @@ struct AgeCalculator {
             }
         }
         
-        if exactAge.isNewborn {
+        // Check if the photo is within the birth month
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
+        let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+        if photo.dateTaken >= person.dateOfBirth && photo.dateTaken <= endOfBirthMonth {
             return "Birth Month"
         }
         

@@ -16,12 +16,11 @@ struct StacksView: View {
     @State var showingImagePicker = false
     
     private var stacks: [String] {
-        let allStacks = Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) })).sorted()
+        let allStacks = Array(Set(person.photos.map { PhotoUtils.sectionForPhoto($0, person: person) }))
+            .filter { !$0.isEmpty } // Filter out empty section titles
+            .sorted()
         return allStacks.filter { stack in
             let stackPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
-            if person.pregnancyTracking == .none {
-                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week") && stackPhotos.count >= 2
-            }
             return stackPhotos.count >= 2
         }
     }
