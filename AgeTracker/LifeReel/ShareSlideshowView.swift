@@ -84,30 +84,12 @@ enum SlideshowRange: Hashable, CaseIterable {
     }
 }
 
-struct StackPicker: View {
-    @Binding var selectedRange: SlideshowRange
-    let availableStacks: [String]
-    let onRangeChange: (SlideshowRange, SlideshowRange) -> Void
-
-    var body: some View {
-        Picker("Stack", selection: $selectedRange) {
-            ForEach(availableStacks, id: \.self) { stack in
-                Text(stack).tag(SlideshowRange.custom(stack))
-            }
-        }
-        .pickerStyle(MenuPickerStyle())
-        .onChange(of: selectedRange) { oldValue, newValue in
-            onRangeChange(oldValue, newValue)
-        }
-    }
-}
-
 // ShareSlideshowView
 struct ShareSlideshowView: View {
     // Properties
     let photos: [Photo]
     let person: Person
-    let sectionTitle: String
+    let sectionTitle: String?
     @State private var currentPhotoIndex = 0
     @State private var isPlaying = false
     @State private var playbackSpeed: Double = 1.0
@@ -118,20 +100,21 @@ struct ShareSlideshowView: View {
     @State private var scrubberPosition: Double = 0
     @Environment(\.presentationMode) var presentationMode
     
-    @State private var selectedRange: SlideshowRange
     @State private var currentFilteredPhotoIndex = 0
     @State private var aspectRatio: AspectRatio = .square
     @State private var isMusicSelectionPresented = false
     @State private var showAppIcon: Bool = true
     @State private var titleOption: TitleOption = .name
-    @State private var subtitleOption: TitleOption = .stackName
+    @State private var subtitleOption: TitleOption = .age
     @State private var speedOptions = [1.0, 2.0, 3.0]
     
-    init(photos: [Photo], person: Person, sectionTitle: String) {
+    init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
         self.person = person
         self.sectionTitle = sectionTitle
-        _selectedRange = State(initialValue: .custom(sectionTitle))
+        
+        // Subtitle option always defaults to age
+        _subtitleOption = State(initialValue: .age)
     }
     
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -142,50 +125,6 @@ struct ShareSlideshowView: View {
         case stackName = "Stack Name"
         
         var description: String { self.rawValue }
-    }
-    
-    private var availableRanges: [SlideshowRange] {
-        let groupedPhotos = groupAndSortPhotos()
-        return SlideshowRange.allCases.filter { range in
-            switch range {
-            case .allPhotos:
-                return !photos.isEmpty
-            case .pregnancy:
-                return groupedPhotos.contains { $0.0 == "Pregnancy" }
-            case .birthMonth:
-                return groupedPhotos.contains { $0.0 == "Birth Month" }
-            case .month(let value):
-                return groupedPhotos.contains { $0.0 == "\(value) Month\(value == 1 ? "" : "s")" }
-            case .year(let value):
-                return groupedPhotos.contains { $0.0 == "\(value) Year\(value == 1 ? "" : "s")" }
-            case .custom(let value):
-                return groupedPhotos.contains { $0.0 == value }
-            }
-        }
-    }
-    
-    private var filteredPhotos: [Photo] {
-        let filtered: [Photo]
-        switch selectedRange {
-        case .custom(let stack):
-            filtered = photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
-        case .allPhotos:
-            filtered = photos
-        default:
-            filtered = photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == selectedRange.displayName }
-        }
-        return filtered.isEmpty ? photos : filtered
-    }
-    
-    private var availableStacks: [String] {
-        let allStacks = PhotoUtils.getAllExpectedStacks(for: person)
-        return allStacks.filter { stack in
-            let stackPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack }
-            if person.pregnancyTracking == .none {
-                return stack != "Before Birth" && !stack.contains("Trimester") && !stack.contains("Week") && stackPhotos.count >= 2
-            }
-            return stackPhotos.count >= 2
-        }
     }
     
     // Body
@@ -213,9 +152,6 @@ struct ShareSlideshowView: View {
         .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in
             handleIndexChange(oldValue: oldValue, newValue: newValue)
         }
-        .onChange(of: selectedRange) { oldValue, newValue in
-            handleRangeChange(oldValue: oldValue, newValue: newValue)
-        }
         .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
         .sheet(isPresented: $isMusicSelectionPresented) {
             MusicSelectionView()
@@ -226,7 +162,8 @@ struct ShareSlideshowView: View {
         HStack {
             cancelButton
             Spacer()
-            stackPicker
+            Text("Slideshow")
+                .font(.headline)
             Spacer()
             shareButton
         }
@@ -304,7 +241,7 @@ struct ShareSlideshowView: View {
                 SimplifiedCustomizationButton(
                     icon: "text.alignleft",
                     title: "Subtitle",
-                    options: TitleOption.allCases.filter { $0 != titleOption || $0 == .none },
+                    options: availableSubtitleOptions,
                     selection: $subtitleOption
                 )
                 
@@ -373,28 +310,19 @@ struct ShareSlideshowView: View {
         }
     }
 
-    private func handleRangeChange(oldValue: SlideshowRange, newValue: SlideshowRange) {
-        currentFilteredPhotoIndex = 0
-        scrubberPosition = 0
-        if filteredPhotos.isEmpty {
-            selectedRange = oldValue
-        } else {
-            loadImagesAround(index: currentFilteredPhotoIndex)
-        }
-    }
-
     private func comingSoonAlert() -> some View {
         Button("OK", role: .cancel) { }
     }
 
     // Helper Methods
     private func loadImagesAround(index: Int) {
-        guard !filteredPhotos.isEmpty else { return }
-        let count = filteredPhotos.count
+        let photos = filteredPhotos
+        guard !photos.isEmpty else { return }
+        let count = photos.count
         let safeIndex = (index + count) % count
         let range = (-5...5).map { (safeIndex + $0 + count) % count }
         for i in range {
-            let photo = filteredPhotos[i]
+            let photo = photos[i]
             if loadedImages[photo.id.uuidString] == nil {
                 loadedImages[photo.id.uuidString] = photo.image
             }
@@ -404,7 +332,7 @@ struct ShareSlideshowView: View {
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: date)
         
-        if exactAge.isNewborn {
+        if exactAge.isNewborn || (exactAge.years == 0 && exactAge.months == 0) {
             return "Birth Month"
         } else if exactAge.isPregnancy {
             return "Pregnancy"
@@ -428,7 +356,7 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
-        case .stackName: return sectionTitle
+        case .stackName: return sectionTitle ?? ""
         }
     }
     
@@ -438,7 +366,7 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
-        case .stackName: return sectionTitle
+        case .stackName: return sectionTitle ?? ""
         }
     }
     
@@ -477,18 +405,28 @@ struct ShareSlideshowView: View {
         }
     }
 
-    private var stackPicker: some View {
-        StackPicker(
-            selectedRange: $selectedRange,
-            availableStacks: availableStacks,
-            onRangeChange: handleRangeChange
-        )
-    }
-
     private var shareButton: some View {
         Button("Share") {
             showComingSoonAlert = true
         }
+    }
+
+    private var filteredPhotos: [Photo] {
+        if person.pregnancyTracking == .none {
+            return photos.filter { photo in
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return !age.isPregnancy
+            }
+        }
+        return photos
+    }
+
+    private var availableSubtitleOptions: [TitleOption] {
+        var options = TitleOption.allCases.filter { $0 != titleOption || $0 == .none }
+        if sectionTitle == nil {
+            options = options.filter { $0 != .stackName }
+        }
+        return options
     }
 }
 
