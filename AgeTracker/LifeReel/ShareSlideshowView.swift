@@ -91,7 +91,7 @@ struct ShareSlideshowView: View {
     let person: Person
     let sectionTitle: String?
     @State private var currentPhotoIndex = 0
-    @State private var isPlaying = false
+    @State private var isPlaying = true
     @State private var playbackSpeed: Double = 1.0
     @State private var isSharePresented = false
     @State private var showComingSoonAlert = false
@@ -287,6 +287,7 @@ struct ShareSlideshowView: View {
 
     private func onAppear() {
         loadImagesAround(index: currentFilteredPhotoIndex)
+        startTimer()
     }
 
     private func handlePlayingChange(oldValue: Bool, newValue: Bool) {

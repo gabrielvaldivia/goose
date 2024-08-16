@@ -252,6 +252,7 @@ struct PersonDetailView: View {
             }
             .cornerRadius(isGridView ? 10 : 0)
             .onTapGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 selectedPhoto = photo
             }
         }

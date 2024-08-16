@@ -23,6 +23,7 @@ struct PhotoView: View {
             .aspectRatio(contentMode: .fit)
             .frame(width: containerWidth)
             .onTapGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 selectedPhoto = photo
             }
     }
@@ -410,6 +411,7 @@ struct FilmReelItemView: View {
         .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
         .padding(.vertical, 2)
         .onTapGesture {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             selectedPhoto = photo
         }
         .background(colorScheme == .dark ? Color.black : Color.white)
@@ -436,6 +438,7 @@ struct SharedGridView: View {
                         PhotoTile(photo: photo, size: GridLayoutHelper.gridItemWidth(for: geometry.size))
                             .padding(.bottom, 10)
                             .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 selectedPhoto = photo
                             }
                     }
@@ -460,7 +463,10 @@ struct CircularButton: View {
     var backgroundColor: Color?
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        }) {
             Image(systemName: systemName)
                 .foregroundColor(.white)
                 .font(.system(size: size * 0.35, weight: .bold))
@@ -497,6 +503,7 @@ struct SegmentedControlView: View {
         HStack(spacing: 8) {
             ForEach(options.indices, id: \.self) { index in
                 Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     withAnimation(.spring(response: 0.15)) {
                         animationDirection = index > selectedTab ? .forward : .reverse
                         selectedTab = index
@@ -539,16 +546,21 @@ struct BottomControls: View {
 
     var body: some View {
         HStack {
-            CircularButton(systemName: "square.and.arrow.up", action: shareAction)
+            CircularButton(systemName: "square.and.arrow.up", action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                shareAction()
+            })
             Spacer()
 
             SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
 
             Spacer()
 
-            CircularButton(systemName: "plus", action: addPhotoAction, size: 50, backgroundColor: .blue)
+            CircularButton(systemName: "plus", action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                addPhotoAction()
+            }, size: 50, backgroundColor: .blue)
         }
         .padding(.horizontal)
-        // .padding(.bottom, 8)
     }
 }
