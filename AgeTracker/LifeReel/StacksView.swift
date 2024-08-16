@@ -32,7 +32,7 @@ struct StacksView: View {
             let photos2 = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == stack2 }
             let date1 = photos1.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
             let date2 = photos2.max(by: { $0.dateTaken < $1.dateTaken })?.dateTaken ?? Date.distantPast
-            return viewModel.sortOrder == .latestToOldest ? date1 > date2 : date1 < date2
+            return date1 > date2
         }
     }
     

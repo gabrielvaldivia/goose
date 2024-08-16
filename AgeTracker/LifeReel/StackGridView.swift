@@ -59,9 +59,6 @@ struct StacksGridView: View {
                 person: person
             )
         }
-        .onChange(of: viewModel.sortOrder) { _ in
-            viewModel.objectWillChange.send()
-        }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             // Force view update on orientation change
             viewModel.objectWillChange.send()
@@ -70,15 +67,10 @@ struct StacksGridView: View {
     }
 
     private func sortedStacks() -> [String] {
-        // Use the same logic as in the existing GridView
         let stacks = PhotoUtils.getAllExpectedStacks(for: person)
         let filteredStacks = person.pregnancyTracking == .none ? stacks.filter { !$0.contains("Pregnancy") && !$0.contains("Trimester") && !$0.contains("Week") } : stacks
         
-        return filteredStacks.sorted { stack1, stack2 in
-            let order1 = PhotoUtils.orderFromSectionTitle(stack1, sortOrder: viewModel.sortOrder)
-            let order2 = PhotoUtils.orderFromSectionTitle(stack2, sortOrder: viewModel.sortOrder)
-            return viewModel.sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
-        }
+        return filteredStacks.sorted()
     }
 
     private func openImagePickerForEmptyState() {

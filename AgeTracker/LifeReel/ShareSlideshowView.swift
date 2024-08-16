@@ -468,7 +468,7 @@ struct ShareSlideshowView: View {
     }
     
     private func groupAndSortPhotos() -> [(String, [Photo])] {
-        return PhotoUtils.groupAndSortPhotos(for: person, sortOrder: .oldestToLatest)
+        return PhotoUtils.groupAndSortPhotos(for: person)
     }
 
     private var cancelButton: some View {

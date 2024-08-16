@@ -17,7 +17,6 @@ struct StackDetailView: View {
     @State private var selectedPhoto: Photo? = nil
     @State private var isShareSlideshowPresented = false
     @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
-    @State private var sortOrder: SortOrder = .latestToOldest
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
 
@@ -51,13 +50,6 @@ struct StackDetailView: View {
             }
         }
         .navigationTitle(sectionTitle)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: toggleSortOrder) {
-                    Image(systemName: "arrow.up.arrow.down")
-                }
-            }
-        }
         .sheet(isPresented: $showingImagePicker) {
             CustomImagePicker(
                 viewModel: viewModel,
@@ -92,23 +84,10 @@ struct StackDetailView: View {
         .background(Color.clear.opacity(forceUpdate ? 0 : 0.00001))
     }
 
-    private func toggleSortOrder() {
-        sortOrder = sortOrder == .latestToOldest ? .oldestToLatest : .latestToOldest
-        forceUpdate.toggle()
-        viewModel.objectWillChange.send()
-    }
-
     private func photosForCurrentSection() -> [Photo] {
         let filteredPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
-        return filteredPhotos.sorted { (photo1, photo2) -> Bool in
-            sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
-        }
+        return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
     }
-}
-
-enum SortOrder {
-    case latestToOldest
-    case oldestToLatest
 }
 
 struct PhotoTile: View {

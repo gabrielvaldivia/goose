@@ -41,20 +41,9 @@ struct ShareButton: View {
 }
 
 public struct PhotoUtils {
-    static func sortPhotos(_ photos: [Photo], order: Person.SortOrder) -> [Photo] {
-        photos.sorted { photo1, photo2 in
-            switch order {
-            case .latestToOldest:
-                return photo1.dateTaken > photo2.dateTaken
-            case .oldestToLatest:
-                return photo1.dateTaken < photo2.dateTaken
-            }
-        }
-    }
 
-    static func groupAndSortPhotos(for person: Person, sortOrder: Person.SortOrder) -> [(String, [Photo])] {
-        let calendar = Calendar.current
-        let sortedPhotos = sortPhotos(person.photos, order: sortOrder)
+    static func groupAndSortPhotos(for person: Person) -> [(String, [Photo])] {
+        let sortedPhotos = person.photos.sorted { $0.dateTaken < $1.dateTaken }
         var groupedPhotos: [String: [Photo]] = [:]
 
         for photo in sortedPhotos {
@@ -62,54 +51,11 @@ public struct PhotoUtils {
             groupedPhotos[sectionTitle, default: []].append(photo)
         }
 
-        // Sort the groups
-        let sortedGroups = groupedPhotos.sorted { (group1, group2) in
-            let order1 = orderFromSectionTitle(group1.key, sortOrder: sortOrder)
-            let order2 = orderFromSectionTitle(group2.key, sortOrder: sortOrder)
-            return sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
-        }
-
-        return sortedGroups
-    }
-
-    static func orderFromSectionTitle(_ title: String, sortOrder: Person.SortOrder) -> Int {
-        if title == "Pregnancy" {
-            return sortOrder == .oldestToLatest ? Int.min : Int.max
-        }
-        if title.starts(with: "First Trimester") {
-            return sortOrder == .oldestToLatest ? -300 : 300
-        }
-        if title.starts(with: "Second Trimester") {
-            return sortOrder == .oldestToLatest ? -200 : 200
-        }
-        if title.starts(with: "Third Trimester") {
-            return sortOrder == .oldestToLatest ? -100 : 100
-        }
-        if title.starts(with: "Week") {
-            if let week = Int(title.components(separatedBy: " ").last ?? "") {
-                return sortOrder == .oldestToLatest ? week : -week + 400
-            }
-
-        }
-        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1001 : -1001 }
-        if title.contains("Month") {
-            let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return sortOrder == .oldestToLatest ? 1001 + months : -1001 - months
-        }
-        if title.contains("Year") {
-            let years = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
-            return sortOrder == .oldestToLatest ? 2000 + years : -2000 - years
-        }
-        return 3000 // Default value for unknown titles
+        return groupedPhotos.sorted { $0.key < $1.key }
     }
 
     static func sortedGroupedPhotosForAll(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
-        let groupedPhotos = groupAndSortPhotos(
-            for: person,
-            sortOrder: viewModel.sortOrder
-        )
-        
-        return sortGroupsBasedOnSettings(groupedPhotos, sortOrder: viewModel.sortOrder)
+        return groupAndSortPhotos(for: person)
     }
 
     static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
@@ -122,15 +68,7 @@ public struct PhotoUtils {
             (stack, groupedPhotos[stack] ?? [])
         }
         
-        return sortGroupsBasedOnSettings(completeGroupedPhotos, sortOrder: viewModel.sortOrder)
-    }
-
-    private static func sortGroupsBasedOnSettings(_ groups: [(String, [Photo])], sortOrder: Person.SortOrder) -> [(String, [Photo])] {
-        return groups.sorted { (group1, group2) in
-            let order1 = PhotoUtils.orderFromSectionTitle(group1.0, sortOrder: sortOrder)
-            let order2 = PhotoUtils.orderFromSectionTitle(group2.0, sortOrder: sortOrder)
-            return sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
-        }
+        return completeGroupedPhotos.sorted { $0.0 < $1.0 }
     }
 
     static func getAllExpectedStacks(for person: Person) -> [String] {
@@ -419,9 +357,7 @@ struct SharedTimelineView: View {
     }
     
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { photo1, photo2 in
-            viewModel.sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
-        }
+        photos.sorted { $0.dateTaken < $1.dateTaken }
     }
 }
 
@@ -496,9 +432,7 @@ struct SharedGridView: View {
     }
     
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { photo1, photo2 in
-            viewModel.sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
-        }
+        photos.sorted { $0.dateTaken < $1.dateTaken }
     }
 }
 

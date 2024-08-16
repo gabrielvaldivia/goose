@@ -206,10 +206,6 @@ struct PersonDetailView: View {
         .onChange(of: person.birthMonthsDisplay) { oldValue, newValue in
             birthMonthsDisplay = newValue
         }
-        .onChange(of: viewModel.sortOrder) { _ in
-            forceUpdate.toggle()
-            viewModel.objectWillChange.send()
-        }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             // Force view update on orientation change
             viewModel.objectWillChange.send()
@@ -388,10 +384,7 @@ struct PersonDetailView: View {
     }
 
     private func groupAndSortPhotos(forYearView: Bool) -> [(String, [Photo])] {
-        return PhotoUtils.groupAndSortPhotos(
-            for: person,
-            sortOrder: viewModel.sortOrder
-        )
+        return PhotoUtils.groupAndSortPhotos(for: person)
     }
 
     private func bigMoments() -> [(String, [Photo])] {

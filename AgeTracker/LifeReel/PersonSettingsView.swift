@@ -18,7 +18,6 @@ struct PersonSettingsView: View {
     @State private var selectedAlbum: PHAssetCollection?
     @Environment(\.presentationMode) var presentationMode
     @State private var showingBirthDaySheet = false
-    @State private var localSortOrder: Person.SortOrder
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     
 
@@ -36,7 +35,6 @@ struct PersonSettingsView: View {
         self._person = person
         self._editedName = State(initialValue: person.wrappedValue.name)
         self._editedDateOfBirth = State(initialValue: person.wrappedValue.dateOfBirth)
-        self._localSortOrder = State(initialValue: viewModel.sortOrder)
         self._birthMonthsDisplay = State(initialValue: person.wrappedValue.birthMonthsDisplay)
     }
 
@@ -64,15 +62,6 @@ struct PersonSettingsView: View {
             }
 
             Section(header: Text("Display Options")) {
-                Picker("Sort Order", selection: $localSortOrder) {
-                    Text("Latest to Oldest").tag(Person.SortOrder.latestToOldest)
-                    Text("Oldest to Latest").tag(Person.SortOrder.oldestToLatest)
-                }
-                .pickerStyle(DefaultPickerStyle())
-                .onChange(of: localSortOrder) { newValue in
-                    viewModel.setSortOrder(newValue)
-                }
-                
                 Picker("Group by Month", selection: $birthMonthsDisplay) {
                     Text("None").tag(Person.BirthMonthsDisplay.none)
                     Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
@@ -201,7 +190,6 @@ struct PersonSettingsView: View {
             person.pregnancyTracking = person.pregnancyTracking
         }
         
-        viewModel.setSortOrder(localSortOrder)
         viewModel.savePeople()
         presentationMode.wrappedValue.dismiss()
     }

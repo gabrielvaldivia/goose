@@ -12,13 +12,11 @@ import SwiftUI
 
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
-    @Published var sortOrder: Person.SortOrder = .latestToOldest
     @Published var lastOpenedPersonId: UUID?
     @Published var loadingStacks: Set<String> = []
 
     init() {
         loadPeople()
-        loadSortOrderPreference()
         loadLastOpenedPersonId()
         
         // Check if photo migration is needed
@@ -397,18 +395,6 @@ class PersonViewModel: ObservableObject {
         UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
     }
     
-    func setSortOrder(_ newSortOrder: Person.SortOrder) {
-        sortOrder = newSortOrder
-        UserDefaults.standard.set(newSortOrder == .latestToOldest ? "latest" : "oldest", forKey: "sortOrderPreference")
-        objectWillChange.send()  // Add this line
-    }
-    
-    private func loadSortOrderPreference() {
-        if let savedPreference = UserDefaults.standard.string(forKey: "sortOrderPreference") {
-            sortOrder = savedPreference == "latest" ? .latestToOldest : .oldestToLatest
-        }
-    }
-    
     private func loadLastOpenedPersonId() {
         if let savedId = UserDefaults.standard.string(forKey: "lastOpenedPersonId"),
            let uuid = UUID(uuidString: savedId) {
@@ -420,7 +406,6 @@ class PersonViewModel: ObservableObject {
         people.removeAll()
         UserDefaults.standard.removeObject(forKey: "SavedPeople")
         UserDefaults.standard.removeObject(forKey: "lastOpenedPersonId")
-        UserDefaults.standard.removeObject(forKey: "sortOrderPreference")
         UserDefaults.standard.synchronize()
         objectWillChange.send()
     }
