@@ -13,6 +13,7 @@ struct StacksGridView: View {
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
+    let forceUpdate: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -65,6 +66,7 @@ struct StacksGridView: View {
             // Force view update on orientation change
             viewModel.objectWillChange.send()
         }
+        .id(forceUpdate)
     }
 
     private func sortedStacks() -> [String] {
@@ -138,7 +140,7 @@ struct StackTileView: View {
                         )
                 }
                 
-                if !photos.isEmpty {
+                if photos.count >= 2 {
                     Text("\(photos.count)")
                         .font(.caption)
                         .fontWeight(.bold)

@@ -104,6 +104,8 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var viewModel: PersonViewModel
     private var displayStartDate: Date!
     private var displayEndDate: Date!
+    private var sortButton: UIButton!
+    private var isSortedAscending = true // Track the current sort order
 
     init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person) {
         self.sectionTitle = sectionTitle
@@ -122,6 +124,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupCollectionView()
         fetchAssets()
         setupNavigationBar()
+        setupSortButton()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -201,7 +204,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupDateRange()
         
         let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)]
         
         let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
         fetchOptions.predicate = predicate
@@ -249,6 +252,50 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         navigationItem.titleView = titleLabel
     }
 
+    private func setupSortButton() {
+        let bottomBar = UIView()
+        bottomBar.backgroundColor = .systemBackground
+        view.addSubview(bottomBar)
+        bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            bottomBar.heightAnchor.constraint(equalToConstant: 44)
+        ])
+
+        sortButton = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
+        let sortIcon = UIImage(systemName: "arrow.up.arrow.down", withConfiguration: config)
+        sortButton.setImage(sortIcon, for: .normal)
+        sortButton.addTarget(self, action: #selector(sortButtonTapped), for: .touchUpInside)
+        
+        bottomBar.addSubview(sortButton)
+        sortButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            sortButton.leadingAnchor.constraint(equalTo: bottomBar.leadingAnchor, constant: 16),
+            sortButton.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor)
+        ])
+    }
+
+    @objc private func sortButtonTapped() {
+        isSortedAscending.toggle()
+        let sortDescriptor = NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [sortDescriptor]
+        
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
+        fetchOptions.predicate = predicate
+
+        assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+
+        DispatchQueue.main.async {
+            self.collectionView.reloadData()
+        }
+        
+        print("Sort button tapped. Sorted \(isSortedAscending ? "ascending" : "descending")")
+    }
+
     @objc private func cancelButtonTapped() {
         viewModel.loadingStacks.remove(sectionTitle)
         dismiss(animated: true, completion: nil)
@@ -294,13 +341,11 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
 class ImageCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let checkmarkView = UIImageView()
-    private let ageLabel = UILabel()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupImageView()
         setupCheckmarkView()
-        setupAgeLabel()
     }
 
     required init?(coder: NSCoder) {
@@ -350,35 +395,11 @@ class ImageCell: UICollectionViewCell {
         }
     }
 
-    private func setupAgeLabel() {
-        ageLabel.textAlignment = .center
-        ageLabel.textColor = .white
-        ageLabel.font = UIFont.systemFont(ofSize: 10, weight: .medium)
-        ageLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        ageLabel.layer.cornerRadius = 4
-        ageLabel.clipsToBounds = true
-        ageLabel.numberOfLines = 2
-        contentView.addSubview(ageLabel)
-        ageLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            ageLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 4),
-            ageLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
-            ageLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -4)
-        ])
-    }
-
     func configure(with asset: PHAsset, person: Person) {
         let manager = PHImageManager.default()
         manager.requestImage(for: asset, targetSize: CGSize(width: 200, height: 200), contentMode: .aspectFill, options: nil) { [weak self] image, _ in
             self?.imageView.image = image
         }
-
-        let exactAge = AgeCalculator.calculate(for: person, at: asset.creationDate ?? Date())
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MMM d, yyyy"
-        let dateString = dateFormatter.string(from: asset.creationDate ?? Date())
-        
-        ageLabel.text = "\(exactAge.toString())\n\(dateString)"
     }
 
     override var isSelected: Bool {

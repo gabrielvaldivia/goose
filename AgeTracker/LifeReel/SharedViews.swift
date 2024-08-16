@@ -400,6 +400,7 @@ struct SharedTimelineView: View {
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
     let photos: [Photo]
+    let forceUpdate: Bool
     
     var body: some View {
         GeometryReader { outerGeometry in
@@ -414,6 +415,7 @@ struct SharedTimelineView: View {
                 .padding(.bottom, 80)
             }
         }
+        .id(forceUpdate)
     }
     
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
@@ -472,12 +474,13 @@ struct SharedGridView: View {
     @Binding var selectedPhoto: Photo?
     let photos: [Photo]
     var openImagePickerForMoment: ((String, (Date, Date)) -> Void)?
+    let forceUpdate: Bool
     
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
                 LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
-                    ForEach(photos) { photo in
+                    ForEach(sortPhotos(photos)) { photo in
                         PhotoTile(photo: photo, size: GridLayoutHelper.gridItemWidth(for: geometry.size))
                             .padding(.bottom, 10)
                             .onTapGesture {
@@ -488,6 +491,13 @@ struct SharedGridView: View {
                 .padding()
                 .padding(.bottom, 80)
             }
+        }
+        .id(forceUpdate)
+    }
+    
+    private func sortPhotos(_ photos: [Photo]) -> [Photo] {
+        photos.sorted { photo1, photo2 in
+            viewModel.sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
         }
     }
 }
@@ -531,7 +541,7 @@ struct SegmentedControlView: View {
     @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
     
-    let options = ["square.grid.2x2", "list.bullet"]
+    let options = ["square.grid.2x2", "person.crop.rectangle.stack"]
     
     var body: some View {
         HStack(spacing: 8) {
@@ -589,6 +599,6 @@ struct BottomControls: View {
             CircularButton(systemName: "plus", action: addPhotoAction, size: 50, backgroundColor: .blue)
         }
         .padding(.horizontal)
-        .padding(.bottom, 8)
+        // .padding(.bottom, 8)
     }
 }

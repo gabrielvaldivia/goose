@@ -400,6 +400,7 @@ class PersonViewModel: ObservableObject {
     func setSortOrder(_ newSortOrder: Person.SortOrder) {
         sortOrder = newSortOrder
         UserDefaults.standard.set(newSortOrder == .latestToOldest ? "latest" : "oldest", forKey: "sortOrderPreference")
+        objectWillChange.send()  // Add this line
     }
     
     private func loadSortOrderPreference() {

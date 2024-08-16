@@ -113,6 +113,7 @@ struct PersonDetailView: View {
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var currentSection: String?
+    @State private var forceUpdate: Bool = false
 
     // Initializer
     init(person: Binding<Person>, viewModel: PersonViewModel) {
@@ -126,8 +127,8 @@ struct PersonDetailView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(StacksGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos))
+                    AnyView(StacksGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)),
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos, forceUpdate: forceUpdate))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -140,7 +141,7 @@ struct PersonDetailView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(person.name)
-                    .font(.title3)
+                    .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
             }
@@ -148,8 +149,6 @@ struct PersonDetailView: View {
                 settingsButton
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .navigationBarItems(leading: CustomBackButton())
         .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
                 .edgesIgnoringSafeArea(.all)
@@ -206,6 +205,7 @@ struct PersonDetailView: View {
             birthMonthsDisplay = newValue
         }
         .onChange(of: viewModel.sortOrder) { _ in
+            forceUpdate.toggle()
             viewModel.objectWillChange.send()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
@@ -516,22 +516,6 @@ struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
     func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
-}
-
-struct CustomBackButton: View {
-    @Environment(\.presentationMode) var presentationMode
-    @EnvironmentObject var viewModel: PersonViewModel
-
-    var body: some View {
-        Button(action: {
-            // This will pop to the root view (ContentView)
-            self.presentationMode.wrappedValue.dismiss()
-        }) {
-            Image(systemName: "chevron.left")
-                .foregroundColor(.blue)
-                .font(.system(size: 14, weight: .bold))
-        }
-    }
 }
 
 // New preference key for scroll offset

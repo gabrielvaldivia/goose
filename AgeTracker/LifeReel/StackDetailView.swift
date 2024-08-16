@@ -19,6 +19,8 @@ struct StackDetailView: View {
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var isShareSlideshowPresented = false
     @State private var currentPage = 1 // 0 for Grid, 1 for Timeline
+    @State private var sortOrder: SortOrder = .latestToOldest
+    @State private var forceUpdate: Bool = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -35,10 +37,10 @@ struct StackDetailView: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
                     TabView(selection: $currentPage) {
-                        SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection())
+                        SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)
                             .tag(0)
                         
-                        SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection())
+                        SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)
                             .tag(1)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
@@ -64,10 +66,8 @@ struct StackDetailView: View {
         .navigationTitle(sectionTitle)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    showingImagePicker = true
-                }) {
-                    Image(systemName: "plus")
+                Button(action: toggleSortOrder) {
+                    Image(systemName: "arrow.up.arrow.down")
                 }
             }
         }
@@ -102,11 +102,26 @@ struct StackDetailView: View {
                 sectionTitle: sectionTitle
             )
         }
+        .background(Color.clear.opacity(forceUpdate ? 0 : 0.00001))
+    }
+
+    private func toggleSortOrder() {
+        sortOrder = sortOrder == .latestToOldest ? .oldestToLatest : .latestToOldest
+        forceUpdate.toggle()
+        viewModel.objectWillChange.send()
     }
 
     private func photosForCurrentSection() -> [Photo] {
-        return person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
+        let filteredPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
+        return filteredPhotos.sorted { (photo1, photo2) -> Bool in
+            sortOrder == .latestToOldest ? photo1.dateTaken > photo2.dateTaken : photo1.dateTaken < photo2.dateTaken
+        }
     }
+}
+
+enum SortOrder {
+    case latestToOldest
+    case oldestToLatest
 }
 
 struct PhotoTile: View {
