@@ -122,7 +122,6 @@ struct ShareSlideshowView: View {
         case name = "Name"
         case age = "Age"
         case date = "Date"
-        case stackName = "Stack Name"
         
         var description: String { self.rawValue }
     }
@@ -241,7 +240,7 @@ struct ShareSlideshowView: View {
                 SimplifiedCustomizationButton(
                     icon: "text.alignleft",
                     title: "Subtitle",
-                    options: availableSubtitleOptions,
+                    options: TitleOption.allCases,
                     selection: $subtitleOption
                 )
                 
@@ -357,7 +356,6 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
-        case .stackName: return sectionTitle ?? ""
         }
     }
     
@@ -367,7 +365,6 @@ struct ShareSlideshowView: View {
         case .name: return person.name
         case .age: return calculateGeneralAge(for: person, at: photo.dateTaken)
         case .date: return formatDate(photo.dateTaken)
-        case .stackName: return sectionTitle ?? ""
         }
     }
     
@@ -420,14 +417,6 @@ struct ShareSlideshowView: View {
             }
         }
         return photos
-    }
-
-    private var availableSubtitleOptions: [TitleOption] {
-        var options = TitleOption.allCases.filter { $0 != titleOption || $0 == .none }
-        if sectionTitle == nil {
-            options = options.filter { $0 != .stackName }
-        }
-        return options
     }
 }
 
