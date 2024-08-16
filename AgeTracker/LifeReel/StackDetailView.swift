@@ -22,30 +22,29 @@ struct StackDetailView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
-                PageViewController(pages: [
-                    AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate))
-                ], currentPage: $selectedTab, animationDirection: $animationDirection)
-                .edgesIgnoringSafeArea(.bottom)
+            if photosForCurrentSection().isEmpty {
+                emptyStateView
+            } else {
+                ZStack(alignment: .bottom) {
+                    PageViewController(pages: [
+                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)),
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate))
+                    ], currentPage: $selectedTab, animationDirection: $animationDirection)
+                    .edgesIgnoringSafeArea(.bottom)
 
-                VStack(spacing: 0) {
-                    Spacer()
-                    BottomControls(
-                        shareAction: {
-                            if !photosForCurrentSection().isEmpty {
+                    VStack(spacing: 0) {
+                        Spacer()
+                        BottomControls(
+                            shareAction: {
                                 isShareSlideshowPresented = true
-                            } else {
-                                print("No photos available to share")
-                            }
-                        },
-                        addPhotoAction: {
-                            showingImagePicker = true
-                        },
-                        selectedTab: $selectedTab,
-                        animationDirection: $animationDirection
-                    )
-                    // .background(Color(UIColor.systemBackground).edgesIgnoringSafeArea(.bottom))
+                            },
+                            addPhotoAction: {
+                                showingImagePicker = true
+                            },
+                            selectedTab: $selectedTab,
+                            animationDirection: $animationDirection
+                        )
+                    }
                 }
             }
         }
@@ -82,6 +81,44 @@ struct StackDetailView: View {
             )
         }
         .background(Color.clear.opacity(forceUpdate ? 0 : 0.00001))
+    }
+
+    private var emptyStateView: some View {
+        GeometryReader { geometry in
+            VStack {
+                Spacer()
+                VStack(spacing: 20) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    
+                    Text("No photos yet")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Add some photos to see them here")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Button(action: {
+                        showingImagePicker = true
+                    }) {
+                        Text("Add Photos")
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
+                    .padding(.top, 10)
+                }
+                .padding()
+                .frame(width: geometry.size.width)
+                .frame(minHeight: geometry.size.height * 0.6)
+                Spacer()
+            }
+        }
     }
 
     private func photosForCurrentSection() -> [Photo] {

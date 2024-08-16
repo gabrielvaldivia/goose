@@ -38,6 +38,11 @@ struct StacksGridView: View {
                                 NavigationLink(destination: StackDetailView(viewModel: viewModel, person: $person, sectionTitle: section)) {
                                     StackTileView(section: section, photos: photos, width: itemWidth, isLoading: viewModel.loadingStacks.contains(section))
                                 }
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    if photos.isEmpty {
+                                        openImagePickerForSection(section)
+                                    }
+                                })
                             }
                         }
                     }
@@ -121,6 +126,15 @@ struct StacksGridView: View {
             openImagePickerForMoment("Birth Month", dateRange)
         } catch {
             print("Error getting date range for Birth Month: \(error)")
+        }
+    }
+
+    private func openImagePickerForSection(_ section: String) {
+        do {
+            let dateRange = try PhotoUtils.getDateRangeForSection(section, person: person)
+            openImagePickerForMoment(section, dateRange)
+        } catch {
+            print("Error getting date range for \(section): \(error)")
         }
     }
 }
