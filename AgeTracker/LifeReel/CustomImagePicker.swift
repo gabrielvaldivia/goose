@@ -362,8 +362,7 @@ class ImageCell: UICollectionViewCell {
             self?.imageView.image = image
         }
 
-        let exactAge = ExactAge.calculate(for: person, at: asset.creationDate ?? Date())
-        
+        let exactAge = AgeCalculator.calculate(for: person, at: asset.creationDate ?? Date())
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MMM d, yyyy"
         let dateString = dateFormatter.string(from: asset.creationDate ?? Date())

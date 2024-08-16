@@ -177,7 +177,7 @@ struct FullScreenPhotoView: View {
     
     // Helper Functions
     private func calculateAge(for person: Person, at date: Date) -> String {
-        return ExactAge.calculate(for: person, at: date).toString()
+        return AgeCalculator.calculate(for: person, at: date).toString()
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -310,7 +310,7 @@ private struct ControlsOverlay: View {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
                     VStack(spacing: 4) {
-                        Text(ExactAge.calculate(for: person, at: photo.dateTaken).toString())
+                        Text(AgeCalculator.calculate(for: person, at: photo.dateTaken).toString())
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                         Text(formatDate(photo.dateTaken))

@@ -188,7 +188,7 @@ struct AddPersonView: View {
     }
     
     private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
-        let exactAge = ExactAge.calculate(for: Person(name: name, dateOfBirth: dob), at: photoDate)
+        let exactAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dob), at: photoDate)
         return "\(name) is \(exactAge.toString())"
     }
     

@@ -246,7 +246,7 @@ public struct PhotoUtils {
     }
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
-        let exactAge = ExactAge.calculate(for: person, at: photo.dateTaken)
+        let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
         
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
@@ -322,70 +322,6 @@ public struct PhotoUtils {
     }
 }
 
-struct ExactAge {
-    let years: Int
-    let months: Int
-    let days: Int
-    let isPregnancy: Bool
-    let pregnancyWeeks: Int
-    let isNewborn: Bool
-
-    static func calculate(for person: Person, at date: Date) -> ExactAge {
-        let calendar = Calendar.current
-        
-        // Handle the birth day separately
-        if calendar.isDate(date, equalTo: person.dateOfBirth, toGranularity: .day) {
-            return ExactAge(years: 0, months: 0, days: 0, isPregnancy: false, pregnancyWeeks: 0, isNewborn: true)
-        }
-        
-        if date < person.dateOfBirth {
-            let components = calendar.dateComponents([.day], from: date, to: person.dateOfBirth)
-            let daysUntilBirth = components.day ?? 0
-            let weeksPregnant = min(39, 40 - (daysUntilBirth / 7))
-            return ExactAge(years: 0, months: 0, days: 0, isPregnancy: true, pregnancyWeeks: weeksPregnant, isNewborn: false)
-        }
-        
-        let components = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth, to: date)
-        
-        return ExactAge(
-            years: components.year ?? 0,
-            months: components.month ?? 0,
-            days: components.day ?? 0,
-            isPregnancy: false,
-            pregnancyWeeks: 0,
-            isNewborn: false
-        )
-    }
-
-    func toString() -> String {
-        if isNewborn {
-            return "Newborn"
-        }
-        if isPregnancy {
-            return "\(pregnancyWeeks) week\(pregnancyWeeks == 1 ? "" : "s") pregnant"
-        }
-        
-        var parts: [String] = []
-        if years > 0 { parts.append("\(years) year\(years == 1 ? "" : "s")") }
-        if months > 0 { parts.append("\(months) month\(months == 1 ? "" : "s")") }
-        if days > 0 { parts.append("\(days) day\(days == 1 ? "" : "s")") }
-        
-        return parts.joined(separator: ", ")
-    }
-
-    func toShortString() -> String {
-        if isPregnancy {
-            return "\(pregnancyWeeks)w"
-        }
-        if years > 0 {
-            return "\(years)y"
-        }
-        if months > 0 {
-            return "\(months)m"
-        }
-        return "\(days)d"
-    }
-}
 
 struct BirthDaySheet: View {
     @Binding var dateOfBirth: Date
@@ -466,17 +402,17 @@ struct SharedTimelineView: View {
     let photos: [Photo]
     
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { outerGeometry in
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(sortPhotos(photos)) { photo in
-                        FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: geometry)
+                        FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
+                            .id(photo.id)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 40)
+                .padding(.bottom, 80)
             }
-            .background(Color(UIColor.systemBackground))
         }
     }
     
@@ -495,16 +431,38 @@ struct FilmReelItemView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        Image(uiImage: photo.image ?? UIImage())
-            .resizable()
-            .scaledToFill()
-            .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+        ZStack(alignment: .bottomLeading) {
+            Image(uiImage: photo.image ?? UIImage())
+                .resizable()
+                .scaledToFill()
+                .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            
+            LinearGradient(
+                gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
+                startPoint: .bottom,
+                endPoint: .top
+            )
+            .frame(height: 60)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding(.vertical, 2)
-            .onTapGesture {
-                selectedPhoto = photo
-            }
-            .background(colorScheme == .dark ? Color.black : Color.white)
+            
+            Text(exactAge)
+                .font(.caption)
+                .fontWeight(.medium)
+                .padding(6)
+                .foregroundColor(.white)
+                .padding(10)
+        }
+        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+        .padding(.vertical, 2)
+        .onTapGesture {
+            selectedPhoto = photo
+        }
+        .background(colorScheme == .dark ? Color.black : Color.white)
+    }
+    
+    private var exactAge: String {
+        AgeCalculator.calculate(for: person, at: photo.dateTaken).toString()
     }
 }
 
@@ -518,17 +476,119 @@ struct SharedGridView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
+                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
                     ForEach(photos) { photo in
                         PhotoTile(photo: photo, size: GridLayoutHelper.gridItemWidth(for: geometry.size))
+                            .padding(.bottom, 10)
                             .onTapGesture {
                                 selectedPhoto = photo
                             }
                     }
                 }
                 .padding()
-                .padding(.bottom, 40)
+                .padding(.bottom, 80)
             }
         }
+    }
+}
+
+struct CircularButton: View {
+    let systemName: String
+    let action: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    var size: CGFloat = 40
+    var backgroundColor: Color?
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundColor(.white)
+                .font(.system(size: size * 0.35, weight: .bold))
+                .frame(width: size, height: size)
+        }
+        .background(
+            ZStack {
+                if let backgroundColor = backgroundColor {
+                    backgroundColor
+                } else {
+                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                    if colorScheme == .light {
+                        Color.black.opacity(0.4)
+                    }
+                    if colorScheme == .dark {
+                        Color.white.opacity(0.2)
+                    }
+                }
+            }
+        )
+        .clipShape(Circle())
+    }
+}
+
+struct SegmentedControlView: View {
+    @Binding var selectedTab: Int
+    @Binding var animationDirection: UIPageViewController.NavigationDirection
+    @Namespace private var animation
+    @Environment(\.colorScheme) var colorScheme
+    
+    let options = ["square.grid.2x2", "list.bullet"]
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(options.indices, id: \.self) { index in
+                Button(action: {
+                    withAnimation(.spring(response: 0.15)) {
+                        animationDirection = index > selectedTab ? .forward : .reverse
+                        selectedTab = index
+                    }
+                }) {
+                    Image(systemName: options[index])
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(width: 60, height: 36)
+                        .background(
+                            ZStack {
+                                if selectedTab == index {
+                                    Capsule()
+                                        .fill(Color.primary.opacity(0.3))
+                                        .matchedGeometryEffect(id: "SelectedSegment", in: animation)
+                                }
+                            }
+                        )
+                        .foregroundColor(colorScheme == .dark ? (selectedTab == index ? .white : .white.opacity(0.5)) : (selectedTab == index ? .white : .black.opacity(0.5)))
+                }
+            }
+        }
+        .padding(4)
+        .background(
+            ZStack {
+                VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                if colorScheme == .light {
+                    Color.black.opacity(0.1)
+                }
+            }
+        )
+        .clipShape(Capsule())
+    }
+}
+
+struct BottomControls: View {
+    let shareAction: () -> Void
+    let addPhotoAction: () -> Void
+    @Binding var selectedTab: Int
+    @Binding var animationDirection: UIPageViewController.NavigationDirection
+
+    var body: some View {
+        HStack {
+            CircularButton(systemName: "square.and.arrow.up", action: shareAction)
+            Spacer()
+
+            SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
+
+            Spacer()
+
+            CircularButton(systemName: "plus", action: addPhotoAction, size: 50, backgroundColor: .blue)
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 }

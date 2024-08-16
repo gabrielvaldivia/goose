@@ -216,79 +216,20 @@ struct PersonDetailView: View {
 
     // Bottom controls
     private var bottomControls: some View {
-        HStack {
-            shareButton
-
-            Spacer()
-
-            SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
-
-            Spacer()
-
-            CircularButton(systemName: "plus") {
+        BottomControls(
+            shareAction: {
+                if !person.photos.isEmpty {
+                    activeSheet = .shareView
+                } else {
+                    print("No photos available to share")
+                }
+            },
+            addPhotoAction: {
                 showingImagePicker = true
-            }
-        }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
-    }
-
-    // Updated SegmentedControlView
-    struct SegmentedControlView: View {
-        @Binding var selectedTab: Int
-        @Binding var animationDirection: UIPageViewController.NavigationDirection
-        @Namespace private var animation
-        @Environment(\.colorScheme) var colorScheme
-        
-        let options = ["square.grid.2x2", "calendar.day.timeline.leading"]
-        
-        var body: some View {
-            HStack(spacing: 8) {
-                ForEach(options.indices, id: \.self) { index in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.15)) {
-                            animationDirection = index > selectedTab ? .forward : .reverse
-                            selectedTab = index
-                        }
-                    }) {
-                        Image(systemName: options[index])
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(width: 60, height: 36)
-                            .background(
-                                ZStack {
-                                    if selectedTab == index {
-                                        Capsule()
-                                            .fill(Color.primary.opacity(0.3))
-                                            .matchedGeometryEffect(id: "SelectedSegment", in: animation)
-                                    }
-                                }
-                            )
-                            .foregroundColor(colorScheme == .dark ? (selectedTab == index ? .white : .white.opacity(0.5)) : (selectedTab == index ? .white : .black.opacity(0.5)))
-                    }
-                }
-            }
-            .padding(4)
-            .background(
-                ZStack {
-                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                    if colorScheme == .light {
-                        Color.black.opacity(0.1)
-                    }
-                }
-            )
-            .clipShape(Capsule())
-        }
-    }
-
-    // Updated share button
-    private var shareButton: some View {
-        CircularButton(systemName: "square.and.arrow.up") {
-            if !person.photos.isEmpty {
-                activeSheet = .shareView
-            } else {
-                print("No photos available to share")
-            }
-        }
+            },
+            selectedTab: $selectedTab,
+            animationDirection: $animationDirection
+        )
     }
 
     private struct PhotoView: View {
@@ -382,32 +323,6 @@ struct PersonDetailView: View {
         }
     }
 
-    // Circular button
-    struct CircularButton: View {
-        let systemName: String
-        let action: () -> Void
-        @Environment(\.colorScheme) var colorScheme
-
-        var body: some View {
-            Button(action: action) {
-                Image(systemName: systemName)
-                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
-                    .font(.system(size: 14, weight: .bold))
-                    .frame(width: 40, height: 40)
-            }
-            .background(
-                ZStack {
-                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                    if colorScheme == .light {
-                        Color.black.opacity(0.1)
-                    }
-                }
-            )
-            .clipShape(Circle())
-        }
-    }
-
-    // Functions to handle various aspects of the view
     private func handleSelectedAssetsChange(oldValue: [PHAsset], newValue: [PHAsset]) {
         if !newValue.isEmpty {
             print("Assets selected: \(newValue)")
@@ -491,7 +406,7 @@ struct PersonDetailView: View {
             let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
             let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let exactAge = ExactAge.calculate(for: person, at: startDate)
+            let exactAge = AgeCalculator.calculate(for: person, at: startDate)
             moments.append((exactAge.toString(), monthPhotos))
         }
         
@@ -504,7 +419,7 @@ struct PersonDetailView: View {
             let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
             let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let exactAge = ExactAge.calculate(for: person, at: startDate)
+            let exactAge = AgeCalculator.calculate(for: person, at: startDate)
             moments.append((exactAge.toString(), yearPhotos))
         }
         

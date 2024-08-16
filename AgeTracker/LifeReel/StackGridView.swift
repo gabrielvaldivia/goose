@@ -41,7 +41,7 @@ struct StacksGridView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 80)
                 }
             }
         }
