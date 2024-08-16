@@ -474,7 +474,7 @@ struct LazyImage: View {
                         Spacer()
                         
                         if showAppIcon {
-                            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                            Image("AppIcon")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 40, height: 40)
