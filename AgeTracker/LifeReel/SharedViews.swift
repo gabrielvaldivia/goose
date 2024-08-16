@@ -89,9 +89,9 @@ public struct PhotoUtils {
             if let week = Int(title.components(separatedBy: " ").last ?? "") {
                 return sortOrder == .oldestToLatest ? week : -week + 400
             }
+
         }
-        if title == "Birth Month" { return sortOrder == .oldestToLatest ? 1001 : -1001 }
-        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1002 : -1002 }
+        if title == "Birth Year" { return sortOrder == .oldestToLatest ? 1001 : -1001 }
         if title.contains("Month") {
             let months = Int(title.components(separatedBy: " ").first ?? "0") ?? 0
             return sortOrder == .oldestToLatest ? 1001 + months : -1001 - months
@@ -127,8 +127,8 @@ public struct PhotoUtils {
 
     private static func sortGroupsBasedOnSettings(_ groups: [(String, [Photo])], sortOrder: Person.SortOrder) -> [(String, [Photo])] {
         return groups.sorted { (group1, group2) in
-            let order1 = orderFromSectionTitle(group1.0, sortOrder: sortOrder)
-            let order2 = orderFromSectionTitle(group2.0, sortOrder: sortOrder)
+            let order1 = PhotoUtils.orderFromSectionTitle(group1.0, sortOrder: sortOrder)
+            let order2 = PhotoUtils.orderFromSectionTitle(group2.0, sortOrder: sortOrder)
             return sortOrder == .oldestToLatest ? order1 < order2 : order1 > order2
         }
     }
@@ -174,7 +174,7 @@ public struct PhotoUtils {
                 stacks.append("Birth Year")
                 stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
             case .twelveMonths:
-                stacks.append("Birth Month")
+                stacks.append("0 Months")
                 let monthsToShow = min(11, currentAgeInMonths)
                 stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
                 if currentAgeInMonths >= 12 {
@@ -184,7 +184,7 @@ public struct PhotoUtils {
                     }
                 }
             case .twentyFourMonths:
-                stacks.append("Birth Month")
+                stacks.append("0 Months")
                 let monthsToShow = min(23, currentAgeInMonths)
                 stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
                 if currentAgeInYears >= 2 {
@@ -217,7 +217,7 @@ public struct PhotoUtils {
             let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             let start = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
             return (start: start, end: birthDate)
-        case "Birth Month":
+        case "0 Months":
             let endOfMonth = calendar.date(byAdding: .month, value: 1, to: birthDate) ?? birthDate
             return (start: birthDate, end: endOfMonth)
         default:
@@ -261,7 +261,7 @@ public struct PhotoUtils {
         }
         
         if exactAge.isNewborn {
-            return "Birth Month"
+            return "0 Months"
         }
         
         switch person.birthMonthsDisplay {
@@ -269,13 +269,13 @@ public struct PhotoUtils {
             return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
             if exactAge.months < 12 {
-                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
             } else {
                 return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
         case .twentyFourMonths:
             if exactAge.months < 24 {
-                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
             } else {
                 return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
@@ -295,9 +295,9 @@ public struct PhotoUtils {
             stacks.append("Birth Year")
             stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
         case .twelveMonths:
-            stacks.append("Birth Month")
+            stacks.append("0 Months")
             let monthsToShow = min(11, currentAgeInMonths)
-            stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+            stacks.append(contentsOf: (0...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
             if currentAgeInMonths >= 12 {
                 stacks.append("1 Year")
                 if currentAgeInYears > 1 {
@@ -305,9 +305,9 @@ public struct PhotoUtils {
                 }
             }
         case .twentyFourMonths:
-            stacks.append("Birth Month")
+            stacks.append("0 Months")
             let monthsToShow = min(23, currentAgeInMonths)
-            stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+            stacks.append(contentsOf: (0...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
             if currentAgeInYears >= 2 {
                 stacks.append(contentsOf: (2...max(2, currentAgeInYears)).map { "\($0) Years" })
             }

@@ -402,29 +402,17 @@ struct ShareSlideshowView: View {
     }
     
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
-        let calendar = Calendar.current
+        let exactAge = AgeCalculator.calculate(for: person, at: date)
         
-        if calendar.isDate(date, inSameDayAs: person.dateOfBirth) {
+        if exactAge.isNewborn {
             return "Birth Month"
-        } else if date < person.dateOfBirth {
+        } else if exactAge.isPregnancy {
             return "Pregnancy"
+        } else if exactAge.years == 0 {
+            return "\(exactAge.months) month\(exactAge.months == 1 ? "" : "s")"
+        } else {
+            return "\(exactAge.years) year\(exactAge.years == 1 ? "" : "s")"
         }
-        
-        let components = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: date)
-        
-        if let year = components.year, let month = components.month {
-            if year == 0 {
-                if month == 0 {
-                    return "Birth Month"
-                } else {
-                    return "\(month) month\(month == 1 ? "" : "s")"
-                }
-            } else {
-                return "\(year) year\(year == 1 ? "" : "s")"
-            }
-        }
-        
-        return "Unknown"
     }
     
     private func formatDate(_ date: Date) -> String {

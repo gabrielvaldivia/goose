@@ -162,6 +162,16 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             displayStartDate = range.start
             displayEndDate = range.end
             
+            // Adjust start and end dates based on the section title
+            if let monthsString = sectionTitle.components(separatedBy: " ").first,
+               let months = Int(monthsString) {
+                displayStartDate = calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? displayStartDate
+                displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate) ?? displayEndDate
+            }
+            
+            // Adjust the end date to be one day before the next range starts
+            displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
+            
             // Ensure the end date is at the end of the day
             displayEndDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: displayEndDate) ?? displayEndDate
             
@@ -169,15 +179,16 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         } catch {
             print("Error setting up date range for section \(sectionTitle): \(error)")
             // Fallback to default behavior
-            if sectionTitle == "Birth Month" {
-                displayStartDate = calendar.startOfDay(for: dateRange.start)
+            if sectionTitle == "0 Months" {
+                displayStartDate = calendar.startOfDay(for: person.dateOfBirth)
                 displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate)!
+                displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate)!
             } else if sectionTitle == "Pregnancy" {
                 displayStartDate = dateRange.start
                 displayEndDate = dateRange.end
             } else {
                 displayStartDate = calendar.startOfDay(for: dateRange.start)
-                displayEndDate = calendar.date(byAdding: .day, value: 1, to: endOfDay(for: dateRange.end))!
+                displayEndDate = calendar.date(byAdding: .day, value: -1, to: endOfDay(for: dateRange.end))!
             }
         }
     }

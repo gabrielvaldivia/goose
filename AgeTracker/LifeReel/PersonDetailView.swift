@@ -415,7 +415,7 @@ struct PersonDetailView: View {
         let ageComponents = calendar.dateComponents([.year], from: person.dateOfBirth, to: currentDate)
         let age = ageComponents.year ?? 0
         
-        for year in 2...max(age, 2) {
+        for year in 3...max(age, 3) {
             let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
             let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
             let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
