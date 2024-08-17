@@ -25,13 +25,15 @@ struct FullScreenPhotoView: View {
     @State private var activityItems: [Any] = []
     @State private var isShareSheetPresented = false
     @State private var lastScale: CGFloat = 1.0
+    @State private var minScale: CGFloat = 0.01
     @GestureState private var magnifyBy = CGFloat(1.0)
-    @GestureState private var dragState = DragState.inactive
+    @GestureState private var dragState = CGSize.zero
     @State private var isDragging = false
     @State private var showDeleteConfirmation = false
     @State private var dismissProgress: CGFloat = 0.0
     @State private var showActionSheet = false
     @State private var dragOffset: CGSize = .zero
+    @State private var isDismissing = false
     
     enum ActiveSheet: Identifiable {
         case shareView
@@ -56,38 +58,44 @@ struct FullScreenPhotoView: View {
                             .frame(width: imageGeometry.size.width, height: imageGeometry.size.height)
                             .scaleEffect(scale)
                             .offset(dragOffset)
-                            .offset(y: dragState.translation.height)
                             .gesture(
                                 DragGesture()
                                     .updating($dragState) { value, state, _ in
+                                        state = value.translation
+                                    }
+                                    .onChanged { value in
                                         if scale <= 1.0 {
-                                            state = .dragging(translation: value.translation)
+                                            dragOffset = value.translation
+                                            dismissProgress = min(1, abs(value.translation.height) / 200)
+                                        } else {
+                                            let newOffset = CGSize(
+                                                width: offset.width + value.translation.width,
+                                                height: offset.height + value.translation.height
+                                            )
+                                            dragOffset = limitOffset(newOffset, geometry: imageGeometry)
                                         }
                                     }
                                     .onEnded { value in
                                         if scale <= 1.0 {
                                             let threshold = geometry.size.height * 0.25
                                             if abs(value.translation.height) > threshold {
-                                                presentationMode.wrappedValue.dismiss()
+                                                isDismissing = true
+                                                withAnimation(.easeOut(duration: 0.2)) {
+                                                    dragOffset.height = value.translation.height > 0 ? geometry.size.height : -geometry.size.height
+                                                    dismissProgress = 1
+                                                }
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                                    presentationMode.wrappedValue.dismiss()
+                                                }
                                             } else {
                                                 withAnimation(.spring()) {
+                                                    dragOffset = .zero
                                                     dismissProgress = 0
                                                 }
                                             }
+                                        } else {
+                                            offset = dragOffset
                                         }
-                                    }
-                            )
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        let newOffset = CGSize(
-                                            width: value.translation.width + self.offset.width,
-                                            height: value.translation.height + self.offset.height
-                                        )
-                                        self.dragOffset = limitOffset(newOffset, geometry: imageGeometry)
-                                    }
-                                    .onEnded { value in
-                                        self.offset = self.dragOffset
                                     }
                             )
                             .gesture(
@@ -96,8 +104,8 @@ struct FullScreenPhotoView: View {
                                         let delta = value / self.lastScale
                                         self.lastScale = value
                                         
-                                        // Adjust scale
-                                        let newScale = min(max(self.scale * delta, 1), 4)
+                                        // Adjust scale with new minimum
+                                        let newScale = min(max(self.scale * delta, minScale), 4)
                                         
                                         // Adjust offset to keep the zoom centered
                                         let newOffset = CGSize(
@@ -110,6 +118,7 @@ struct FullScreenPhotoView: View {
                                     }
                                     .onEnded { _ in
                                         self.lastScale = 1.0
+                                        resetZoomIfNeeded()
                                     }
                             )
                             .onTapGesture(count: 2) {
@@ -156,12 +165,7 @@ struct FullScreenPhotoView: View {
                 )
                 .opacity(1 - dismissProgress)
             }
-            .background(Color.clear)
-        }
-        .onChange(of: dragState.translation) { _, newValue in
-            if scale <= 1.0 {
-                dismissProgress = min(1, abs(newValue.height) / 200)
-            }
+            .background(Color.black.opacity(1 - dismissProgress))
         }
         // Animation on Appear
         .onAppear {
@@ -271,6 +275,16 @@ struct FullScreenPhotoView: View {
         scale = 1.0
         offset = .zero
         dragOffset = .zero
+    }
+
+    private func resetZoomIfNeeded() {
+        if scale < 1 {
+            withAnimation(.spring()) {
+                scale = 1
+                offset = .zero
+                dragOffset = .zero
+            }
+        }
     }
 }
 
