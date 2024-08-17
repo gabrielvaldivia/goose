@@ -126,24 +126,37 @@ struct Photo: Identifiable, Codable, Equatable {
     var dateTaken: Date
     let isVideo: Bool
 
+    static let imageCache = NSCache<NSString, UIImage>()
+
     var image: UIImage? {
-        guard !isVideo else { return nil }
-        let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
-        guard let asset = result.firstObject else { return nil }
-        
-        let manager = PHImageManager.default()
-        var image: UIImage?
-        let options = PHImageRequestOptions()
-        options.isSynchronous = true
-        options.deliveryMode = .highQualityFormat
-        options.isNetworkAccessAllowed = true
-        options.resizeMode = .exact
-        
-        manager.requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { result, _ in
-            image = result
+        get {
+            if let cachedImage = Photo.imageCache.object(forKey: assetIdentifier as NSString) {
+                return cachedImage
+            }
+            
+            guard !isVideo else { return nil }
+            let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
+            guard let asset = result.firstObject else { return nil }
+            
+            let manager = PHImageManager.default()
+            var image: UIImage?
+            let options = PHImageRequestOptions()
+            options.isSynchronous = true
+            options.deliveryMode = .highQualityFormat
+            options.isNetworkAccessAllowed = true
+            options.resizeMode = .exact
+            
+            let targetSize = CGSize(width: 1024, height: 1024) // Increased target size
+            
+            manager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFit, options: options) { result, _ in
+                if let loadedImage = result {
+                    Photo.imageCache.setObject(loadedImage, forKey: self.assetIdentifier as NSString)
+                    image = loadedImage
+                }
+            }
+            
+            return image
         }
-        
-        return image
     }
 
     var videoURL: URL? {

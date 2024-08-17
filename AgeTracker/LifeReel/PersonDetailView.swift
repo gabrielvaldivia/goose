@@ -129,8 +129,7 @@ struct PersonDetailView: View {
                 pages: [
                     AnyView(StacksGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
                         .ignoresSafeArea(edges: .bottom)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos, forceUpdate: forceUpdate, isLoading: false)
-                        .ignoresSafeArea(edges: .bottom))
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos, forceUpdate: forceUpdate))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -290,11 +289,26 @@ struct PersonDetailView: View {
             return 
         }
         
+        let dispatchGroup = DispatchGroup()
+        
         for asset in selectedAssets {
-            if let newPhoto = Photo(asset: asset) {
-                self.viewModel.addPhoto(to: &self.person, asset: asset)
-                print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
+            dispatchGroup.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let newPhoto = Photo(asset: asset) {
+                    DispatchQueue.main.async {
+                        self.viewModel.addPhoto(to: &self.person, asset: asset)
+                        print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
+                        dispatchGroup.leave()
+                    }
+                } else {
+                    dispatchGroup.leave()
+                }
             }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            self.viewModel.updatePerson(self.person)
+            print("All photos have been added")
         }
     }
 

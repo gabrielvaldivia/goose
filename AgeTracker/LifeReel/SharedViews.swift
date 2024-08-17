@@ -346,15 +346,11 @@ struct SharedTimelineView: View {
     @Binding var selectedPhoto: Photo?
     let photos: [Photo]
     let forceUpdate: Bool
-    let isLoading: Bool
     
     var body: some View {
         GeometryReader { outerGeometry in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    if isLoading {
-                        PlaceholderFilmReelItem(geometry: outerGeometry)
-                    }
                     ForEach(filteredPhotos()) { photo in
                         FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
                             .id(photo.id)
@@ -382,52 +378,56 @@ struct SharedTimelineView: View {
     }
 }
 
-struct PlaceholderFilmReelItem: View {
-    let geometry: GeometryProxy
-    
-    var body: some View {
-        ZStack(alignment: .center) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
-            
-            ProgressView()
-                .scaleEffect(1.5)
-        }
-        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
-        .padding(.vertical, 2)
-    }
-}
-
 struct FilmReelItemView: View {
     let photo: Photo
     let person: Person
     @Binding var selectedPhoto: Photo?
     let geometry: GeometryProxy
     @Environment(\.colorScheme) var colorScheme
-    
+    @State private var imageLoadingState: ImageLoadingState = .initial
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            Image(uiImage: photo.image ?? UIImage())
-                .resizable()
-                .scaledToFill()
-                .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+            Group {
+                switch imageLoadingState {
+                case .initial:
+                    Color.clear.onAppear(perform: loadImage)
+                case .loading:
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                case .loaded(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                case .failed:
+                    Image(systemName: "photo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                        .foregroundColor(.gray)
+                }
+            }
+            .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+
+            if case .loaded = imageLoadingState {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+                .frame(height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-            
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
-                startPoint: .bottom,
-                endPoint: .top
-            )
-            .frame(height: 60)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            
-            Text(exactAge)
-                .font(.caption)
-                .fontWeight(.medium)
-                .padding(6)
-                .foregroundColor(.white)
-                .padding(10)
+
+                Text(exactAge)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .padding(6)
+                    .foregroundColor(.white)
+                    .padding(10)
+            }
         }
         .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
         .padding(.vertical, 2)
@@ -441,6 +441,27 @@ struct FilmReelItemView: View {
     private var exactAge: String {
         AgeCalculator.calculate(for: person, at: photo.dateTaken).toString()
     }
+
+    private func loadImage() {
+        imageLoadingState = .loading
+        if let image = photo.image {
+            imageLoadingState = .loaded(Image(uiImage: image))
+        } else {
+            // Implement your image loading logic here
+            // For example, you might use URLSession to download the image
+            // Once the image is loaded, update the state:
+            // imageLoadingState = .loaded(Image(uiImage: loadedImage))
+            // If loading fails:
+            // imageLoadingState = .failed
+        }
+    }
+}
+
+enum ImageLoadingState {
+    case initial
+    case loading
+    case loaded(Image)
+    case failed
 }
 
 struct SharedGridView: View {

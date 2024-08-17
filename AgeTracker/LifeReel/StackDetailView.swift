@@ -19,6 +19,7 @@ struct StackDetailView: View {
     @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
+    @State private var isLoading = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -28,7 +29,7 @@ struct StackDetailView: View {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
                         AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate, isLoading: false))
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -56,7 +57,12 @@ struct StackDetailView: View {
                 sectionTitle: sectionTitle,
                 isPresented: $showingImagePicker,
                 onPhotosAdded: { newPhotos in
+                    isLoading = true
                     viewModel.objectWillChange.send()
+                    // Simulate a delay to process photos
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        isLoading = false
+                    }
                 }
             )
         }
