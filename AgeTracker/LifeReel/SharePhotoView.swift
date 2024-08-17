@@ -13,7 +13,7 @@ struct SharePhotoView: View {
     @State private var isPreparingImage = false
     @State private var titleOption = TitleOption.name
     @State private var subtitleOption = TitleOption.age
-    @State private var showAppIcon = true
+    @State private var showWatermark = true
     @State private var isRendering = false
     @State private var aspectRatio: AspectRatio = .original
     @Environment(\.dismiss) private var dismiss
@@ -70,11 +70,11 @@ struct SharePhotoView: View {
                         
                         // Template views
                         TabView(selection: $selectedTemplate) {
-                            LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                            LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(0)
-                            DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                            DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(1)
-                            OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showAppIcon: showAppIcon, isRendering: isRendering, aspectRatio: aspectRatio)
+                            OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(2)
                         }
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -136,7 +136,7 @@ struct SharePhotoView: View {
                 SimplifiedCustomizationButton(
                     icon: "text.alignleft",
                     title: "Subtitle",
-                    options: availableSubtitleOptions,
+                    options: TitleOption.allCases,
                     selection: $subtitleOption
                 )
 
@@ -147,14 +147,14 @@ struct SharePhotoView: View {
                     selection: $aspectRatio
                 )
 
-                // App Icon toggle
+                // Watermark toggle
                 VStack(spacing: 8) {
-                    Button(action: { showAppIcon.toggle() }) {
+                    Button(action: { showWatermark.toggle() }) {
                         VStack(spacing: 8) {
-                            Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                            Image(systemName: showWatermark ? "checkmark.seal.fill" : "checkmark.seal")
                                 .font(.system(size: 24))
                                 .frame(height: 24)
-                            Text("App Icon")
+                            Text("Watermark")
                                 .font(.caption)
                         }
                     }
@@ -167,10 +167,6 @@ struct SharePhotoView: View {
             
         }
         .background(Color(UIColor.systemBackground))
-    }
-
-    private var availableSubtitleOptions: [TitleOption] {
-        TitleOption.allCases.filter { $0 != titleOption || $0 == .none }
     }
 
     private var shareButton: some View {
@@ -337,11 +333,30 @@ struct SharePhotoView: View {
         titleText.draw(at: point)
         subtitleText.draw(at: CGPoint(x: point.x, y: point.y + titleSize.height + 5))
 
-        if showAppIcon, let appIcon = UIImage(named: "AppIcon") {
-            let iconSize = baseWidth * 0.11
-            let iconX = baseWidth - iconSize - padding
-            let iconY = point.y + (max(titleSize.height + subtitleSize.height, iconSize) - iconSize) / 2
-            appIcon.draw(in: CGRect(x: iconX, y: iconY, width: iconSize, height: iconSize))
+        if showWatermark {
+            let watermarkFont = UIFont.systemFont(ofSize: baseWidth * 0.03)
+            let watermarkBoldFont = UIFont.boldSystemFont(ofSize: baseWidth * 0.05)
+            
+            let madeWithAttributes: [NSAttributedString.Key: Any] = [
+                .font: watermarkFont,
+                .foregroundColor: textColor.withAlphaComponent(0.7)
+            ]
+            let lifeReelAttributes: [NSAttributedString.Key: Any] = [
+                .font: watermarkBoldFont,
+                .foregroundColor: textColor
+            ]
+            
+            let madeWithText = NSAttributedString(string: "Made with", attributes: madeWithAttributes)
+            let lifeReelText = NSAttributedString(string: "Life Reel", attributes: lifeReelAttributes)
+            
+            let madeWithSize = madeWithText.size()
+            let lifeReelSize = lifeReelText.size()
+            
+            let watermarkWidth = max(madeWithSize.width, lifeReelSize.width)
+            let watermarkRightEdge = baseWidth - padding
+            
+            madeWithText.draw(at: CGPoint(x: watermarkRightEdge - madeWithSize.width, y: point.y))
+            lifeReelText.draw(at: CGPoint(x: watermarkRightEdge - lifeReelSize.width, y: point.y + madeWithSize.height + 4))
         }
     }
 
@@ -371,27 +386,40 @@ struct SharePhotoView: View {
     }
 }
 
+// Common function to calculate image height
+private func calculateImageHeight(for width: CGFloat, image: UIImage, aspectRatio: SharePhotoView.AspectRatio) -> CGFloat {
+    switch aspectRatio {
+    case .original:
+        let imageAspectRatio = image.size.height / image.size.width
+        return width * imageAspectRatio
+    case .square:
+        return width
+    }
+}
+
 struct LightTemplateView: View {
     let image: UIImage
     let name: String
     let age: String
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
-    let showAppIcon: Bool
+    let showWatermark: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
     @State private var textAreaHeight: CGFloat = 60
     
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 40 
-            let templateHeight = calculateTemplateHeight(for: availableWidth)
+            let availableWidth = geometry.size.width - 40
+            let imageWidth = availableWidth - 40
+            let imageHeight = calculateImageHeight(for: imageWidth, image: image, aspectRatio: aspectRatio)
+            let templateHeight = imageHeight + textAreaHeight + 40 // 40 for padding
             
             VStack(spacing: 0) {
                 Image(uiImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: availableWidth - 40, height: templateHeight - textAreaHeight - 40)
+                    .aspectRatio(contentMode: aspectRatio == .original ? .fit : .fill)
+                    .frame(width: imageWidth, height: imageHeight)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
@@ -406,16 +434,23 @@ struct LightTemplateView: View {
                         if !subtitleText.isEmpty {
                             Text(subtitleText)
                                 .font(.subheadline)
-                                .foregroundColor(.primary.opacity(0.8))
+                                .foregroundColor(.gray)
                         }
                     }
                     Spacer()
-                    if showAppIcon {
-                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    if showWatermark {
+                        VStack(alignment: .trailing) {
+                            Text("Made with")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            
+                            Text("Life Reel")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.black)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        
                     }
                 }
                 .padding(.top, 10)
@@ -460,15 +495,6 @@ struct LightTemplateView: View {
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
-    
-    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
-        switch aspectRatio {
-        case .original:
-            return width * (image.size.height / image.size.width)
-        case .square:
-            return width
-        }
-    }
 }
 
 struct DarkTemplateView: View {
@@ -477,21 +503,23 @@ struct DarkTemplateView: View {
     let age: String
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
-    let showAppIcon: Bool
+    let showWatermark: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
     @State private var textAreaHeight: CGFloat = 60
     
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width - 40 
-            let templateHeight = calculateTemplateHeight(for: availableWidth)
+            let availableWidth = geometry.size.width - 40
+            let imageWidth = availableWidth - 40
+            let imageHeight = calculateImageHeight(for: imageWidth, image: image, aspectRatio: aspectRatio)
+            let templateHeight = imageHeight + textAreaHeight + 40 // 40 for padding
             
             VStack(spacing: 0) {
                 Image(uiImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: availableWidth - 40, height: templateHeight - textAreaHeight - 40)
+                    .aspectRatio(contentMode: aspectRatio == .original ? .fit : .fill)
+                    .frame(width: imageWidth, height: imageHeight)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
@@ -510,12 +538,18 @@ struct DarkTemplateView: View {
                         }
                     }
                     Spacer()
-                    if showAppIcon {
-                        Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    if showWatermark {
+                        VStack(alignment: .trailing) {
+                            Text("Made with")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            
+                            Text("Life Reel")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
                 .padding(.top, 10)
@@ -560,15 +594,6 @@ struct DarkTemplateView: View {
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
-    
-    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
-        switch aspectRatio {
-        case .original:
-            return width * (image.size.height / image.size.width)
-        case .square:
-            return width
-        }
-    }
 }
 
 struct OverlayTemplateView: View {
@@ -577,7 +602,7 @@ struct OverlayTemplateView: View {
     let age: String
     let titleOption: SharePhotoView.TitleOption
     let subtitleOption: SharePhotoView.TitleOption
-    let showAppIcon: Bool
+    let showWatermark: Bool
     let isRendering: Bool
     let aspectRatio: SharePhotoView.AspectRatio
     @State private var textAreaHeight: CGFloat = 60
@@ -585,12 +610,13 @@ struct OverlayTemplateView: View {
     var body: some View {
         GeometryReader { geometry in
             let availableWidth = geometry.size.width - 40
-            let templateHeight = calculateTemplateHeight(for: availableWidth)
+            let imageHeight = calculateImageHeight(for: availableWidth, image: image, aspectRatio: aspectRatio)
+            let templateHeight = imageHeight
             
             ZStack(alignment: .bottom) {
                 Image(uiImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: aspectRatio == .original ? .fit : .fill)
                     .frame(width: availableWidth, height: templateHeight)
                     .clipped()
                 
@@ -619,12 +645,18 @@ struct OverlayTemplateView: View {
                             }
                         }
                         Spacer()
-                        if showAppIcon {
-                            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        if showWatermark {
+                            VStack(alignment: .trailing) {
+                            Text("Made with")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                            
+                            Text("Life Reel")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -668,16 +700,6 @@ struct OverlayTemplateView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
-    }
-    
-    private func calculateTemplateHeight(for width: CGFloat) -> CGFloat {
-        switch aspectRatio {
-        case .original:
-            let imageAspectRatio = image.size.height / image.size.width
-            return width * imageAspectRatio
-        case .square:
-            return width
-        }
     }
 }
 

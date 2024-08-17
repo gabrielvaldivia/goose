@@ -267,10 +267,10 @@ struct ShareSlideshowView: View {
                 
                 Button(action: { showAppIcon.toggle() }) {
                     VStack(spacing: 8) {
-                        Image(systemName: showAppIcon ? "app.badge.checkmark" : "app")
+                        Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
                             .font(.system(size: 24))
                             .frame(height: 24)
-                        Text("App Icon")
+                        Text("Watermark")
                             .font(.caption)
                     }
                     .frame(width: 70)
@@ -442,9 +442,21 @@ struct LazyImage: View {
                     ProgressView()
                 }
                 
+                // Gradient overlay
                 VStack {
                     Spacer()
-                    HStack {
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                    .frame(height: geometry.size.width / aspectRatio / 3)
+                }
+                
+                // Title, subtitle, and watermark
+                VStack {
+                    Spacer()
+                    HStack(alignment: .bottom) {
                         VStack(alignment: .leading, spacing: 4) {
                             if !titleText.isEmpty {
                                 Text(titleText)
@@ -458,34 +470,29 @@ struct LazyImage: View {
                                     .opacity(0.7)
                             }
                         }
-                        .padding()
-                        .foregroundColor(.white)
                         
                         Spacer()
                         
                         if showAppIcon {
-                            Image("AppIcon")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .padding(.vertical, 8)
-                                .padding(.trailing, 16)
+                            VStack(alignment: .trailing) {
+                                Text("Made with")
+                                    .font(.system(size: geometry.size.width * 0.03))
+                                    .foregroundColor(.white.opacity(0.7))
+                                
+                                Text("Life Reel")
+                                    .font(.system(size: geometry.size.width * 0.05, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            .opacity(0.8)
                         }
                     }
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
+                    .padding()
+                    .foregroundColor(.white)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
             .background(Color.black.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 20))
-            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
     }
