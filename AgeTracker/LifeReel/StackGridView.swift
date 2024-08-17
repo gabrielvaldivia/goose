@@ -63,6 +63,7 @@ struct StacksGridView: View {
                 },
                 person: person
             )
+            .background(Color.clear)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             // Force view update on orientation change
@@ -135,6 +136,14 @@ struct StacksGridView: View {
             openImagePickerForMoment(section, dateRange)
         } catch {
             print("Error getting date range for \(section): \(error)")
+        }
+    }
+    
+    private func captureScreenshot() -> UIImage {
+        let window = UIApplication.shared.windows.first { $0.isKeyWindow }
+        let renderer = UIGraphicsImageRenderer(bounds: window!.bounds)
+        return renderer.image { ctx in
+            window?.drawHierarchy(in: window!.bounds, afterScreenUpdates: true)
         }
     }
 }
