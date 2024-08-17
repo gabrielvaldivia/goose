@@ -19,16 +19,18 @@ struct StackDetailView: View {
     @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
+    @State private var isLoading = false
+    @State private var loadingPhoto: Photo?
 
     var body: some View {
         GeometryReader { geometry in
-            if photosForCurrentSection().isEmpty {
+            if photosToDisplay().isEmpty && !isLoading {
                 emptyStateView
             } else {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
-                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosForCurrentSection(), forceUpdate: forceUpdate))
+                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate)),
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate, isLoading: isLoading))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -56,15 +58,24 @@ struct StackDetailView: View {
                 sectionTitle: sectionTitle,
                 isPresented: $showingImagePicker,
                 onPhotosAdded: { newPhotos in
-                    viewModel.objectWillChange.send()
+                    if let firstNewPhoto = newPhotos.first {
+                        isLoading = true
+                        loadingPhoto = firstNewPhoto
+                        // Simulate loading time (remove in production)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            isLoading = false
+                            loadingPhoto = nil
+                            viewModel.objectWillChange.send()
+                        }
+                    }
                 }
             )
         }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
-                currentIndex: photosForCurrentSection().firstIndex(of: photo) ?? 0,
-                photos: photosForCurrentSection(),
+                currentIndex: photosToDisplay().firstIndex(of: photo) ?? 0,
+                photos: photosToDisplay(),
                 onDelete: { deletedPhoto in
                     viewModel.deletePhoto(deletedPhoto, from: &person)
                     selectedPhoto = nil
@@ -75,12 +86,24 @@ struct StackDetailView: View {
         }
         .sheet(isPresented: $isShareSlideshowPresented) {
             ShareSlideshowView(
-                photos: photosForCurrentSection(),
+                photos: photosToDisplay(),
                 person: person,
                 sectionTitle: sectionTitle
             )
         }
-        .background(Color.clear.opacity(forceUpdate ? 0 : 0.00001))
+    }
+
+    private func photosToDisplay() -> [Photo] {
+        var photos = photosForCurrentSection()
+        if isLoading, let loadingPhoto = loadingPhoto {
+            photos.insert(loadingPhoto, at: 0)
+        }
+        return photos
+    }
+
+    private func photosForCurrentSection() -> [Photo] {
+        let filteredPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
+        return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
     }
 
     private var emptyStateView: some View {
@@ -120,22 +143,24 @@ struct StackDetailView: View {
             }
         }
     }
+}
 
-    private func photosForCurrentSection() -> [Photo] {
-        let filteredPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
-        return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
+extension UIImage {
+    static func placeholderImage(color: UIColor = .gray, size: CGSize = CGSize(width: 100, height: 100)) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            color.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+        }
     }
 }
 
-struct PhotoTile: View {
-    let photo: Photo
-    let size: CGFloat
-
-    var body: some View {
-        Image(uiImage: photo.image ?? UIImage())
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-            .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+extension Photo {
+    var placeholderImage: UIImage {
+        UIImage.placeholderImage()
+    }
+    
+    var displayImage: UIImage {
+        image ?? placeholderImage
     }
 }

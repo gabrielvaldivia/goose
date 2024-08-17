@@ -346,11 +346,15 @@ struct SharedTimelineView: View {
     @Binding var selectedPhoto: Photo?
     let photos: [Photo]
     let forceUpdate: Bool
+    let isLoading: Bool
     
     var body: some View {
         GeometryReader { outerGeometry in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    if isLoading {
+                        PlaceholderFilmReelItem(geometry: outerGeometry)
+                    }
                     ForEach(filteredPhotos()) { photo in
                         FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
                             .id(photo.id)
@@ -375,6 +379,23 @@ struct SharedTimelineView: View {
     
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
         photos.sorted { $0.dateTaken > $1.dateTaken }
+    }
+}
+
+struct PlaceholderFilmReelItem: View {
+    let geometry: GeometryProxy
+    
+    var body: some View {
+        ZStack(alignment: .center) {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+            
+            ProgressView()
+                .scaleEffect(1.5)
+        }
+        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+        .padding(.vertical, 2)
     }
 }
 
@@ -435,8 +456,12 @@ struct SharedGridView: View {
             ScrollView {
                 LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
                     ForEach(sortPhotos(photos)) { photo in
-                        PhotoTile(photo: photo, size: GridLayoutHelper.gridItemWidth(for: geometry.size))
-                            .padding(.bottom, 10)
+                        Image(uiImage: photo.displayImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: GridLayoutHelper.gridItemWidth(for: geometry.size), 
+                                   height: GridLayoutHelper.gridItemWidth(for: geometry.size))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                             .onTapGesture {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 selectedPhoto = photo
