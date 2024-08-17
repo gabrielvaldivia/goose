@@ -7,8 +7,8 @@
 
 import Foundation
 import SwiftUI
-import AVKit
 import Photos
+import Vision
 
 enum SlideshowRange: Hashable, CaseIterable {
     case allPhotos
@@ -101,7 +101,7 @@ struct ShareSlideshowView: View {
     @Environment(\.presentationMode) var presentationMode
     
     @State private var currentFilteredPhotoIndex = 0
-    @State private var aspectRatio: AspectRatio = .square
+    @State private var aspectRatio: AspectRatio = .portrait
     @State private var isMusicSelectionPresented = false
     @State private var showAppIcon: Bool = true
     @State private var titleOption: TitleOption = .name
@@ -211,16 +211,22 @@ struct ShareSlideshowView: View {
                     PlayButton(isPlaying: $isPlaying)
                         .frame(width: 40, height: 40)
                     
-                    Slider(value: $scrubberPosition, in: 0...Double(filteredPhotos.count - 1), step: 1)
-                        .onChange(of: scrubberPosition) { oldValue, newValue in
-                            if !isPlaying {
-                                currentFilteredPhotoIndex = Int(newValue.rounded())
+                    CustomScrubber(
+                        value: $scrubberPosition,
+                        range: 0...Double(filteredPhotos.count - 1),
+                        step: 1,
+                        onEditingChanged: { editing in
+                            if !editing {
+                                currentFilteredPhotoIndex = Int(scrubberPosition.rounded())
                                 loadImagesAround(index: currentFilteredPhotoIndex)
                             }
                         }
+                    )
+                    .frame(height: 40)
+                    
+                    Spacer(minLength: 20) // Add extra space to the right
                 }
-                .padding(.leading, 20)
-                .padding(.trailing, 40)
+                .padding(.horizontal, 20)
             }
         }
     }
@@ -429,6 +435,8 @@ struct LazyImage: View {
     let titleText: String
     let subtitleText: String
 
+    @State private var faceRect: CGRect?
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -437,7 +445,15 @@ struct LazyImage: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .clipped()
+                        .clipShape(Rectangle())
+                        .overlay(
+                            GeometryReader { imageGeometry in
+                                Color.clear.onAppear {
+                                    self.detectFace(in: image, size: imageGeometry.size)
+                                }
+                            }
+                        )
+                        .position(faceAwarePosition(in: geometry))
                 } else {
                     ProgressView()
                 }
@@ -496,6 +512,41 @@ struct LazyImage: View {
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
     }
+
+    private func detectFace(in image: UIImage, size: CGSize) {
+        guard let ciImage = CIImage(image: image) else { return }
+
+        let context = CIContext()
+        let options = [CIDetectorAccuracy: CIDetectorAccuracyHigh]
+        let faceDetector = CIDetector(ofType: CIDetectorTypeFace, context: context, options: options)
+
+        let faces = faceDetector?.features(in: ciImage, options: [CIDetectorSmile: true, CIDetectorEyeBlink: true])
+
+        if let face = faces?.first as? CIFaceFeature {
+            let faceRect = face.bounds
+            let scaledRect = CGRect(
+                x: faceRect.origin.x / ciImage.extent.width * size.width,
+                y: (1 - (faceRect.origin.y + faceRect.height) / ciImage.extent.height) * size.height,
+                width: faceRect.width / ciImage.extent.width * size.width,
+                height: faceRect.height / ciImage.extent.height * size.height
+            )
+            self.faceRect = scaledRect
+        }
+    }
+
+    private func faceAwarePosition(in geometry: GeometryProxy) -> CGPoint {
+        guard let faceRect = faceRect else {
+            return CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+
+        let faceCenter = CGPoint(x: faceRect.midX, y: faceRect.midY)
+        let imageCenter = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+
+        let xOffset = min(max(faceCenter.x - imageCenter.x, -geometry.size.width / 4), geometry.size.width / 4)
+        let yOffset = min(max(faceCenter.y - imageCenter.y, -geometry.size.height / 4), geometry.size.height / 4)
+
+        return CGPoint(x: imageCenter.x - xOffset, y: imageCenter.y - yOffset)
+    }
 }
 
 struct PlayButton: View {
@@ -536,5 +587,56 @@ struct AspectRatio: Hashable, CustomStringConvertible {
     
     static let square = AspectRatio(value: 1.0, description: "Square")
     static let portrait = AspectRatio(value: 9.0/16.0, description: "9:16")
+}
+
+struct CustomScrubber: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    var onEditingChanged: (Bool) -> Void = { _ in }
+
+    @State private var isDragging = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: 8)
+                    .cornerRadius(4)
+
+                Rectangle()
+                    .fill(Color.blue)
+                    .frame(width: self.progressWidth(in: geometry), height: 8)
+                    .cornerRadius(4)
+            }
+            .frame(height: geometry.size.height)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        isDragging = true
+                        let newValue = self.gestureLocation(value: gesture.location.x, in: geometry)
+                        self.value = min(max(newValue, self.range.lowerBound), self.range.upperBound)
+                        self.onEditingChanged(true)
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                        self.onEditingChanged(false)
+                    }
+            )
+        }
+    }
+
+    private func progressWidth(in geometry: GeometryProxy) -> CGFloat {
+        let percent = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return geometry.size.width * CGFloat(percent)
+    }
+
+    private func gestureLocation(value: CGFloat, in geometry: GeometryProxy) -> Double {
+        let percent = Double(value / geometry.size.width)
+        let result = percent * (range.upperBound - range.lowerBound) + range.lowerBound
+        return (result / step).rounded() * step
+    }
 }
 

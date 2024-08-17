@@ -195,8 +195,14 @@ struct FullScreenPhotoView: View {
         let excessWidth = max(0, imageSize.width - geometry.size.width)
         let excessHeight = max(0, imageSize.height - geometry.size.height)
 
-        let newOffsetX = min(max(offset.width + dragState.translation.width, -excessWidth / 2), excessWidth / 2)
-        let newOffsetY = min(max(offset.height + dragState.translation.height, -excessHeight / 2), excessHeight / 2)
+        // Use scaled translation
+        let scaledTranslation = CGSize(
+            width: dragState.translation.width / scale,
+            height: dragState.translation.height / scale
+        )
+
+        let newOffsetX = min(max(offset.width + scaledTranslation.width, -excessWidth / 2), excessWidth / 2)
+        let newOffsetY = min(max(offset.height + scaledTranslation.height, -excessHeight / 2), excessHeight / 2)
         
         return CGSize(width: newOffsetX, height: newOffsetY)
     }
@@ -217,6 +223,7 @@ struct FullScreenPhotoView: View {
                     let excessWidth = max(0, imageSize.width - geometry.size.width)
                     let excessHeight = max(0, imageSize.height - geometry.size.height)
 
+                    // Adjust translation based on scale
                     let scaledTranslation = CGSize(
                         width: value.translation.width / scale,
                         height: value.translation.height / scale
