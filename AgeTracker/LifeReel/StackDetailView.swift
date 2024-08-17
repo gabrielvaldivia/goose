@@ -19,18 +19,16 @@ struct StackDetailView: View {
     @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
-    @State private var isLoading = false
-    @State private var loadingPhoto: Photo?
 
     var body: some View {
         GeometryReader { geometry in
-            if photosToDisplay().isEmpty && !isLoading {
+            if photosToDisplay().isEmpty {
                 emptyStateView
             } else {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
                         AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate, isLoading: isLoading))
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate, isLoading: false))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -58,16 +56,7 @@ struct StackDetailView: View {
                 sectionTitle: sectionTitle,
                 isPresented: $showingImagePicker,
                 onPhotosAdded: { newPhotos in
-                    if let firstNewPhoto = newPhotos.first {
-                        isLoading = true
-                        loadingPhoto = firstNewPhoto
-                        // Simulate loading time (remove in production)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            isLoading = false
-                            loadingPhoto = nil
-                            viewModel.objectWillChange.send()
-                        }
-                    }
+                    viewModel.objectWillChange.send()
                 }
             )
         }
@@ -94,11 +83,7 @@ struct StackDetailView: View {
     }
 
     private func photosToDisplay() -> [Photo] {
-        var photos = photosForCurrentSection()
-        if isLoading, let loadingPhoto = loadingPhoto {
-            photos.insert(loadingPhoto, at: 0)
-        }
-        return photos
+        return photosForCurrentSection()
     }
 
     private func photosForCurrentSection() -> [Photo] {
