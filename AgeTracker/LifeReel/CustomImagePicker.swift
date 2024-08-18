@@ -74,13 +74,25 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
         }
 
         func imagePicker(_ picker: CustomImagePickerViewController, didSelectAssets assets: [PHAsset]) {
+            let dispatchGroup = DispatchGroup()
+            var addedPhotos: [Photo] = []
+
             for asset in assets {
-                parent.viewModel.addPhoto(to: &parent.person, asset: asset)
+                dispatchGroup.enter()
+                parent.viewModel.addPhoto(to: parent.person, asset: asset) { photo in
+                    if let photo = photo {
+                        addedPhotos.append(photo)
+                    }
+                    dispatchGroup.leave()
+                }
             }
-            parent.isPresented = false
-            parent.onPhotosAdded(parent.person.photos)
-            
-            print("Added \(assets.count) photos to \(parent.person.name) for section: \(parent.sectionTitle)")
+
+            dispatchGroup.notify(queue: .main) {
+                self.parent.isPresented = false
+                self.parent.onPhotosAdded(addedPhotos)
+                
+                print("Added \(addedPhotos.count) photos to \(self.parent.person.name) for section: \(self.parent.sectionTitle)")
+            }
         }
 
         func imagePickerDidCancel(_ picker: CustomImagePickerViewController) {
@@ -109,6 +121,16 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var sortButton: UIButton!
     private var isSortedAscending = true // Track the current sort order
     private var isLoading = true
+    private var segmentedControl: UISegmentedControl!
+    private var showOnlyFaces = false
+    private var allAssets: PHFetchResult<PHAsset>!
+    private var facesAssets: [PHAsset] = []
+    private var isLoadingFaces = false
+    private var currentPage = 0
+    private let pageSize = 20
+    private var sortDescriptor: NSSortDescriptor {
+        return NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)
+    }
 
     init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person) {
         self.sectionTitle = sectionTitle
@@ -126,7 +148,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         super.viewDidLoad()
         setupCollectionView()
         setupNavigationBar()
-        setupSortButton()
+        setupBottomBar()
         showLoadingIndicator()
         fetchAssets()
     }
@@ -208,56 +230,125 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupDateRange()
         
         let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)]
+        fetchOptions.sortDescriptors = [sortDescriptor]
         
         let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
         fetchOptions.predicate = predicate
 
-        let allAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        allAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        assets = allAssets
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            let assetsWithFaces = self.filterAssetsWithFaces(assets: allAssets)
-            
-            DispatchQueue.main.async {
-                self.assets = assetsWithFaces
-                self.collectionView.reloadData()
-                self.setupTitleLabel()
-                self.hideLoadingIndicator()
-                self.isLoading = false
-            }
+        DispatchQueue.main.async {
+            self.collectionView.reloadData()
+            self.setupTitleLabel()
+            self.hideLoadingIndicator()
+            self.isLoading = false
         }
         
-        print("Fetching assets for \(sectionTitle)")
-        print("Date range: \(displayStartDate) to \(displayEndDate)")
         print("Fetched \(allAssets.count) assets for \(sectionTitle)")
     }
 
-    private func filterAssetsWithFaces(assets: PHFetchResult<PHAsset>) -> PHFetchResult<PHAsset> {
+    @objc private func sortButtonTapped() {
+        isSortedAscending.toggle()
+        
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [sortDescriptor]
+        
+        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
+        fetchOptions.predicate = predicate
+
+        allAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        
+        if showOnlyFaces {
+            assets = PHAsset.fetchAssets(withLocalIdentifiers: facesAssets.map { $0.localIdentifier }, options: fetchOptions)
+        } else {
+            assets = allAssets
+        }
+
+        collectionView.reloadData()
+        
+        print("Sort button tapped. Sorted \(isSortedAscending ? "ascending" : "descending")")
+    }
+
+    @objc private func segmentedControlValueChanged() {
+        showOnlyFaces = segmentedControl.selectedSegmentIndex == 1
+        
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [sortDescriptor]
+        
+        if showOnlyFaces {
+            if facesAssets.isEmpty {
+                loadMoreFaces()
+            } else {
+                assets = PHAsset.fetchAssets(withLocalIdentifiers: facesAssets.map { $0.localIdentifier }, options: fetchOptions)
+                collectionView.reloadData()
+            }
+        } else {
+            assets = allAssets
+            collectionView.reloadData()
+        }
+    }
+
+    private func loadMoreFaces() {
+        guard !isLoadingFaces else { return }
+        isLoadingFaces = true
+        
+        let startIndex = currentPage * pageSize
+        let endIndex = min(startIndex + pageSize, allAssets.count)
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let assetsToProcess = (startIndex..<endIndex).compactMap { self.allAssets.object(at: $0) }
+            let newFacesAssets = self.filterAssetsWithFaces(assets: assetsToProcess)
+            
+            DispatchQueue.main.async {
+                self.facesAssets.append(contentsOf: newFacesAssets)
+                
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.sortDescriptors = [self.sortDescriptor]
+                self.assets = PHAsset.fetchAssets(withLocalIdentifiers: self.facesAssets.map { $0.localIdentifier }, options: fetchOptions)
+                
+                self.collectionView.reloadData()
+                self.currentPage += 1
+                self.isLoadingFaces = false
+                
+                if self.showOnlyFaces && endIndex < self.allAssets.count {
+                    self.loadMoreFaces()
+                }
+            }
+        }
+    }
+
+    private func filterAssetsWithFaces(assets: [PHAsset]) -> [PHAsset] {
         let options = PHImageRequestOptions()
         options.isSynchronous = true
         options.deliveryMode = .fastFormat
         options.resizeMode = .fast
         
-        let assetsWithFaces = NSMutableArray()
+        var assetsWithFaces: [PHAsset] = []
         
-        assets.enumerateObjects { (asset, index, stop) in
-            PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
-                if let cgImage = image?.cgImage {
-                    let ciImage = CIImage(cgImage: cgImage)
-                    let context = CIContext()
-                    let detector = CIDetector(ofType: CIDetectorTypeFace, context: context, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh])
-                    
-                    if let faces = detector?.features(in: ciImage), !faces.isEmpty {
-                        assetsWithFaces.add(asset)
+        for asset in assets {
+            autoreleasepool {
+                PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
+                    if let cgImage = image?.cgImage {
+                        let ciImage = CIImage(cgImage: cgImage)
+                        let context = CIContext()
+                        let detector = CIDetector(ofType: CIDetectorTypeFace, context: context, options: [CIDetectorAccuracy: CIDetectorAccuracyLow])
+                        
+                        if let faces = detector?.features(in: ciImage), !faces.isEmpty {
+                            assetsWithFaces.append(asset)
+                        }
                     }
                 }
             }
         }
         
-        // Create a PHFetchResult from the array of assets with faces
-        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: assetsWithFaces.compactMap { ($0 as? PHAsset)?.localIdentifier }, options: nil)
-        
-        return fetchResult
+        return assetsWithFaces
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        if showOnlyFaces && indexPath.item == assets.count - 1 && !isLoadingFaces {
+            loadMoreFaces()
+        }
     }
 
     private func setupTitleLabel() {
@@ -291,7 +382,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         navigationItem.titleView = titleLabel
     }
 
-    private func setupSortButton() {
+    private func setupBottomBar() {
         let bottomBar = UIView()
         bottomBar.backgroundColor = .systemBackground
         view.addSubview(bottomBar)
@@ -303,6 +394,11 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             bottomBar.heightAnchor.constraint(equalToConstant: 44)
         ])
 
+        setupSortButton(in: bottomBar)
+        setupSegmentedControl(in: bottomBar)
+    }
+
+    private func setupSortButton(in bottomBar: UIView) {
         sortButton = UIButton(type: .system)
         let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
         let sortIcon = UIImage(systemName: "arrow.up.arrow.down", withConfiguration: config)
@@ -317,22 +413,18 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         ])
     }
 
-    @objc private func sortButtonTapped() {
-        isSortedAscending.toggle()
-        let sortDescriptor = NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [sortDescriptor]
+    private func setupSegmentedControl(in bottomBar: UIView) {
+        segmentedControl = UISegmentedControl(items: ["All Photos", "Faces"])
+        segmentedControl.selectedSegmentIndex = 0
+        segmentedControl.addTarget(self, action: #selector(segmentedControlValueChanged), for: .valueChanged)
         
-        let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
-        fetchOptions.predicate = predicate
-
-        assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-
-        DispatchQueue.main.async {
-            self.collectionView.reloadData()
-        }
-        
-        print("Sort button tapped. Sorted \(isSortedAscending ? "ascending" : "descending")")
+        bottomBar.addSubview(segmentedControl)
+        segmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            segmentedControl.centerXAnchor.constraint(equalTo: bottomBar.centerXAnchor),
+            segmentedControl.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
+            segmentedControl.widthAnchor.constraint(lessThanOrEqualTo: bottomBar.widthAnchor, multiplier: 0.6)
+        ])
     }
 
     @objc private func cancelButtonTapped() {

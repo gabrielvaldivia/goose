@@ -426,6 +426,41 @@ class PersonViewModel: ObservableObject {
             }
         )
     }
+
+    func addPhoto(to person: Person, asset: PHAsset, completion: @escaping (Photo?) -> Void) {
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+        options.isSynchronous = false
+
+        PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+            guard let image = image else {
+                print("Failed to get image from asset")
+                completion(nil)
+                return
+            }
+
+            if let newPhoto = Photo(asset: asset) {
+                var updatedPerson = person
+                updatedPerson.photos.append(newPhoto)
+                updatedPerson.photos.sort { $0.dateTaken < $1.dateTaken }
+                
+                if let index = self.people.firstIndex(where: { $0.id == person.id }) {
+                    self.people[index] = updatedPerson
+                    self.savePeople()
+                    self.objectWillChange.send()
+                    print("Photo added successfully. Total photos for \(updatedPerson.name): \(updatedPerson.photos.count)")
+                    completion(newPhoto)
+                } else {
+                    print("Failed to find person \(person.name) in people array")
+                    completion(nil)
+                }
+            } else {
+                print("Failed to create Photo object from asset")
+                completion(nil)
+            }
+        }
+    }
 }
 
 enum PhotoAccessError: Error {
