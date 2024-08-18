@@ -209,7 +209,7 @@ public struct PhotoUtils {
             return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
             if exactAge.years == 0 {
-                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
             } else if exactAge.years == 1 && exactAge.months == 0 {
                 return "1 Year"
             } else {
@@ -217,7 +217,7 @@ public struct PhotoUtils {
             }
         case .twentyFourMonths:
             if exactAge.months < 24 {
-                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
             } else {
                 return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
