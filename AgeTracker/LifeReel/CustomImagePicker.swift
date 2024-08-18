@@ -8,6 +8,8 @@
 import Foundation
 import SwiftUI
 import Photos
+import Vision
+import CoreImage
 
 struct CustomImagePicker: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -106,6 +108,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var displayEndDate: Date!
     private var sortButton: UIButton!
     private var isSortedAscending = true // Track the current sort order
+    private var isLoading = true
 
     init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person) {
         self.sectionTitle = sectionTitle
@@ -122,9 +125,10 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     override func viewDidLoad() {
         super.viewDidLoad()
         setupCollectionView()
-        fetchAssets()
         setupNavigationBar()
         setupSortButton()
+        showLoadingIndicator()
+        fetchAssets()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -209,16 +213,51 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         let predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", displayStartDate as NSDate, displayEndDate as NSDate)
         fetchOptions.predicate = predicate
 
-        assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-
-        DispatchQueue.main.async {
-            self.collectionView.reloadData()
-            self.setupTitleLabel()
+        let allAssets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let assetsWithFaces = self.filterAssetsWithFaces(assets: allAssets)
+            
+            DispatchQueue.main.async {
+                self.assets = assetsWithFaces
+                self.collectionView.reloadData()
+                self.setupTitleLabel()
+                self.hideLoadingIndicator()
+                self.isLoading = false
+            }
         }
         
         print("Fetching assets for \(sectionTitle)")
         print("Date range: \(displayStartDate) to \(displayEndDate)")
-        print("Fetched \(assets.count) assets for \(sectionTitle)")
+        print("Fetched \(allAssets.count) assets for \(sectionTitle)")
+    }
+
+    private func filterAssetsWithFaces(assets: PHFetchResult<PHAsset>) -> PHFetchResult<PHAsset> {
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .fastFormat
+        options.resizeMode = .fast
+        
+        let assetsWithFaces = NSMutableArray()
+        
+        assets.enumerateObjects { (asset, index, stop) in
+            PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
+                if let cgImage = image?.cgImage {
+                    let ciImage = CIImage(cgImage: cgImage)
+                    let context = CIContext()
+                    let detector = CIDetector(ofType: CIDetectorTypeFace, context: context, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh])
+                    
+                    if let faces = detector?.features(in: ciImage), !faces.isEmpty {
+                        assetsWithFaces.add(asset)
+                    }
+                }
+            }
+        }
+        
+        // Create a PHFetchResult from the array of assets with faces
+        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: assetsWithFaces.compactMap { ($0 as? PHAsset)?.localIdentifier }, options: nil)
+        
+        return fetchResult
     }
 
     private func setupTitleLabel() {
@@ -313,7 +352,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return assets.count
+        return assets?.count ?? 0
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -335,6 +374,18 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             selectedAssets.remove(at: index)
         }
         updateAddButtonState()
+    }
+
+    private func showLoadingIndicator() {
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = view.center
+        activityIndicator.startAnimating()
+        view.addSubview(activityIndicator)
+        view.bringSubviewToFront(activityIndicator)
+    }
+
+    private func hideLoadingIndicator() {
+        view.subviews.compactMap { $0 as? UIActivityIndicatorView }.forEach { $0.removeFromSuperview() }
     }
 }
 

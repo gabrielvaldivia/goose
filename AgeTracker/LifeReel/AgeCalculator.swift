@@ -75,14 +75,8 @@ struct AgeCalculator {
         }
         
         switch person.birthMonthsDisplay {
-        case .none:
+        case .none, .twelveMonths:
             return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
-        case .twelveMonths:
-            if exactAge.months < 12 {
-                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
-            } else {
-                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
-            }
         case .twentyFourMonths:
             if exactAge.months < 24 {
                 return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"

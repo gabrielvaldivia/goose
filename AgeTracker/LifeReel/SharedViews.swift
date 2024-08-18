@@ -116,12 +116,7 @@ public struct PhotoUtils {
                 stacks.append("Birth Month")
                 let monthsToShow = min(11, currentAgeInMonths)
                 stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
-                if currentAgeInMonths >= 12 {
-                    stacks.append("1 Year")
-                    if currentAgeInYears > 1 {
-                        stacks.append(contentsOf: (2...currentAgeInYears).map { "\($0) Years" })
-                    }
-                }
+                stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
             case .twentyFourMonths:
                 stacks.append("Birth Month")
                 let monthsToShow = min(23, currentAgeInMonths)
@@ -188,6 +183,7 @@ public struct PhotoUtils {
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+        let calendar = Calendar.current
         
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
@@ -202,7 +198,6 @@ public struct PhotoUtils {
         }
         
         // Check if the photo is within the birth month
-        let calendar = Calendar.current
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
         let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
         if photo.dateTaken >= person.dateOfBirth && photo.dateTaken <= endOfBirthMonth {
@@ -213,14 +208,16 @@ public struct PhotoUtils {
         case .none:
             return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
-            if exactAge.months < 12 {
-                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
+            if exactAge.years == 0 {
+                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
+            } else if exactAge.years == 1 && exactAge.months == 0 {
+                return "1 Year"
             } else {
                 return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
         case .twentyFourMonths:
             if exactAge.months < 24 {
-                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
+                return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
             } else {
                 return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
             }
