@@ -481,15 +481,14 @@ struct SharedGridView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
-    let photos: [Photo]
-    var openImagePickerForMoment: ((String, (Date, Date)) -> Void)?
-    let forceUpdate: Bool
+    let sectionTitle: String?
+    @State private var photoUpdateTrigger = UUID()
     
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
                 LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
-                    ForEach(sortPhotos(photos)) { photo in
+                    ForEach(filteredPhotos()) { photo in
                         Image(uiImage: photo.displayImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -506,11 +505,24 @@ struct SharedGridView: View {
                 .padding(.bottom, 80)
             }
         }
-        .id(forceUpdate)
+        .id(photoUpdateTrigger)
+        .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+            photoUpdateTrigger = UUID()
+        }
+    }
+    
+    private func filteredPhotos() -> [Photo] {
+        let filteredPhotos = person.photos.filter { photo in
+            if let title = sectionTitle, title != "All Photos" {
+                return PhotoUtils.sectionForPhoto(photo, person: person) == title
+            }
+            return true  // If sectionTitle is nil or "All Photos", include all photos
+        }
+        return sortPhotos(filteredPhotos)
     }
     
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { $0.dateTaken < $1.dateTaken }
+        photos.sorted { $0.dateTaken > $1.dateTaken }
     }
 }
 
