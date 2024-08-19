@@ -17,6 +17,7 @@ struct CustomImagePicker: View {
     let sectionTitle: String
     @Binding var isPresented: Bool
     var onPhotosAdded: ([Photo]) -> Void
+    @State private var isLoading = false
 
     var body: some View {
         CustomImagePickerRepresentable(
@@ -24,7 +25,8 @@ struct CustomImagePicker: View {
             person: $person,
             sectionTitle: sectionTitle,
             isPresented: $isPresented,
-            onPhotosAdded: onPhotosAdded
+            onPhotosAdded: onPhotosAdded,
+            isLoading: $isLoading
         )
         .onAppear {
             viewModel.loadingStacks.insert(sectionTitle)
@@ -41,6 +43,7 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
     let sectionTitle: String
     @Binding var isPresented: Bool
     var onPhotosAdded: ([Photo]) -> Void
+    @Binding var isLoading: Bool
 
     func makeUIViewController(context: Context) -> UINavigationController {
         guard !sectionTitle.isEmpty else {
@@ -53,7 +56,8 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
             sectionTitle: sectionTitle,
             dateRange: dateRange ?? (start: Date(), end: Date()),
             viewModel: viewModel,
-            person: person
+            person: person,
+            isLoading: $isLoading
         )
         picker.delegate = context.coordinator
         let navigationController = UINavigationController(rootViewController: picker)
@@ -74,6 +78,10 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
         }
 
         func imagePicker(_ picker: CustomImagePickerViewController, didSelectAssets assets: [PHAsset]) {
+            DispatchQueue.main.async {
+                picker.showLoadingIndicator()
+            }
+            parent.isLoading = true
             let dispatchGroup = DispatchGroup()
             var addedPhotos: [Photo] = []
 
@@ -88,6 +96,8 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
             }
 
             dispatchGroup.notify(queue: .main) {
+                picker.hideLoadingIndicator()
+                self.parent.isLoading = false
                 self.parent.isPresented = false
                 self.parent.onPhotosAdded(addedPhotos)
                 
@@ -131,13 +141,16 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var sortDescriptor: NSSortDescriptor {
         return NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)
     }
+    private var addButton: UIBarButtonItem!
+    private var loadingBarButton: UIBarButtonItem!
 
-    init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person) {
+    init(sectionTitle: String, dateRange: (start: Date, end: Date), viewModel: PersonViewModel, person: Person, isLoading: Binding<Bool>) {
         self.sectionTitle = sectionTitle
         self.dateRange = dateRange
         self.person = person
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
+        self.isLoading = isLoading.wrappedValue
     }
 
     required init?(coder: NSCoder) {
@@ -382,9 +395,15 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         navigationItem.titleView = titleLabel
     }
 
-    private func setupNavigationBar() {
+    func setupNavigationBar() {
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancelButtonTapped))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Add", style: .done, target: self, action: #selector(doneTapped))
+        
+        addButton = UIBarButtonItem(title: "Add", style: .done, target: self, action: #selector(doneTapped))
+        
+        let loadingIndicator = UIActivityIndicatorView(style: .medium)
+        loadingIndicator.hidesWhenStopped = false
+        loadingBarButton = UIBarButtonItem(customView: loadingIndicator)
+        
         updateAddButtonState()
         
         navigationItem.titleView = titleLabel
@@ -441,14 +460,26 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     }
 
     @objc private func doneTapped() {
-        viewModel.loadingStacks.remove(sectionTitle)
-        dismiss(animated: true) {
-            self.delegate?.imagePicker(self, didSelectAssets: self.selectedAssets)
+        showLoadingIndicator()
+        delegate?.imagePicker(self, didSelectAssets: selectedAssets)
+    }
+
+    func updateAddButtonState() {
+        if selectedAssets.isEmpty {
+            navigationItem.rightBarButtonItem = nil
+        } else {
+            navigationItem.rightBarButtonItem = addButton
         }
     }
 
-    private func updateAddButtonState() {
-        navigationItem.rightBarButtonItem?.isEnabled = !selectedAssets.isEmpty
+    func showLoadingIndicator() {
+        navigationItem.rightBarButtonItem = loadingBarButton
+        (loadingBarButton.customView as? UIActivityIndicatorView)?.startAnimating()
+    }
+
+    func hideLoadingIndicator() {
+        (loadingBarButton.customView as? UIActivityIndicatorView)?.stopAnimating()
+        updateAddButtonState()
     }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -474,18 +505,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             selectedAssets.remove(at: index)
         }
         updateAddButtonState()
-    }
-
-    private func showLoadingIndicator() {
-        let activityIndicator = UIActivityIndicatorView(style: .large)
-        activityIndicator.center = view.center
-        activityIndicator.startAnimating()
-        view.addSubview(activityIndicator)
-        view.bringSubviewToFront(activityIndicator)
-    }
-
-    private func hideLoadingIndicator() {
-        view.subviews.compactMap { $0 as? UIActivityIndicatorView }.forEach { $0.removeFromSuperview() }
     }
 }
 
