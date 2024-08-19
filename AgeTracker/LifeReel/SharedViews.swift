@@ -348,6 +348,7 @@ struct SharedTimelineView: View {
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
     let forceUpdate: Bool
+    let sectionTitle: String?  // Make this optional
     @State private var photoUpdateTrigger = UUID()
     
     var body: some View {
@@ -372,10 +373,10 @@ struct SharedTimelineView: View {
     
     private func filteredPhotos() -> [Photo] {
         let filteredPhotos = person.photos.filter { photo in
-            if person.pregnancyTracking == .none {
-                return photo.dateTaken >= person.dateOfBirth
+            if let title = sectionTitle, title != "All Photos" {
+                return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
-            return true
+            return true  // If sectionTitle is nil or "All Photos", include all photos
         }
         return sortPhotos(filteredPhotos)
     }

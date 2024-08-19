@@ -203,8 +203,9 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
                     displayEndDate = calendar.date(byAdding: .year, value: value + 1, to: person.dateOfBirth) ?? displayEndDate
                     displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
                 } else if components[1].starts(with: "Month") {
-                    displayStartDate = calendar.date(byAdding: .month, value: value - 1, to: person.dateOfBirth) ?? displayStartDate
-                    displayEndDate = calendar.date(byAdding: .month, value: value, to: person.dateOfBirth) ?? displayEndDate
+                    displayStartDate = calendar.date(byAdding: .month, value: value, to: person.dateOfBirth) ?? displayStartDate
+                    displayEndDate = calendar.date(byAdding: .month, value: value + 1, to: person.dateOfBirth) ?? displayEndDate
+                    displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
                 }
             }
             

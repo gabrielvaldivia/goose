@@ -127,7 +127,7 @@ struct PersonDetailView: View {
                 pages: [
                     AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
                         .ignoresSafeArea(edges: .bottom)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate))
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos"))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
