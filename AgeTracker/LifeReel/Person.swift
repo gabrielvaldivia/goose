@@ -53,13 +53,20 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         }
     }
 
-    init(name: String, dateOfBirth: Date) {
+    init(name: String, dateOfBirth: Date, birthMonthsDisplay: BirthMonthsDisplay? = nil) {
         self.id = UUID()
         self.name = name
         self.dateOfBirth = dateOfBirth
         self.photos = []
         self.syncedAlbumIdentifier = nil
-        self.birthMonthsDisplay = .none
+        
+        if let birthMonthsDisplay = birthMonthsDisplay {
+            self.birthMonthsDisplay = birthMonthsDisplay
+        } else {
+            let ageInMonths = Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
+            self.birthMonthsDisplay = ageInMonths < 24 ? .twelveMonths : .none
+        }
+        
         self.showEmptyStacks = true
         self.pregnancyTracking = Person.defaultPregnancyTracking(for: dateOfBirth)
     }

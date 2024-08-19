@@ -213,7 +213,10 @@ struct AddPersonView: View {
         isLoading = true
         print("Selected assets count: \(selectedAssets.count)")
         
-        var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth)
+        let ageInMonths = Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
+        let birthMonthsDisplay = ageInMonths < 24 ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
+        
+        var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
         
         for asset in selectedAssets {
             viewModel.addPhoto(to: &newPerson, asset: asset)
