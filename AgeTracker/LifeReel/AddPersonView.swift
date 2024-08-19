@@ -259,6 +259,7 @@ struct AddPersonView: View {
         let birthMonthsDisplay = ageInMonths < 24 ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
         
         var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
+        newPerson.isNewlyAdded = true
         
         for asset in selectedAssets {
             viewModel.addPhoto(to: &newPerson, asset: asset)

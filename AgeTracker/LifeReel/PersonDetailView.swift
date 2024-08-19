@@ -176,6 +176,13 @@ struct PersonDetailView: View {
         .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
         .onAppear {
             viewModel.setLastOpenedPerson(person)
+            if person.isNewlyAdded {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    activeSheet = .shareView
+                    person.isNewlyAdded = false
+                    viewModel.updatePerson(person)
+                }
+            }
         }
         .sheet(isPresented: $isImagePickerPresented) {
             if let section = currentSection {

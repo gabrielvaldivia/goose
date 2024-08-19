@@ -630,13 +630,13 @@ struct CustomScrubber: View {
 
     private func progressWidth(in geometry: GeometryProxy) -> CGFloat {
         let percent = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
-        return geometry.size.width * CGFloat(percent)
+        return min(max(0, geometry.size.width * CGFloat(percent)), geometry.size.width)
     }
 
     private func gestureLocation(value: CGFloat, in geometry: GeometryProxy) -> Double {
-        let percent = Double(value / geometry.size.width)
+        let percent = Double(max(0, min(value, geometry.size.width)) / geometry.size.width)
         let result = percent * (range.upperBound - range.lowerBound) + range.lowerBound
-        return (result / step).rounded() * step
+        return min(max(range.lowerBound, (result / step).rounded() * step), range.upperBound)
     }
 }
 
