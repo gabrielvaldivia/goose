@@ -22,6 +22,8 @@ struct AddPersonView: View {
     @State private var isLoading = false
     @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     @State private var showingPermissionAlert = false
+    @State private var currentStep = 1 // 1 for name and birth date, 2 for photos
+    @State private var navigateToPersonDetail = false
     
     let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 111, maximum: 111), spacing: 10)
@@ -39,103 +41,43 @@ struct AddPersonView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 30) { // Increased spacing between sections
-                    // Name section
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Name")
-                            .font(.headline)
-                        TextField("Name", text: $name)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
-                            .background(Color(UIColor.systemBackground))
-                            .cornerRadius(8)
-                    }
-                    
-                    // Date of Birth section
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Date of Birth")
-                            .font(.headline)
-                        HStack {
-                            if let dateOfBirth = dateOfBirth {
-                                Text(dateOfBirth, formatter: dateFormatter)
-                                    .foregroundColor(.primary)
-                            } else {
-                                Text("Select Date")
-                                    .foregroundColor(Color(UIColor.placeholderText))
-                            }
-                            Spacer()
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(Color(UIColor.systemBackground))
-                        .cornerRadius(8)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            showDatePickerSheet = true
-                        }
-                    }
-                    
-                    // Photos section
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Photos")
-                            .font(.headline)
-                        // Photo selection grid
-                        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
-                            ForEach(selectedAssets, id: \.localIdentifier) { asset in
-                                AssetThumbnail(asset: asset) {
-                                    removeAsset(asset)
-                                }
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            
-                            ForEach(0..<remainingPlaceholders, id: \.self) { _ in
-                                Button(action: {
-                                    requestPhotoLibraryAuthorization()
-                                }) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                                            .foregroundColor(Color(UIColor.placeholderText).opacity(0.5))
-                                            .aspectRatio(1, contentMode: .fit)
-                                            .frame(height: 111)
-                                        
-                                        Image(systemName: "plus")
-                                            .font(.system(size: 24))
-                                            .foregroundColor(Color(UIColor.placeholderText))
-                                    }
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
-                    if showAgeText, let dob = dateOfBirth, !name.isEmpty, !selectedAssets.isEmpty {
-                        let photoDate = extractDateTaken(from: imageMeta) ?? Date()
-                        Text(calculateAge(for: dob, at: photoDate, name: name))
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    
-                    Spacer(minLength: 300)
+        ScrollView {
+            VStack(alignment: .center, spacing: 30) {
+                if currentStep == 1 {
+                    nameAndBirthDateView
+                } else {
+                    photosView
                 }
-                .padding()
             }
-            .background(Color(UIColor.secondarySystemBackground))
-            .ignoresSafeArea(.keyboard)
-            .navigationTitle("Add Someone")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: Button("Save") {
-                    saveNewPerson()
+            .padding()
+        }
+        .background(Color(UIColor.secondarySystemBackground))
+        .ignoresSafeArea(.keyboard)
+        .navigationTitle(currentStep == 1 ? "Add Someone" : "")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    if currentStep == 1 {
+                        presentationMode.wrappedValue.dismiss()
+                    } else {
+                        currentStep = 1
+                    }
+                }) {
+                    Text(currentStep == 1 ? "Cancel" : "Back")
                 }
-                .disabled(selectedAssets.isEmpty || name.isEmpty || dateOfBirth == nil)
-            )
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(currentStep == 1 ? "Next" : "Save") {
+                    if currentStep == 1 {
+                        currentStep = 2
+                    } else {
+                        saveNewPerson()
+                    }
+                }
+                .disabled(currentStep == 1 ? (name.isEmpty || dateOfBirth == nil) : selectedAssets.isEmpty)
+            }
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
@@ -169,6 +111,106 @@ struct AddPersonView: View {
             }
         )
         .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
+        NavigationLink(destination: PersonDetailView(person: viewModel.bindingForPerson(viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel), isActive: $navigateToPersonDetail) {
+            EmptyView()
+        }
+    }
+    
+    private var nameAndBirthDateView: some View {
+        VStack(alignment: .leading, spacing: 30) {
+            // Name section
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Name")
+                    .font(.headline)
+                TextField("Name", text: $name)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16)
+                    .background(Color(UIColor.systemBackground))
+                    .cornerRadius(8)
+            }
+            
+            // Date of Birth section
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Date of Birth")
+                    .font(.headline)
+                HStack {
+                    if let dateOfBirth = dateOfBirth {
+                        Text(dateOfBirth, formatter: dateFormatter)
+                            .foregroundColor(.primary)
+                    } else {
+                        Text("Select Date")
+                            .foregroundColor(Color(UIColor.placeholderText))
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(8)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showDatePickerSheet = true
+                }
+            }
+        }
+    }
+    
+    private var photosView: some View {
+        VStack(spacing: 30) {
+            // Title and Subtitle
+            VStack(spacing: 10) {
+                if let dateOfBirth = dateOfBirth {
+                    let now = Date()
+                    if dateOfBirth > now {
+                        let pregnancyAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: now)
+                        Text("\(name)'s mom is \(pregnancyAge.toString()) pregnant today")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("\(name) is \(AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: Date()).toString()) today")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                Text("Add some of your favorite memories below")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.bottom, 10)
+
+            // Photo selection grid
+            LazyVGrid(columns: columns, alignment: .center, spacing: 10) {
+                ForEach(selectedAssets, id: \.localIdentifier) { asset in
+                    AssetThumbnail(asset: asset) {
+                        removeAsset(asset)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                
+                ForEach(0..<remainingPlaceholders, id: \.self) { _ in
+                    Button(action: {
+                        requestPhotoLibraryAuthorization()
+                    }) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(style: StrokeStyle(lineWidth: 2, dash: [8]))
+                                .foregroundColor(Color(UIColor.placeholderText).opacity(0.5))
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(height: 111)
+                            
+                            Image(systemName: "plus")
+                                .font(.system(size: 24))
+                                .foregroundColor(Color(UIColor.placeholderText))
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
     }
     
     private var dateFormatter: DateFormatter {
@@ -227,7 +269,13 @@ struct AddPersonView: View {
         print("New person created with \(newPerson.photos.count) photos")
         
         self.isLoading = false
-        self.presentationMode.wrappedValue.dismiss()
+        viewModel.selectedPerson = newPerson
+        viewModel.setLastOpenedPerson(newPerson)
+        
+        // Navigate to PersonDetailView
+        DispatchQueue.main.async {
+            self.navigateToPersonDetail = true
+        }
     }
     
     private func requestPhotoLibraryAuthorization() {

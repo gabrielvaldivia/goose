@@ -4,6 +4,7 @@ struct ContentView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingAddPerson = false
     @State private var navigationPath = NavigationPath()
+    @State private var selectedPerson: Person?
     
     let columns = [
         GridItem(.flexible()),
@@ -33,6 +34,15 @@ struct ContentView: View {
                         .padding()
                     }
                 }
+                NavigationLink(
+                    destination: PersonDetailView(person: viewModel.bindingForPerson(selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel),
+                    isActive: Binding(
+                        get: { selectedPerson != nil },
+                        set: { if !$0 { selectedPerson = nil } }
+                    )
+                ) {
+                    EmptyView()
+                }
             }
             .navigationTitle("People")
             .navigationBarTitleDisplayMode(.inline)
@@ -51,11 +61,11 @@ struct ContentView: View {
             .navigationDestination(for: Person.self) { person in
                 PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
             }
+            .navigationDestination(isPresented: $showingAddPerson) {
+                AddPersonView(viewModel: viewModel)
+            }
         }
         .environmentObject(viewModel)
-        .sheet(isPresented: $showingAddPerson) {
-            AddPersonView(viewModel: viewModel)
-        }
         .onAppear {
             if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
                let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
@@ -65,7 +75,7 @@ struct ContentView: View {
     }
     
     private var addPersonButton: some View {
-        Button(action: { showingAddPerson = true }) {
+        NavigationLink(destination: AddPersonView(viewModel: viewModel), isActive: $showingAddPerson) {
             VStack {
                 Image(systemName: "plus")
                     .font(.system(size: 40))

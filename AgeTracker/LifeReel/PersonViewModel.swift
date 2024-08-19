@@ -14,6 +14,7 @@ class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
     @Published var lastOpenedPersonId: UUID?
     @Published var loadingStacks: Set<String> = []
+    @Published var selectedPerson: Person?
 
     init() {
         loadPeople()
