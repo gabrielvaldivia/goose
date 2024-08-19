@@ -41,78 +41,82 @@ struct AddPersonView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .center, spacing: 30) {
-                if currentStep == 1 {
-                    nameAndBirthDateView
-                } else {
-                    photosView
-                }
-            }
-            .padding()
-        }
-        .background(Color(UIColor.secondarySystemBackground))
-        .ignoresSafeArea(.keyboard)
-        .navigationTitle(currentStep == 1 ? "Add Someone" : "")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .center, spacing: 30) {
                     if currentStep == 1 {
-                        presentationMode.wrappedValue.dismiss()
+                        nameAndBirthDateView
                     } else {
-                        currentStep = 1
-                    }
-                }) {
-                    Text(currentStep == 1 ? "Cancel" : "Back")
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(currentStep == 1 ? "Next" : "Save") {
-                    if currentStep == 1 {
-                        currentStep = 2
-                    } else {
-                        saveNewPerson()
+                        photosView
                     }
                 }
-                .disabled(currentStep == 1 ? (name.isEmpty || dateOfBirth == nil) : selectedAssets.isEmpty)
+                .padding()
             }
-        }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
-                .edgesIgnoringSafeArea(.all)
-                .presentationDetents([.large])
-        }
-        .sheet(isPresented: $showDatePickerSheet) {
-            BirthDaySheet(dateOfBirth: Binding(
-                get: { self.dateOfBirth ?? Date() },
-                set: { 
-                    self.dateOfBirth = $0
-                    self.showAgeText = true
-                }
-            ), isPresented: $showDatePickerSheet)
-                .presentationDetents([.height(300)])
-        }
-        .overlay(
-            Group {
-                if isLoading {
-                    Color.black.opacity(0.4)
-                        .edgesIgnoringSafeArea(.all)
-                    VStack {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                        Text("Saving...")
-                            .foregroundColor(.white)
-                            .padding(.top)
+            .background(Color(UIColor.secondarySystemBackground))
+            .ignoresSafeArea(.keyboard)
+            .navigationTitle(currentStep == 1 ? "Add Someone" : "")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        if currentStep == 1 {
+                            presentationMode.wrappedValue.dismiss()
+                        } else {
+                            currentStep = 1
+                        }
+                    }) {
+                        Text(currentStep == 1 ? "Cancel" : "Back")
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(currentStep == 1 ? "Next" : "Save") {
+                        if currentStep == 1 {
+                            currentStep = 2
+                        } else {
+                            saveNewPerson()
+                        }
+                    }
+                    .disabled(currentStep == 1 ? (name.isEmpty || dateOfBirth == nil) : selectedAssets.isEmpty)
+                }
             }
-        )
-        .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
-        NavigationLink(destination: PersonDetailView(person: viewModel.bindingForPerson(viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel), isActive: $navigateToPersonDetail) {
-            EmptyView()
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
+                    .edgesIgnoringSafeArea(.all)
+                    .presentationDetents([.large])
+            }
+            .sheet(isPresented: $showDatePickerSheet) {
+                BirthDaySheet(dateOfBirth: Binding(
+                    get: { self.dateOfBirth ?? Date() },
+                    set: { 
+                        self.dateOfBirth = $0
+                        self.showAgeText = true
+                    }
+                ), isPresented: $showDatePickerSheet)
+                    .presentationDetents([.height(300)])
+            }
+            .overlay(
+                Group {
+                    if isLoading {
+                        Color.black.opacity(0.4)
+                            .edgesIgnoringSafeArea(.all)
+                        VStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.5)
+                            Text("Saving...")
+                                .foregroundColor(.white)
+                                .padding(.top)
+                        }
+                    }
+                }
+            )
+            .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
+            .navigationDestination(isPresented: $navigateToPersonDetail) {
+                if let selectedPerson = viewModel.selectedPerson {
+                    PersonDetailView(person: viewModel.bindingForPerson(selectedPerson), viewModel: viewModel)
+                }
+            }
         }
     }
     

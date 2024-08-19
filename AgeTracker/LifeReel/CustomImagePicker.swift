@@ -211,7 +211,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             // Ensure the end date is at the end of the day
             displayEndDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: displayEndDate) ?? displayEndDate
             
-            print("Date range for \(sectionTitle): \(displayStartDate) to \(displayEndDate)")
+            print("Date range for \(sectionTitle): \(displayStartDate ?? Date()) to \(displayEndDate ?? Date())")
         } catch {
             print("Error setting up date range for section \(sectionTitle): \(error)")
             // Fallback to default behavior
@@ -334,7 +334,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         var assetsWithFaces: [PHAsset] = []
         
         for asset in assets {
-            autoreleasepool {
+            _ = autoreleasepool {
                 PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
                     if let cgImage = image?.cgImage {
                         let ciImage = CIImage(cgImage: cgImage)

@@ -435,7 +435,7 @@ class PersonViewModel: ObservableObject {
         options.isSynchronous = false
 
         PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
-            guard let image = image else {
+            if image == nil {
                 print("Failed to get image from asset")
                 completion(nil)
                 return

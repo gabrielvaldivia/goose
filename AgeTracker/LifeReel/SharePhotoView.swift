@@ -327,7 +327,6 @@ struct SharePhotoView: View {
 
         // Calculate text sizes
         let titleSize = titleText.size()
-        let subtitleSize = subtitleText.size()
 
         // Draw text in VStack
         titleText.draw(at: point)
@@ -352,7 +351,7 @@ struct SharePhotoView: View {
             let madeWithSize = madeWithText.size()
             let lifeReelSize = lifeReelText.size()
             
-            let watermarkWidth = max(madeWithSize.width, lifeReelSize.width)
+
             let watermarkRightEdge = baseWidth - padding
             
             madeWithText.draw(at: CGPoint(x: watermarkRightEdge - madeWithSize.width, y: point.y))

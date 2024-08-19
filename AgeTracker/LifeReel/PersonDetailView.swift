@@ -16,7 +16,7 @@ enum ActiveSheet: Identifiable, Hashable {
     case settings
     case shareView
     case sharingComingSoon
-    case customImagePicker(moment: String, dateRange: (start: Date, end: Date))
+    case customImagePicker(moment: String, _: (start: Date, end: Date))
     
     var id: Self { self }
     
@@ -28,11 +28,9 @@ enum ActiveSheet: Identifiable, Hashable {
             hasher.combine(1)
         case .sharingComingSoon:
             hasher.combine(2)
-        case .customImagePicker(let moment, let dateRange):
+        case .customImagePicker(let moment, _):
             hasher.combine(3)
             hasher.combine(moment)
-            hasher.combine(dateRange.start)
-            hasher.combine(dateRange.end)
         }
     }
     
@@ -42,8 +40,8 @@ enum ActiveSheet: Identifiable, Hashable {
              (.shareView, .shareView),
              (.sharingComingSoon, .sharingComingSoon):
             return true
-        case let (.customImagePicker(lMoment, lDateRange), .customImagePicker(rMoment, rDateRange)):
-            return lMoment == rMoment && lDateRange.start == rDateRange.start && lDateRange.end == rDateRange.end
+        case let (.customImagePicker(lMoment, _), .customImagePicker(rMoment, _)):
+            return lMoment == rMoment
         default:
             return false
         }
@@ -476,7 +474,7 @@ struct PersonDetailView: View {
             )
         case .sharingComingSoon:
             SharingComingSoonView()
-        case .customImagePicker(let moment, let dateRange):
+        case .customImagePicker(let moment, _):
             NavigationView {
                 CustomImagePicker(
                     viewModel: viewModel,

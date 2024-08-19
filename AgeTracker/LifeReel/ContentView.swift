@@ -34,15 +34,6 @@ struct ContentView: View {
                         .padding()
                     }
                 }
-                NavigationLink(
-                    destination: PersonDetailView(person: viewModel.bindingForPerson(selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel),
-                    isActive: Binding(
-                        get: { selectedPerson != nil },
-                        set: { if !$0 { selectedPerson = nil } }
-                    )
-                ) {
-                    EmptyView()
-                }
             }
             .navigationTitle("People")
             .navigationBarTitleDisplayMode(.inline)
@@ -75,7 +66,7 @@ struct ContentView: View {
     }
     
     private var addPersonButton: some View {
-        NavigationLink(destination: AddPersonView(viewModel: viewModel), isActive: $showingAddPerson) {
+        Button(action: { showingAddPerson = true }) {
             VStack {
                 Image(systemName: "plus")
                     .font(.system(size: 40))

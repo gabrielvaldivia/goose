@@ -140,10 +140,11 @@ struct StackGridView: View {
     }
     
     private func captureScreenshot() -> UIImage {
-        let window = UIApplication.shared.windows.first { $0.isKeyWindow }
-        let renderer = UIGraphicsImageRenderer(bounds: window!.bounds)
+        let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let window = scene?.windows.first { $0.isKeyWindow }
+        let renderer = UIGraphicsImageRenderer(bounds: window?.bounds ?? .zero)
         return renderer.image { ctx in
-            window?.drawHierarchy(in: window!.bounds, afterScreenUpdates: true)
+            window?.drawHierarchy(in: window?.bounds ?? .zero, afterScreenUpdates: true)
         }
     }
 }
