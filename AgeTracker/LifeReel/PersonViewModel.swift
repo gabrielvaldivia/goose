@@ -10,6 +10,10 @@ import UIKit
 import Photos
 import SwiftUI
 
+extension Notification.Name {
+    static let photosUpdated = Notification.Name("photosUpdated")
+}
+
 class PersonViewModel: ObservableObject {
     @Published var people: [Person] = []
     @Published var lastOpenedPersonId: UUID?
@@ -45,6 +49,7 @@ class PersonViewModel: ObservableObject {
                     people[index] = person
                     savePeople()
                     objectWillChange.send()
+                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
                     print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
                 } else {
                     print("Failed to find person \(person.name) in people array")
@@ -66,6 +71,7 @@ class PersonViewModel: ObservableObject {
                 people[index] = person
                 savePeople()
                 objectWillChange.send()
+                NotificationCenter.default.post(name: .photosUpdated, object: nil)
                 print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
             } else {
                 print("Failed to find person \(person.name) in people array")
@@ -342,6 +348,7 @@ class PersonViewModel: ObservableObject {
                 people[personIndex] = person
                 savePeople()
                 objectWillChange.send()
+                NotificationCenter.default.post(name: .photosUpdated, object: nil)
             }
         }
     }
@@ -450,6 +457,7 @@ class PersonViewModel: ObservableObject {
                     self.people[index] = updatedPerson
                     self.savePeople()
                     self.objectWillChange.send()
+                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
                     print("Photo added successfully. Total photos for \(updatedPerson.name): \(updatedPerson.photos.count)")
                     completion(newPhoto)
                 } else {

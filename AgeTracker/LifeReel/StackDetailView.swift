@@ -29,7 +29,7 @@ struct StackDetailView: View {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
                         AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: photosToDisplay(), forceUpdate: forceUpdate))
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -59,10 +59,7 @@ struct StackDetailView: View {
                 onPhotosAdded: { newPhotos in
                     isLoading = true
                     viewModel.objectWillChange.send()
-                    // Simulate a delay to process photos
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        isLoading = false
-                    }
+                    isLoading = false
                 }
             )
         }

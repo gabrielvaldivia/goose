@@ -347,28 +347,31 @@ struct SharedTimelineView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
-    let photos: [Photo]
     let forceUpdate: Bool
+    @State private var photoUpdateTrigger = UUID()
     
     var body: some View {
         GeometryReader { outerGeometry in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 8) {
                     ForEach(filteredPhotos()) { photo in
                         FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
                             .id(photo.id)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 80)
+                .padding(.top, 14)
+                .padding(.bottom, 60)
             }
         }
-        .id(forceUpdate)
+        .id(photoUpdateTrigger)
+        .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+            photoUpdateTrigger = UUID()
+        }
     }
     
     private func filteredPhotos() -> [Photo] {
-        let filteredPhotos = photos.filter { photo in
+        let filteredPhotos = person.photos.filter { photo in
             if person.pregnancyTracking == .none {
                 return photo.dateTaken >= person.dateOfBirth
             }
@@ -451,13 +454,18 @@ struct FilmReelItemView: View {
         if let image = photo.image {
             imageLoadingState = .loaded(Image(uiImage: image))
         } else {
-            // Implement your image loading logic here
-            // For example, you might use URLSession to download the image
-            // Once the image is loaded, update the state:
-            // imageLoadingState = .loaded(Image(uiImage: loadedImage))
-            // If loading fails:
-            // imageLoadingState = .failed
-        }
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let image = photo.image {
+                    DispatchQueue.main.async {
+                        self.imageLoadingState = .loaded(Image(uiImage: image))
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.imageLoadingState = .failed
+                    }
+                }
+            }
+        } 
     }
 }
 

@@ -127,7 +127,7 @@ struct PersonDetailView: View {
                 pages: [
                     AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
                         .ignoresSafeArea(edges: .bottom)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos, forceUpdate: forceUpdate))
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -314,6 +314,8 @@ struct PersonDetailView: View {
         dispatchGroup.notify(queue: .main) {
             self.viewModel.updatePerson(self.person)
             print("All photos have been added")
+            self.forceUpdate.toggle()
+            self.viewModel.objectWillChange.send()
         }
     }
 
