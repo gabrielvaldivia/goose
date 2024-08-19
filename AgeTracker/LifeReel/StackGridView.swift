@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct StacksGridView: View {
+struct StackGridView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?

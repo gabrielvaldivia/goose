@@ -192,14 +192,21 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             displayEndDate = range.end
             
             // Adjust start and end dates based on the section title
-            if let monthsString = sectionTitle.components(separatedBy: " ").first,
-               let months = Int(monthsString) {
-                displayStartDate = calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? displayStartDate
-                displayEndDate = calendar.date(byAdding: .month, value: 1, to: displayStartDate) ?? displayEndDate
+            let components = sectionTitle.components(separatedBy: " ")
+            if components.count == 2, let value = Int(components[0]) {
+                if sectionTitle == "Birth Year" {
+                    displayStartDate = calendar.startOfDay(for: person.dateOfBirth)
+                    displayEndDate = calendar.date(byAdding: .year, value: 1, to: person.dateOfBirth) ?? displayEndDate
+                    displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
+                } else if components[1].starts(with: "Year") {
+                    displayStartDate = calendar.date(byAdding: .year, value: value, to: person.dateOfBirth) ?? displayStartDate
+                    displayEndDate = calendar.date(byAdding: .year, value: value + 1, to: person.dateOfBirth) ?? displayEndDate
+                    displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
+                } else if components[1].starts(with: "Month") {
+                    displayStartDate = calendar.date(byAdding: .month, value: value - 1, to: person.dateOfBirth) ?? displayStartDate
+                    displayEndDate = calendar.date(byAdding: .month, value: value, to: person.dateOfBirth) ?? displayEndDate
+                }
             }
-            
-            // Adjust the end date to be one day before the next range starts
-            displayEndDate = calendar.date(byAdding: .day, value: -1, to: displayEndDate) ?? displayEndDate
             
             // Ensure the end date is at the end of the day
             displayEndDate = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: displayEndDate) ?? displayEndDate

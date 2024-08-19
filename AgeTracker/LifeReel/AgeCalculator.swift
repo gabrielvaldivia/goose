@@ -58,7 +58,7 @@ struct AgeCalculator {
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
-                return "" // Return an empty string for photos before birth when tracking is off
+                return ""
             case .trimesters:
                 let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
                 return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
@@ -74,14 +74,24 @@ struct AgeCalculator {
             return "Birth Month"
         }
         
+        // Calculate the age at the start of the year containing the photo
+        let yearStart = calendar.date(from: DateComponents(year: calendar.component(.year, from: photo.dateTaken), month: calendar.component(.month, from: person.dateOfBirth), day: calendar.component(.day, from: person.dateOfBirth)))!
+        let ageAtYearStart = calendar.dateComponents([.year], from: person.dateOfBirth, to: yearStart).year!
+        
         switch person.birthMonthsDisplay {
-        case .none, .twelveMonths:
-            return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+        case .none:
+            return "\(ageAtYearStart) Year\(ageAtYearStart == 1 ? "" : "s")"
+        case .twelveMonths:
+            if exactAge.years == 0 {
+                return "Birth Year"
+            } else {
+                return "\(ageAtYearStart) Year\(ageAtYearStart == 1 ? "" : "s")"
+            }
         case .twentyFourMonths:
             if exactAge.months < 24 {
                 return "\(exactAge.months + 1) Month\(exactAge.months == 0 ? "" : "s")"
             } else {
-                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+                return "\(ageAtYearStart) Year\(ageAtYearStart == 1 ? "" : "s")"
             }
         }
     }

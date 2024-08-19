@@ -127,7 +127,7 @@ struct PersonDetailView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(StacksGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
+                    AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
                         .ignoresSafeArea(edges: .bottom)),
                     AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, photos: person.photos, forceUpdate: forceUpdate))
                 ],

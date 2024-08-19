@@ -156,6 +156,11 @@ public struct PhotoUtils {
             let nextMonth = calendar.date(byAdding: .month, value: 1, to: start)!
             let end = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
             return (start: start, end: end)
+        case "Birth Year":
+            let start = calendar.startOfDay(for: birthDate)
+            let end = calendar.date(byAdding: .year, value: 1, to: start)!
+            let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end)!
+            return (start: start, end: adjustedEnd)
         default:
             if section.contains("Month") {
                 if let months = Int(section.components(separatedBy: " ").first ?? "") {
@@ -167,7 +172,8 @@ public struct PhotoUtils {
                 if let years = Int(section.components(separatedBy: " ").first ?? "") {
                     let start = calendar.date(byAdding: .year, value: years - 1, to: birthDate) ?? birthDate
                     let end = calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
-                    return (start: start, end: end)
+                    let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end) ?? end
+                    return (start: start, end: adjustedEnd)
                 }
             } else if section.starts(with: "Week") {
                 if let week = Int(section.components(separatedBy: " ").last ?? "") {
