@@ -52,7 +52,7 @@ struct AddPersonView: View {
                 }
                 .padding()
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(Color(UIColor.systemBackground))
             .ignoresSafeArea(.keyboard)
             .navigationTitle(currentStep == 1 ? "Add Someone" : "")
             .navigationBarTitleDisplayMode(.inline)
@@ -129,7 +129,7 @@ struct AddPersonView: View {
                 TextField("Name", text: $name)
                     .padding(.vertical, 10)
                     .padding(.horizontal, 16)
-                    .background(Color(UIColor.systemBackground))
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
                     .cornerRadius(8)
             }
             
@@ -150,7 +150,7 @@ struct AddPersonView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 16)
-                .background(Color(UIColor.systemBackground))
+                .background(Color(UIColor.secondarySystemGroupedBackground))
                 .cornerRadius(8)
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -168,7 +168,7 @@ struct AddPersonView: View {
                     let now = Date()
                     if dateOfBirth > now {
                         let pregnancyAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: now)
-                        Text("\(name)'s mom is \(pregnancyAge.toString()) pregnant today")
+                        Text("\(name)'s mom is \(pregnancyAge.toString()) today")
                             .font(.headline)
                             .fontWeight(.bold)
                             .multilineTextAlignment(.center)
