@@ -624,7 +624,7 @@ struct AspectRatio: Hashable, CustomStringConvertible {
     let description: String
     
     static let square = AspectRatio(value: 1.0, description: "Square")
-    static let portrait = AspectRatio(value: 9.0/16.0, description: "9:16")
+    static let portrait = AspectRatio(value: 9.0/16.0, description: "IG Story")
 }
 
 struct CustomScrubber: View {
