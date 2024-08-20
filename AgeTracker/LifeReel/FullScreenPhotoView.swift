@@ -35,6 +35,8 @@ struct FullScreenPhotoView: View {
     @State private var showActionSheet = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDismissing = false
+    @State private var showAgePicker = false
+    @State private var selectedAge: ExactAge
     @State private var showDatePicker = false
     @State private var selectedDate: Date
     
@@ -53,8 +55,9 @@ struct FullScreenPhotoView: View {
         self._photos = Binding(get: { photos }, set: { newValue in })
         self.onDelete = onDelete
         self.person = person
-        self._selectedDate = State(initialValue: photo.dateTaken)
+        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person, at: photo.dateTaken))
         self.viewModel = viewModel
+        self._selectedDate = State(initialValue: photo.dateTaken)
     }
     
     var body: some View {
@@ -175,7 +178,10 @@ struct FullScreenPhotoView: View {
                         currentIndex = newIndex
                         resetZoomAndPan()
                     },
-                    showDatePicker: $showDatePicker
+                    showAgePicker: $showAgePicker,
+                    selectedAge: $selectedAge,
+                    showDatePicker: $showDatePicker,
+                    selectedDate: $selectedDate
                 )
                 .opacity(1 - dismissProgress)
             }
@@ -207,9 +213,16 @@ struct FullScreenPhotoView: View {
                     }
             }
         }
+        .sheet(isPresented: $showAgePicker) {
+            AgePickerSheet(age: selectedAge, isPresented: $showAgePicker) { newAge in
+                selectedAge = newAge
+                updatePhotoAge()
+            }
+            .presentationDetents([.height(300)])
+        }
         .sheet(isPresented: $showDatePicker) {
-            PhotoDatePickerSheet(date: $selectedDate, isPresented: $showDatePicker) {
-                updatePhotoDate()
+            DatePickerSheet(date: $selectedDate, isPresented: $showDatePicker) { newDate in
+                updatePhotoDate(newDate)
             }
             .presentationDetents([.height(300)])
         }
@@ -307,10 +320,21 @@ struct FullScreenPhotoView: View {
         }
     }
 
-    private func updatePhotoDate() {
-        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: selectedDate)
+    private func updatePhotoAge() {
+        let calendar = Calendar.current
+        let newDate = calendar.date(byAdding: .year, value: selectedAge.years, to: person.dateOfBirth)!
+        let newDate2 = calendar.date(byAdding: .month, value: selectedAge.months, to: newDate)!
+        let finalDate = calendar.date(byAdding: .day, value: selectedAge.days, to: newDate2)!
+        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: finalDate)
         currentIndex = newIndex
         photos = person.photos // Update the photos array to reflect the new order
+    }
+
+    private func updatePhotoDate(_ newDate: Date) {
+        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: newDate)
+        currentIndex = newIndex
+        photos = person.photos // Update the photos array to reflect the new order
+        selectedDate = newDate
     }
 }
 
@@ -325,7 +349,10 @@ private struct ControlsOverlay: View {
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
+    @Binding var showAgePicker: Bool
+    @Binding var selectedAge: ExactAge
     @Binding var showDatePicker: Bool
+    @Binding var selectedDate: Date
     
     var body: some View {
         VStack { 
@@ -364,10 +391,14 @@ private struct ControlsOverlay: View {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
                     VStack(spacing: 4) {
-                        Text(AgeCalculator.calculate(for: person, at: photo.dateTaken).toString())
+                        Text(selectedAge.toString())
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
-                        Text(formatDate(photo.dateTaken))
+                            .onTapGesture {
+                                selectedAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                                showAgePicker = true
+                            }
+                        Text(formatDate(selectedDate))
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
                             .onTapGesture {
@@ -580,6 +611,108 @@ struct PillButton: View {
         }
 
         func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+    }
+}
+
+struct AgePickerSheet: View {
+    @State private var years: Int
+    @State private var months: Int
+    @State private var days: Int
+    @Binding var isPresented: Bool
+    var onSave: (ExactAge) -> Void
+    
+    init(age: ExactAge, isPresented: Binding<Bool>, onSave: @escaping (ExactAge) -> Void) {
+        self._years = State(initialValue: age.years)
+        self._months = State(initialValue: age.months)
+        self._days = State(initialValue: age.days)
+        self._isPresented = isPresented
+        self.onSave = onSave
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                HStack {
+                    VStack {
+                        Text("Years")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        Picker("Years", selection: $years) {
+                            ForEach(0...100, id: \.self) { year in
+                                Text("\(year)").tag(year)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 100, height: 150)
+                        .clipped()
+                    }
+                    
+                    VStack {
+                        Text("Months")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        Picker("Months", selection: $months) {
+                            ForEach(0...11, id: \.self) { month in
+                                Text("\(month)").tag(month)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 100, height: 150)
+                        .clipped()
+                    }
+                    
+                    VStack {
+                        Text("Days")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        Picker("Days", selection: $days) {
+                            ForEach(0...30, id: \.self) { day in
+                                Text("\(day)").tag(day)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 100, height: 150)
+                        .clipped()
+                    }
+                }
+            }
+            .navigationBarItems(
+                leading: Button("Cancel") { isPresented = false },
+                trailing: Button("Save") {
+                    let newAge = ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+                    onSave(newAge)
+                    isPresented = false
+                }
+            )
+            .navigationBarTitle("Change Age", displayMode: .inline)
+        }
+    }
+}
+
+struct DatePickerSheet: View {
+    @Binding var date: Date
+    @Binding var isPresented: Bool
+    var onSave: (Date) -> Void
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                DatePicker("Select Date", selection: $date, displayedComponents: [.date])
+                    .datePickerStyle(WheelDatePickerStyle())
+                    .labelsHidden()
+            }
+            .navigationBarItems(
+                leading: Button("Cancel") { isPresented = false },
+                trailing: Button("Save") {
+                    onSave(date)
+                    isPresented = false
+                }
+            )
+            .navigationBarTitle("Change Date", displayMode: .inline)
+        }
     }
 }
 

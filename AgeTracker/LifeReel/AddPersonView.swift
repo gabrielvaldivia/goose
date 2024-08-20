@@ -52,7 +52,7 @@ struct AddPersonView: View {
                 }
                 .padding()
             }
-            .background(Color(UIColor.systemBackground))
+            .background(Color(UIColor.systemGroupedBackground))
             .ignoresSafeArea(.keyboard)
             .navigationTitle(currentStep == 1 ? "Add Someone" : "")
             .navigationBarTitleDisplayMode(.inline)
