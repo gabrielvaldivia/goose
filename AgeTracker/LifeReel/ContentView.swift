@@ -52,8 +52,8 @@ struct ContentView: View {
             .navigationDestination(for: Person.self) { person in
                 PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
             }
-            .navigationDestination(isPresented: $showingAddPerson) {
-                AddPersonView(viewModel: viewModel)
+            .sheet(isPresented: $showingAddPerson) {
+                AddPersonView(viewModel: viewModel, isPresented: $showingAddPerson)
             }
         }
         .environmentObject(viewModel)

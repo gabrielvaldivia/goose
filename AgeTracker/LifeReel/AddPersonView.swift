@@ -11,6 +11,7 @@ import PhotosUI
 
 struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
+    @Binding var isPresented: Bool
     @State private var name = ""
     @State private var dateOfBirth: Date?
     @State private var selectedAssets: [PHAsset] = []
@@ -18,7 +19,6 @@ struct AddPersonView: View {
     @State private var imageMeta: [String: Any]?
     @State private var showDatePickerSheet = false
     @State private var showAgeText = false
-    @Environment(\.presentationMode) var presentationMode
     @State private var isLoading = false
     @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     @State private var showingPermissionAlert = false
@@ -41,7 +41,7 @@ struct AddPersonView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ScrollView {
                 VStack(alignment: .center, spacing: 30) {
                     if currentStep == 1 {
@@ -61,7 +61,7 @@ struct AddPersonView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         if currentStep == 1 {
-                            presentationMode.wrappedValue.dismiss()
+                            isPresented = false
                         } else {
                             currentStep = 1
                         }
@@ -80,44 +80,39 @@ struct AddPersonView: View {
                     .disabled(currentStep == 1 ? (name.isEmpty || dateOfBirth == nil) : selectedAssets.isEmpty)
                 }
             }
-            .sheet(isPresented: $showImagePicker) {
-                ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
-                    .edgesIgnoringSafeArea(.all)
-                    .presentationDetents([.large])
-            }
-            .sheet(isPresented: $showDatePickerSheet) {
-                BirthDaySheet(dateOfBirth: Binding(
-                    get: { self.dateOfBirth ?? Date() },
-                    set: { 
-                        self.dateOfBirth = $0
-                        self.showAgeText = true
-                    }
-                ), isPresented: $showDatePickerSheet)
-                    .presentationDetents([.height(300)])
-            }
-            .overlay(
-                Group {
-                    if isLoading {
-                        Color.black.opacity(0.4)
-                            .edgesIgnoringSafeArea(.all)
-                        VStack {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(1.5)
-                            Text("Saving...")
-                                .foregroundColor(.white)
-                                .padding(.top)
-                        }
-                    }
-                }
-            )
-            .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
-            .navigationDestination(isPresented: $navigateToPersonDetail) {
-                if let selectedPerson = viewModel.selectedPerson {
-                    PersonDetailView(person: viewModel.bindingForPerson(selectedPerson), viewModel: viewModel)
-                }
-            }
         }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
+                .edgesIgnoringSafeArea(.all)
+                .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showDatePickerSheet) {
+            BirthDaySheet(dateOfBirth: Binding(
+                get: { self.dateOfBirth ?? Date() },
+                set: { 
+                    self.dateOfBirth = $0
+                    self.showAgeText = true
+                }
+            ), isPresented: $showDatePickerSheet)
+                .presentationDetents([.height(300)])
+        }
+        .overlay(
+            Group {
+                if isLoading {
+                    Color.black.opacity(0.4)
+                        .edgesIgnoringSafeArea(.all)
+                    VStack {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                        Text("Saving...")
+                            .foregroundColor(.white)
+                            .padding(.top)
+                    }
+                }
+            }
+        )
+        .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
     }
     
     private var nameAndBirthDateView: some View {
