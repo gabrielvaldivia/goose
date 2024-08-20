@@ -30,6 +30,9 @@
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
 		40F651542C6B0402003B9830 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
+		40FC82042C74F28900F2B305 /* Whispers.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82032C74F28900F2B305 /* Whispers.mp3 */; };
+		40FC82062C74F28E00F2B305 /* Sunshine.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82052C74F28E00F2B305 /* Sunshine.mp3 */; };
+		40FC82082C7501F800F2B305 /* Echoes.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82072C7501F800F2B305 /* Echoes.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +80,9 @@
 		4062061C2C6A862A000DE3C5 /* StacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StacksView.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
+		40FC82032C74F28900F2B305 /* Whispers.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Whispers.mp3; sourceTree = "<group>"; };
+		40FC82052C74F28E00F2B305 /* Sunshine.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Sunshine.mp3; sourceTree = "<group>"; };
+		40FC82072C7501F800F2B305 /* Echoes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Echoes.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +141,9 @@
 				40C00B572C61691400C1B076 /* ActivityViewController.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
+				40FC82052C74F28E00F2B305 /* Sunshine.mp3 */,
+				40FC82072C7501F800F2B305 /* Echoes.mp3 */,
+				40FC82032C74F28900F2B305 /* Whispers.mp3 */,
 				402EF17A2C6EAB2000156F55 /* StackGridView.swift */,
 				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
 				4015B75C2C5C569F001FA4E4 /* PersonDetailView.swift */,
@@ -283,6 +292,9 @@
 			files = (
 				4015B7342C5C5628001FA4E4 /* Preview Assets.xcassets in Resources */,
 				4015B7312C5C5628001FA4E4 /* Assets.xcassets in Resources */,
+				40FC82042C74F28900F2B305 /* Whispers.mp3 in Resources */,
+				40FC82062C74F28E00F2B305 /* Sunshine.mp3 in Resources */,
+				40FC82082C7501F800F2B305 /* Echoes.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

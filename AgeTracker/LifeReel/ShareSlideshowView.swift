@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Photos
 import Vision
+import AVFoundation
 
 enum SlideshowRange: Hashable, CaseIterable {
     case allPhotos
@@ -102,7 +103,6 @@ struct ShareSlideshowView: View {
     
     @State private var currentFilteredPhotoIndex = 0
     @State private var aspectRatio: AspectRatio = .portrait
-    @State private var isMusicSelectionPresented = false
     @State private var showAppIcon: Bool = true
     @State private var titleOption: TitleOption = .name
     @State private var subtitleOption: TitleOption = .age
@@ -113,6 +113,9 @@ struct ShareSlideshowView: View {
     @State private var imageDuration: Double = 3.0 // Actual duration, affected by speed
     @State private var effectOption: EffectOption = .kenBurns
     
+    @State private var audioPlayer: AVAudioPlayer?
+    @State private var selectedMusic: String? = "Whispers" // Set default to "Whispers"
+    
     init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
         self.person = person
@@ -120,6 +123,12 @@ struct ShareSlideshowView: View {
         
         // Subtitle option always defaults to age
         _subtitleOption = State(initialValue: .age)
+
+        // Initialize selectedMusic with "Whispers"
+        _selectedMusic = State(initialValue: "Whispers")
+        
+        // Ensure isPlaying is true by default
+        _isPlaying = State(initialValue: true)
     }
     
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -163,8 +172,8 @@ struct ShareSlideshowView: View {
             handleIndexChange(oldValue: oldValue, newValue: newValue)
         }
         .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
-        .sheet(isPresented: $isMusicSelectionPresented) {
-            MusicSelectionView()
+        .onDisappear {
+            stopAudio()
         }
     }
     
@@ -264,6 +273,29 @@ struct ShareSlideshowView: View {
                         selection: $effectOption
                     )
                     .frame(width: 80)
+
+                    // Music Control
+                    SimplifiedCustomizationButton(
+                        icon: "music.note",
+                        title: "Music",
+                        options: ["None"] + availableMusic,
+                        selection: Binding(
+                            get: { self.selectedMusic ?? "None" },
+                            set: { newValue in
+                                self.stopAudio() // Stop current audio
+                                if newValue == "None" {
+                                    self.selectedMusic = nil
+                                } else {
+                                    self.selectedMusic = newValue
+                                    self.setupAudioPlayer()
+                                    if self.isPlaying {
+                                        self.audioPlayer?.play()
+                                    }
+                                }
+                            }
+                        )
+                    )
+                    .frame(width: 80)
                     
                     // Speed
                     SimplifiedCustomizationButton(
@@ -293,7 +325,7 @@ struct ShareSlideshowView: View {
                     
                     // Watermark
                     Button(action: { showAppIcon.toggle() }) {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 6) {
                             Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
                                 .font(.system(size: 24))
                                 .frame(height: 28)
@@ -303,6 +335,7 @@ struct ShareSlideshowView: View {
                         .frame(width: 80)
                     }
                     .foregroundColor(.primary)
+
                 }
                 .padding(.horizontal, 15)
                 .padding(.vertical, 10)
@@ -312,16 +345,24 @@ struct ShareSlideshowView: View {
         .background(Color(UIColor.secondarySystemBackground))
     }
 
+    private let availableMusic = ["Echoes", "Sunshine", "Whispers"]
+
     private func onAppear() {
         loadImagesAround(index: currentFilteredPhotoIndex)
+        setupAudioPlayer()
         startTimer()
+        if isPlaying {
+            audioPlayer?.play()
+        }
     }
 
     private func handlePlayingChange(oldValue: Bool, newValue: Bool) {
         if newValue {
             startTimer()
+            audioPlayer?.play()
         } else {
             stopTimer()
+            audioPlayer?.pause()
         }
     }
 
@@ -449,6 +490,28 @@ struct ShareSlideshowView: View {
         }
         return photos
     }
+
+    private func setupAudioPlayer() {
+        guard let musicFileName = selectedMusic else { return }
+        
+        guard let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3") else {
+            print("Unable to find \(musicFileName).mp3 in bundle")
+            return
+        }
+        
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+            audioPlayer?.numberOfLoops = -1 // Loop indefinitely
+            audioPlayer?.prepareToPlay()
+        } catch {
+            print("Error setting up audio player: \(error.localizedDescription)")
+        }
+    }
+    
+    private func stopAudio() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+    }
 }
 
 // LazyImage
@@ -516,10 +579,10 @@ struct LazyImage: View {
                         if showAppIcon {
                             VStack(alignment: .trailing) {
                                 Text("Made with")
-                                    .font(.system(size: geometry.size.width * 0.03))
+                                    .font(.system(size: geometry.size.width * 0.04))
                                     .foregroundColor(.white.opacity(0.7))
                                 
-                                Text("Life Reel")
+                                Text("LifeReel.app")
                                     .font(.system(size: geometry.size.width * 0.05, weight: .bold))
                                     .foregroundColor(.white)
                             }
@@ -601,20 +664,6 @@ struct PlayButton: View {
         .frame(width: 40, height: 40)
         .background(Color.clear)
         .clipShape(Circle())
-    }
-}
-
-struct MusicSelectionView: View {
-    @Environment(\.presentationMode) var presentationMode
-
-    var body: some View {
-        NavigationView {
-            Text("Music Selection Coming Soon")
-                .navigationTitle("Select Music")
-                .navigationBarItems(trailing: Button("Done") {
-                    presentationMode.wrappedValue.dismiss()
-                })
-        }
     }
 }
 
