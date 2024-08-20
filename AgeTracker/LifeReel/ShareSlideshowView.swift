@@ -108,6 +108,10 @@ struct ShareSlideshowView: View {
     @State private var subtitleOption: TitleOption = .age
     @State private var speedOptions = [1.0, 2.0, 3.0]
     
+    @State private var currentImageId = UUID()
+    @State private var baseImageDuration: Double = 3.0 // Base duration for each image
+    @State private var imageDuration: Double = 3.0 // Actual duration, affected by speed
+
     init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
         self.person = person
@@ -135,7 +139,7 @@ struct ShareSlideshowView: View {
                 emptyStateView
             } else {
                 photoView
-                playbackControls
+                // playbackControls // Commented out
                 bottomControls
             }
         }
@@ -179,19 +183,34 @@ struct ShareSlideshowView: View {
     private var photoView: some View {
         VStack {
             Spacer()
-            if !photos.isEmpty {
+            if !filteredPhotos.isEmpty {
                 let safeIndex = min(currentFilteredPhotoIndex, filteredPhotos.count - 1)
                 if safeIndex >= 0 && safeIndex < filteredPhotos.count {
-                    LazyImage(
-                        photo: filteredPhotos[safeIndex],
-                        loadedImage: loadedImages[filteredPhotos[safeIndex].id.uuidString] ?? UIImage(),
-                        aspectRatio: aspectRatio.value,
-                        showAppIcon: showAppIcon,
-                        titleText: getTitleText(for: filteredPhotos[safeIndex]),
-                        subtitleText: getSubtitleText(for: filteredPhotos[safeIndex])
-                    )
+                    ZStack {
+                        LazyImage(
+                            photo: filteredPhotos[safeIndex],
+                            loadedImage: loadedImages[filteredPhotos[safeIndex].id.uuidString] ?? UIImage(),
+                            aspectRatio: aspectRatio.value,
+                            showAppIcon: showAppIcon,
+                            titleText: getTitleText(for: filteredPhotos[safeIndex]),
+                            subtitleText: getSubtitleText(for: filteredPhotos[safeIndex]),
+                            duration: imageDuration,
+                            isPlaying: isPlaying // Pass isPlaying state
+                        )
+                        .id(currentImageId)
+                        .transition(.opacity)
+                        
+                        if !isPlaying {
+                            Image(systemName: "pause.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                    }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
+                    .onTapGesture {
+                        isPlaying.toggle()
+                    }
                 } else {
                     Text("No photos available")
                         .foregroundColor(.secondary)
@@ -204,32 +223,8 @@ struct ShareSlideshowView: View {
         }
     }
 
-    private var playbackControls: some View {
-        Group {
-            if filteredPhotos.count > 1 {
-                HStack(spacing: 20) {
-                    PlayButton(isPlaying: $isPlaying)
-                        .frame(width: 40, height: 40)
-                    
-                    CustomScrubber(
-                        value: $scrubberPosition,
-                        range: 0...Double(filteredPhotos.count - 1),
-                        step: 1,
-                        onEditingChanged: { editing in
-                            if !editing {
-                                currentFilteredPhotoIndex = Int(scrubberPosition.rounded())
-                                loadImagesAround(index: currentFilteredPhotoIndex)
-                            }
-                        }
-                    )
-                    .frame(height: 40)
-                    
-                    Spacer(minLength: 20) // Add extra space to the right
-                }
-                .padding(.horizontal, 20)
-            }
-        }
-    }
+    // Comment out or remove the entire playbackControls computed property
+    // private var playbackControls: some View { ... }
 
     private var bottomControls: some View {
         VStack(spacing: 20) {
@@ -266,6 +261,7 @@ struct ShareSlideshowView: View {
                         set: { newValue in
                             if let speed = Double(newValue.dropLast()) {
                                 self.playbackSpeed = speed
+                                self.handleSpeedChange(oldValue: self.playbackSpeed, newValue: speed)
                             }
                         }
                     )
@@ -304,6 +300,7 @@ struct ShareSlideshowView: View {
     }
 
     private func handleSpeedChange(oldValue: Double, newValue: Double) {
+        imageDuration = baseImageDuration / newValue
         if isPlaying {
             stopTimer()
             startTimer()
@@ -314,6 +311,7 @@ struct ShareSlideshowView: View {
         if !isPlaying {
             scrubberPosition = Double(newValue)
         }
+        currentImageId = UUID()
     }
 
     private func comingSoonAlert() -> some View {
@@ -377,18 +375,19 @@ struct ShareSlideshowView: View {
     // Timer Methods
     private func startTimer() {
         guard filteredPhotos.count > 1 else { return }
-        let interval = 0.016
+        let interval = 0.016 // Approximately 60 FPS
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            withAnimation(.linear(duration: interval)) {
-                self.scrubberPosition += interval * self.playbackSpeed
-                if self.scrubberPosition >= Double(self.filteredPhotos.count) {
-                    self.scrubberPosition = 0
-                }
-                let newPhotoIndex = Int(self.scrubberPosition) % max(1, self.filteredPhotos.count)
-                if newPhotoIndex != self.currentFilteredPhotoIndex {
+            self.scrubberPosition += interval / self.imageDuration
+            if self.scrubberPosition >= Double(self.filteredPhotos.count) {
+                self.scrubberPosition = 0
+            }
+            let newPhotoIndex = Int(self.scrubberPosition) % max(1, self.filteredPhotos.count)
+            if newPhotoIndex != self.currentFilteredPhotoIndex {
+                withAnimation(.easeInOut(duration: self.imageDuration * 0.5)) {
                     self.currentFilteredPhotoIndex = newPhotoIndex
-                    self.loadImagesAround(index: self.currentFilteredPhotoIndex)
+                    self.currentImageId = UUID()
                 }
+                self.loadImagesAround(index: self.currentFilteredPhotoIndex)
             }
         }
     }
@@ -404,7 +403,7 @@ struct ShareSlideshowView: View {
     }
 
     private var cancelButton: some View {
-        Button("Cancel") {
+        Button("Close") {
             presentationMode.wrappedValue.dismiss()
         }
     }
@@ -434,8 +433,12 @@ struct LazyImage: View {
     let showAppIcon: Bool
     let titleText: String
     let subtitleText: String
+    let duration: Double
+    let isPlaying: Bool
 
-    @State private var faceRect: CGRect?
+    @State private var opacity: Double = 0
+    @State private var scale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
 
     var body: some View {
         GeometryReader { geometry in
@@ -445,15 +448,9 @@ struct LazyImage: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .clipShape(Rectangle())
-                        .overlay(
-                            GeometryReader { imageGeometry in
-                                Color.clear.onAppear {
-                                    self.detectFace(in: image, size: imageGeometry.size)
-                                }
-                            }
-                        )
-                        .position(faceAwarePosition(in: geometry))
+                        .scaleEffect(scale)
+                        .offset(offset)
+                        .clipped()
                 } else {
                     ProgressView()
                 }
@@ -509,43 +506,49 @@ struct LazyImage: View {
             .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
             .background(Color.black.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 20))
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeIn(duration: 0.5)) {
+                    self.opacity = 1
+                }
+                self.startKenBurnsEffect()
+            }
+            .onChange(of: isPlaying) { oldValue, newValue in
+                if newValue {
+                    self.startKenBurnsEffect()
+                } else {
+                    self.stopKenBurnsEffect()
+                }
+            }
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
-    }
-
-    private func detectFace(in image: UIImage, size: CGSize) {
-        guard let ciImage = CIImage(image: image) else { return }
-
-        let context = CIContext()
-        let options = [CIDetectorAccuracy: CIDetectorAccuracyHigh]
-        let faceDetector = CIDetector(ofType: CIDetectorTypeFace, context: context, options: options)
-
-        let faces = faceDetector?.features(in: ciImage, options: [CIDetectorSmile: true, CIDetectorEyeBlink: true])
-
-        if let face = faces?.first as? CIFaceFeature {
-            let faceRect = face.bounds
-            let scaledRect = CGRect(
-                x: faceRect.origin.x / ciImage.extent.width * size.width,
-                y: (1 - (faceRect.origin.y + faceRect.height) / ciImage.extent.height) * size.height,
-                width: faceRect.width / ciImage.extent.width * size.width,
-                height: faceRect.height / ciImage.extent.height * size.height
-            )
-            self.faceRect = scaledRect
+        .onChange(of: duration) { oldValue, newValue in
+            self.startKenBurnsEffect()
         }
     }
 
-    private func faceAwarePosition(in geometry: GeometryProxy) -> CGPoint {
-        guard let faceRect = faceRect else {
-            return CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+    private func startKenBurnsEffect() {
+        let scales = [1.02, 1.03, 1.04]
+        let offsets: [CGSize] = [
+            CGSize(width: 5, height: 5),
+            CGSize(width: -5, height: -5),
+            CGSize(width: 0, height: 5),
+            CGSize(width: 5, height: 0),
+            CGSize(width: -5, height: 0),
+            CGSize(width: 0, height: -5)
+        ]
+        
+        withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
+            self.scale = scales.randomElement() ?? 1.02
+            self.offset = offsets.randomElement() ?? .zero
         }
+    }
 
-        let faceCenter = CGPoint(x: faceRect.midX, y: faceRect.midY)
-        let imageCenter = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
-
-        let xOffset = min(max(faceCenter.x - imageCenter.x, -geometry.size.width / 4), geometry.size.width / 4)
-        let yOffset = min(max(faceCenter.y - imageCenter.y, -geometry.size.height / 4), geometry.size.height / 4)
-
-        return CGPoint(x: imageCenter.x - xOffset, y: imageCenter.y - yOffset)
+    private func stopKenBurnsEffect() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            self.scale = 1.0
+            self.offset = .zero
+        }
     }
 }
 
