@@ -33,6 +33,7 @@
 		40FC82042C74F28900F2B305 /* Whispers.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82032C74F28900F2B305 /* Whispers.mp3 */; };
 		40FC82062C74F28E00F2B305 /* Sunshine.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82052C74F28E00F2B305 /* Sunshine.mp3 */; };
 		40FC82082C7501F800F2B305 /* Echoes.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82072C7501F800F2B305 /* Echoes.mp3 */; };
+		40FC820A2C75070E00F2B305 /* Serenity.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 40FC82092C75070E00F2B305 /* Serenity.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +84,7 @@
 		40FC82032C74F28900F2B305 /* Whispers.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Whispers.mp3; sourceTree = "<group>"; };
 		40FC82052C74F28E00F2B305 /* Sunshine.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Sunshine.mp3; sourceTree = "<group>"; };
 		40FC82072C7501F800F2B305 /* Echoes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Echoes.mp3; sourceTree = "<group>"; };
+		40FC82092C75070E00F2B305 /* Serenity.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Serenity.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +144,7 @@
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				40FC82052C74F28E00F2B305 /* Sunshine.mp3 */,
+				40FC82092C75070E00F2B305 /* Serenity.mp3 */,
 				40FC82072C7501F800F2B305 /* Echoes.mp3 */,
 				40FC82032C74F28900F2B305 /* Whispers.mp3 */,
 				402EF17A2C6EAB2000156F55 /* StackGridView.swift */,
@@ -295,6 +298,7 @@
 				40FC82042C74F28900F2B305 /* Whispers.mp3 in Resources */,
 				40FC82062C74F28E00F2B305 /* Sunshine.mp3 in Resources */,
 				40FC82082C7501F800F2B305 /* Echoes.mp3 in Resources */,
+				40FC820A2C75070E00F2B305 /* Serenity.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

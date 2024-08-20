@@ -114,7 +114,9 @@ struct ShareSlideshowView: View {
     @State private var effectOption: EffectOption = .kenBurns
     
     @State private var audioPlayer: AVAudioPlayer?
-    @State private var selectedMusic: String? = "Whispers" // Set default to "Whispers"
+    @State private var selectedMusic: String?
+    
+    private let availableMusic = ["Serenity", "Echoes", "Sunshine", "Whispers"]
     
     init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
@@ -123,9 +125,9 @@ struct ShareSlideshowView: View {
         
         // Subtitle option always defaults to age
         _subtitleOption = State(initialValue: .age)
-
-        // Initialize selectedMusic with "Whispers"
-        _selectedMusic = State(initialValue: "Whispers")
+        
+        // Randomly select a song
+        _selectedMusic = State(initialValue: availableMusic.randomElement())
         
         // Ensure isPlaying is true by default
         _isPlaying = State(initialValue: true)
@@ -344,8 +346,6 @@ struct ShareSlideshowView: View {
         .frame(height: 100)
         .background(Color(UIColor.secondarySystemBackground))
     }
-
-    private let availableMusic = ["Echoes", "Sunshine", "Whispers"]
 
     private func onAppear() {
         loadImagesAround(index: currentFilteredPhotoIndex)
