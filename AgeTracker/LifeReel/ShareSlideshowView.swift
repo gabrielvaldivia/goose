@@ -111,7 +111,8 @@ struct ShareSlideshowView: View {
     @State private var currentImageId = UUID()
     @State private var baseImageDuration: Double = 3.0 // Base duration for each image
     @State private var imageDuration: Double = 3.0 // Actual duration, affected by speed
-
+    @State private var effectOption: EffectOption = .kenBurns
+    
     init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
         self.person = person
@@ -130,6 +131,13 @@ struct ShareSlideshowView: View {
         var description: String { self.rawValue }
     }
     
+    enum EffectOption: String, CaseIterable, CustomStringConvertible {
+        case kenBurns = "Ken Burns"
+        case none = "None"
+
+        var description: String { self.rawValue }
+    }
+    
     // Body
     var body: some View {   
         VStack(alignment: .center, spacing: 10) {
@@ -139,7 +147,6 @@ struct ShareSlideshowView: View {
                 emptyStateView
             } else {
                 photoView
-                // playbackControls // Commented out
                 bottomControls
             }
         }
@@ -195,10 +202,11 @@ struct ShareSlideshowView: View {
                             titleText: getTitleText(for: filteredPhotos[safeIndex]),
                             subtitleText: getSubtitleText(for: filteredPhotos[safeIndex]),
                             duration: imageDuration,
-                            isPlaying: isPlaying // Pass isPlaying state
+                            isPlaying: isPlaying,
+                            effectOption: effectOption
                         )
                         .id(currentImageId)
-                        .transition(.opacity)
+                        .transition(effectOption == .none ? .identity : .opacity)
                         
                         if !isPlaying {
                             Image(systemName: "pause.circle.fill")
@@ -223,66 +231,84 @@ struct ShareSlideshowView: View {
         }
     }
 
-    // Comment out or remove the entire playbackControls computed property
-    // private var playbackControls: some View { ... }
-
     private var bottomControls: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             Divider()
             
-            HStack(spacing: 20) {
-                SimplifiedCustomizationButton(
-                    icon: "textformat",
-                    title: "Title",
-                    options: TitleOption.allCases,
-                    selection: $titleOption
-                )
-                
-                SimplifiedCustomizationButton(
-                    icon: "text.alignleft",
-                    title: "Subtitle",
-                    options: TitleOption.allCases,
-                    selection: $subtitleOption
-                )
-                
-                SimplifiedCustomizationButton(
-                    icon: "aspectratio",
-                    title: "Aspect Ratio",
-                    options: [AspectRatio.square, AspectRatio.portrait],
-                    selection: $aspectRatio
-                )
-                
-                SimplifiedCustomizationButton(
-                    icon: "speedometer",
-                    title: "Speed",
-                    options: speedOptions.map { "\(Int($0))x" },
-                    selection: Binding(
-                        get: { "\(Int(self.playbackSpeed))x" },
-                        set: { newValue in
-                            if let speed = Double(newValue.dropLast()) {
-                                self.playbackSpeed = speed
-                                self.handleSpeedChange(oldValue: self.playbackSpeed, newValue: speed)
-                            }
-                        }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    
+                    // Title
+                    SimplifiedCustomizationButton(
+                        icon: "textformat",
+                        title: "Title",
+                        options: TitleOption.allCases,
+                        selection: $titleOption
                     )
-                )
-                
-                Button(action: { showAppIcon.toggle() }) {
-                    VStack(spacing: 8) {
-                        Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
-                            .font(.system(size: 24))
-                            .frame(height: 24)
-                        Text("Watermark")
-                            .font(.caption)
+                    .frame(width: 80)
+                    
+                    // Subtitle
+                    SimplifiedCustomizationButton(
+                        icon: "text.alignleft",
+                        title: "Subtitle",
+                        options: TitleOption.allCases,
+                        selection: $subtitleOption
+                    )
+                    .frame(width: 80)
+
+                    // Effect
+                    SimplifiedCustomizationButton(
+                        icon: "wand.and.stars",
+                        title: "Effect",
+                        options: EffectOption.allCases,
+                        selection: $effectOption
+                    )
+                    .frame(width: 80)
+                    
+                    // Speed
+                    SimplifiedCustomizationButton(
+                        icon: "speedometer",
+                        title: "Speed",
+                        options: speedOptions.map { "\(Int($0))x" },
+                        selection: Binding(
+                            get: { "\(Int(self.playbackSpeed))x" },
+                            set: { newValue in
+                                if let speed = Double(newValue.dropLast()) {
+                                    self.playbackSpeed = speed
+                                    self.handleSpeedChange(oldValue: self.playbackSpeed, newValue: speed)
+                                }
+                            }
+                        )
+                    )
+                    .frame(width: 80)
+
+                    // Aspect Ratio
+                    SimplifiedCustomizationButton(
+                        icon: "aspectratio",
+                        title: "Aspect Ratio",
+                        options: [AspectRatio.square, AspectRatio.portrait],
+                        selection: $aspectRatio
+                    )
+                    .frame(width: 80)
+                    
+                    // Watermark
+                    Button(action: { showAppIcon.toggle() }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
+                                .font(.system(size: 20))
+                                .frame(height: 28)
+                            Text("Watermark")
+                                .font(.caption)
+                        }
+                        .frame(width: 80)
                     }
-                    .frame(width: 70)
+                    .foregroundColor(.primary)
                 }
-                .foregroundColor(.primary)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 10)
         }
-        .padding(.vertical, 10)
-        .frame(height: 80)
+        .frame(height: 100)
         .background(Color(UIColor.secondarySystemBackground))
     }
 
@@ -383,7 +409,7 @@ struct ShareSlideshowView: View {
             }
             let newPhotoIndex = Int(self.scrubberPosition) % max(1, self.filteredPhotos.count)
             if newPhotoIndex != self.currentFilteredPhotoIndex {
-                withAnimation(.easeInOut(duration: self.imageDuration * 0.5)) {
+                withAnimation(self.effectOption == .none ? .none : .easeInOut(duration: self.imageDuration * 0.5)) {
                     self.currentFilteredPhotoIndex = newPhotoIndex
                     self.currentImageId = UUID()
                 }
@@ -435,6 +461,7 @@ struct LazyImage: View {
     let subtitleText: String
     let duration: Double
     let isPlaying: Bool
+    let effectOption: ShareSlideshowView.EffectOption
 
     @State private var opacity: Double = 0
     @State private var scale: CGFloat = 1.0
@@ -448,8 +475,8 @@ struct LazyImage: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .scaleEffect(scale)
-                        .offset(offset)
+                        .scaleEffect(effectOption == .kenBurns ? scale : 1.0)
+                        .offset(effectOption == .kenBurns ? offset : .zero)
                         .clipped()
                 } else {
                     ProgressView()
@@ -506,15 +533,26 @@ struct LazyImage: View {
             .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
             .background(Color.black.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 20))
-            .opacity(opacity)
+            .opacity(effectOption == .none ? 1 : opacity)
             .onAppear {
-                withAnimation(.easeIn(duration: 0.5)) {
+                if effectOption == .kenBurns {
+                    withAnimation(.easeIn(duration: 0.5)) {
+                        self.opacity = 1
+                    }
+                    self.startKenBurnsEffect()
+                } else {
                     self.opacity = 1
                 }
-                self.startKenBurnsEffect()
             }
             .onChange(of: isPlaying) { oldValue, newValue in
-                if newValue {
+                if newValue && effectOption == .kenBurns {
+                    self.startKenBurnsEffect()
+                } else {
+                    self.stopKenBurnsEffect()
+                }
+            }
+            .onChange(of: effectOption) { oldValue, newValue in
+                if newValue == .kenBurns && isPlaying {
                     self.startKenBurnsEffect()
                 } else {
                     self.stopKenBurnsEffect()
@@ -522,9 +560,6 @@ struct LazyImage: View {
             }
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
-        .onChange(of: duration) { oldValue, newValue in
-            self.startKenBurnsEffect()
-        }
     }
 
     private func startKenBurnsEffect() {
