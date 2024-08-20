@@ -295,7 +295,7 @@ struct ShareSlideshowView: View {
                     Button(action: { showAppIcon.toggle() }) {
                         VStack(spacing: 8) {
                             Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
-                                .font(.system(size: 20))
+                                .font(.system(size: 24))
                                 .frame(height: 28)
                             Text("Watermark")
                                 .font(.caption)

@@ -470,6 +470,16 @@ class PersonViewModel: ObservableObject {
             }
         }
     }
+
+    func updatePhotoDate(person: Person, photo: Photo, newDate: Date) {
+        if let personIndex = people.firstIndex(where: { $0.id == person.id }),
+           let photoIndex = people[personIndex].photos.firstIndex(where: { $0.id == photo.id }) {
+            people[personIndex].photos[photoIndex].dateTaken = newDate
+            people[personIndex].photos.sort { $0.dateTaken < $1.dateTaken }
+            savePeople()
+            objectWillChange.send()
+        }
+    }
 }
 
 enum PhotoAccessError: Error {

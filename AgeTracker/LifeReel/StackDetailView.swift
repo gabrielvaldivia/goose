@@ -73,7 +73,8 @@ struct StackDetailView: View {
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: person
+                person: person,
+                viewModel: viewModel
             )
         }
         .sheet(isPresented: $isShareSlideshowPresented) {

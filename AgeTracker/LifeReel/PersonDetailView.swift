@@ -168,7 +168,8 @@ struct PersonDetailView: View {
                 currentIndex: person.photos.firstIndex(of: photo) ?? 0,
                 photos: person.photos,
                 onDelete: deletePhoto,
-                person: person
+                person: person,
+                viewModel: viewModel  // Add this line to pass the viewModel
             )
         }
         .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)

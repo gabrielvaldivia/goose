@@ -61,7 +61,8 @@ struct StackGridView: View {
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: person
+                person: person,
+                viewModel: viewModel  // Add this line to pass the viewModel
             )
             .background(Color.clear)
         }

@@ -11,12 +11,13 @@ import AVKit
 import UIKit
 
 struct FullScreenPhotoView: View {
-    let photo: Photo
+    @Binding var photo: Photo
     @State var currentIndex: Int
-    let photos: [Photo]
+    @Binding var photos: [Photo]
     var onDelete: (Photo) -> Void
     let person: Person
     @Environment(\.presentationMode) var presentationMode
+    @ObservedObject var viewModel: PersonViewModel
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var showControls = true
@@ -34,6 +35,8 @@ struct FullScreenPhotoView: View {
     @State private var showActionSheet = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDismissing = false
+    @State private var showDatePicker = false
+    @State private var selectedDate: Date
     
     enum ActiveSheet: Identifiable {
         case shareView
@@ -42,6 +45,16 @@ struct FullScreenPhotoView: View {
         var id: Int {
             hashValue
         }
+    }
+    
+    init(photo: Photo, currentIndex: Int, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person, viewModel: PersonViewModel) {
+        self._photo = Binding(get: { photo }, set: { newValue in })
+        self._currentIndex = State(initialValue: currentIndex)
+        self._photos = Binding(get: { photos }, set: { newValue in })
+        self.onDelete = onDelete
+        self.person = person
+        self._selectedDate = State(initialValue: photo.dateTaken)
+        self.viewModel = viewModel
     }
     
     var body: some View {
@@ -161,7 +174,8 @@ struct FullScreenPhotoView: View {
                     onScrub: { newIndex in
                         currentIndex = newIndex
                         resetZoomAndPan()
-                    }
+                    },
+                    showDatePicker: $showDatePicker
                 )
                 .opacity(1 - dismissProgress)
             }
@@ -192,6 +206,12 @@ struct FullScreenPhotoView: View {
                         self.activeSheet = nil
                     }
             }
+        }
+        .sheet(isPresented: $showDatePicker) {
+            PhotoDatePickerSheet(date: $selectedDate, isPresented: $showDatePicker) {
+                updatePhotoDate()
+            }
+            .presentationDetents([.height(300)])
         }
         .alert(isPresented: $showDeleteConfirmation) {
             Alert(
@@ -286,6 +306,11 @@ struct FullScreenPhotoView: View {
             }
         }
     }
+
+    private func updatePhotoDate() {
+        photos[currentIndex].dateTaken = selectedDate
+        viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: selectedDate)
+    }
 }
 
 private struct ControlsOverlay: View {
@@ -299,6 +324,7 @@ private struct ControlsOverlay: View {
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
+    @Binding var showDatePicker: Bool
     
     var body: some View {
         VStack { 
@@ -343,6 +369,9 @@ private struct ControlsOverlay: View {
                         Text(formatDate(photo.dateTaken))
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
+                            .onTapGesture {
+                                showDatePicker = true
+                            }
                     }
                     Spacer()
                     CircularIconButton(icon: "trash", action: onDelete)
