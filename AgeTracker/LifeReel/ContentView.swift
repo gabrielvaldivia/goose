@@ -144,10 +144,23 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Button("Delete All Data") {
-                showingDeleteConfirmation = true
+            // New section for Twitter link
+            Section (header: Text("Support")) {
+                Link(destination: URL(string: "https://x.com/gabrielvaldivia")!) {
+                    HStack {
+                        Image(systemName: "link")
+                        Text("Follow on Twitter")
+                    }
+                }
             }
-            .foregroundColor(.red)
+            
+            // Existing delete all data section
+            Section (header: Text("Danger Zone")) {
+                Button("Delete All Data") {
+                    showingDeleteConfirmation = true
+                }
+                .foregroundColor(.red)
+            }
         }
         .navigationTitle("Settings")
         .alert("Delete All Data", isPresented: $showingDeleteConfirmation) {
