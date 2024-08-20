@@ -471,14 +471,20 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-    func updatePhotoDate(person: Person, photo: Photo, newDate: Date) {
+    func updatePhotoDate(person: Person, photo: Photo, newDate: Date) -> Int {
         if let personIndex = people.firstIndex(where: { $0.id == person.id }),
            let photoIndex = people[personIndex].photos.firstIndex(where: { $0.id == photo.id }) {
             people[personIndex].photos[photoIndex].dateTaken = newDate
             people[personIndex].photos.sort { $0.dateTaken < $1.dateTaken }
             savePeople()
             objectWillChange.send()
+            
+            // Find the new index of the photo after sorting
+            if let newIndex = people[personIndex].photos.firstIndex(where: { $0.id == photo.id }) {
+                return newIndex
+            }
         }
+        return 0 // Return 0 if the photo wasn't found (shouldn't happen)
     }
 }
 

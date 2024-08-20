@@ -308,8 +308,9 @@ struct FullScreenPhotoView: View {
     }
 
     private func updatePhotoDate() {
-        photos[currentIndex].dateTaken = selectedDate
-        viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: selectedDate)
+        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: selectedDate)
+        currentIndex = newIndex
+        photos = person.photos // Update the photos array to reflect the new order
     }
 }
 
@@ -404,6 +405,7 @@ struct ThumbnailScrubber: View {
     @State private var isDragging = false
     @State private var viewWidth: CGFloat = 0
     @State private var initialDragOffset: CGFloat = 0
+    @State private var lastFeedbackIndex: Int = -1
     
     var body: some View {
         GeometryReader { geometry in
@@ -418,6 +420,7 @@ struct ThumbnailScrubber: View {
                                     currentIndex = index
                                     onScrub(index)
                                     scrollToCurrentIndex(proxy: scrollProxy)
+                                    generateHapticFeedback()
                                 }
                         }
                     }
@@ -430,17 +433,18 @@ struct ThumbnailScrubber: View {
                             if !isDragging {
                                 isDragging = true
                                 initialDragOffset = calculateCurrentOffset(geometry: geometry)
+                                generateHapticFeedback()
                             }
                             let newOffset = initialDragOffset + value.translation.width
                             scrollOffset = newOffset
                             updateCurrentIndex(currentOffset: newOffset, geometry: geometry)
-                            onScrub(currentIndex) // Call onScrub here to reset zoom and pan while dragging
+                            onScrub(currentIndex)
                         }
                         .onEnded { value in
                             isDragging = false
                             let velocity = value.predictedEndLocation.x - value.location.x
                             let itemWidth = thumbnailSize + spacing
-                            let additionalScroll = velocity / 3 // Adjust this factor to control momentum
+                            let additionalScroll = velocity / 3
                             let targetOffset = scrollOffset + additionalScroll
                             let targetIndex = round(-targetOffset / itemWidth)
                             let finalIndex = max(0, min(Int(targetIndex), photos.count - 1))
@@ -482,6 +486,14 @@ struct ThumbnailScrubber: View {
         let itemWidth = thumbnailSize + spacing
         scrollOffset = -CGFloat(currentIndex) * itemWidth
         proxy.scrollTo(currentIndex, anchor: .center)
+    }
+    
+    private func generateHapticFeedback() {
+        if currentIndex != lastFeedbackIndex {
+            let generator = UISelectionFeedbackGenerator()
+            generator.selectionChanged()
+            lastFeedbackIndex = currentIndex
+        }
     }
 }
 
