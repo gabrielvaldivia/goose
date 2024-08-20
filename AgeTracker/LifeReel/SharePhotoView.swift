@@ -125,30 +125,32 @@ struct SharePhotoView: View {
     private var controlsView: some View {
         VStack {
             Divider()
-            HStack(spacing: 40) {
-                SimplifiedCustomizationButton(
-                    icon: "textformat",
-                    title: "Title",
-                    options: TitleOption.allCases,
-                    selection: $titleOption
-                )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 20) {
+                    SimplifiedCustomizationButton(
+                        icon: "textformat",
+                        title: "Title",
+                        options: TitleOption.allCases,
+                        selection: $titleOption
+                    )
+                    .frame(width: 80)
 
-                SimplifiedCustomizationButton(
-                    icon: "text.alignleft",
-                    title: "Subtitle",
-                    options: TitleOption.allCases,
-                    selection: $subtitleOption
-                )
+                    SimplifiedCustomizationButton(
+                        icon: "text.alignleft",
+                        title: "Subtitle",
+                        options: TitleOption.allCases,
+                        selection: $subtitleOption
+                    )
+                    .frame(width: 80)
 
-                SimplifiedCustomizationButton(
-                    icon: "aspectratio",
-                    title: "Aspect Ratio",
-                    options: AspectRatio.allCases,
-                    selection: $aspectRatio
-                )
+                    SimplifiedCustomizationButton(
+                        icon: "aspectratio",
+                        title: "Aspect Ratio",
+                        options: AspectRatio.allCases,
+                        selection: $aspectRatio
+                    )
+                    .frame(width: 80)
 
-                // Watermark toggle
-                VStack(spacing: 8) {
                     Button(action: { showWatermark.toggle() }) {
                         VStack(spacing: 8) {
                             Image(systemName: showWatermark ? "checkmark.seal.fill" : "checkmark.seal")
@@ -159,12 +161,11 @@ struct SharePhotoView: View {
                         }
                     }
                     .foregroundColor(.primary)
+                    .frame(width: 80)
                 }
-                .frame(height: 50)
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 30)
-            .padding(.vertical, 8)
-            
+            .frame(height: 60)
         }
         .background(Color(UIColor.systemBackground))
     }
@@ -422,34 +423,35 @@ struct LightTemplateView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
-                HStack {
+                HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 4) {
                         if !titleText.isEmpty {
                             Text(titleText)
                                 .font(.title3)
                                 .fontWeight(.bold)
                                 .foregroundColor(.black)
+                                .lineLimit(1)
                         }
                         if !subtitleText.isEmpty {
                             Text(subtitleText)
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
+                                .lineLimit(1)
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     if showWatermark {
                         VStack(alignment: .trailing) {
                             Text("Made with")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                                .font(.caption)
+                                .foregroundColor(.gray)
                             
                             Text("Life Reel")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.black)
                         }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        
                     }
                 }
                 .padding(.top, 10)
@@ -522,33 +524,35 @@ struct DarkTemplateView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .clipped()
                 
-                HStack {
+                HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 4) {
                         if !titleText.isEmpty {
                             Text(titleText)
                                 .font(.title3)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
+                                .lineLimit(1)
                         }
                         if !subtitleText.isEmpty {
                             Text(subtitleText)
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.8))
+                                .lineLimit(1)
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     if showWatermark {
                         VStack(alignment: .trailing) {
                             Text("Made with")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                                .font(.caption)
+                                .foregroundColor(.gray)
                             
                             Text("Life Reel")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
                         }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
                 .padding(.top, 10)
@@ -620,9 +624,9 @@ struct OverlayTemplateView: View {
                     .clipped()
                 
                 LinearGradient(
-                    gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
-                    startPoint: .bottom,
-                    endPoint: .top
+                    gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .frame(height: templateHeight * 0.4)
                 
@@ -635,27 +639,29 @@ struct OverlayTemplateView: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
+                                    .lineLimit(1)
                             }
                             if !subtitleText.isEmpty {
                                 Text(subtitleText)
                                     .font(.subheadline)
                                     .foregroundColor(.white)
                                     .opacity(0.8)
+                                    .lineLimit(1)
                             }
                         }
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
                         if showWatermark {
                             VStack(alignment: .trailing) {
-                            Text("Made with")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
-                            
-                            Text("Life Reel")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                Text("Made with")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                                
+                                Text("Life Reel")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
