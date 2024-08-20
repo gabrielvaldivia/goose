@@ -152,7 +152,7 @@ struct PersonSettingsView: View {
                 )
             case .deletePerson:
                 return Alert(
-                    title: Text("Delete Person"),
+                    title: Text("Delete Reel"),
                     message: Text("Are you sure you want to delete this person? This action cannot be undone."),
                     primaryButton: .destructive(Text("Delete")) {
                         deletePerson()
