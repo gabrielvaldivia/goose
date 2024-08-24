@@ -389,10 +389,21 @@ struct ShareSlideshowView: View {
     private func loadImagesAround(index: Int) {
         let photos = filteredPhotos
         guard !photos.isEmpty else { return }
+        
         let count = photos.count
         let safeIndex = (index + count) % count
-        let range = (-5...5).map { (safeIndex + $0 + count) % count }
-        for i in range {
+        
+        // Determine the range of indices to load
+        let rangeToLoad: [Int]
+        if count <= 11 {
+            // If we have 11 or fewer photos, load all of them
+            rangeToLoad = Array(0..<count)
+        } else {
+            // Otherwise, load 5 before and 5 after the current index
+            rangeToLoad = (-5...5).map { (safeIndex + $0 + count) % count }
+        }
+        
+        for i in rangeToLoad {
             let photo = photos[i]
             if loadedImages[photo.id.uuidString] == nil {
                 loadedImages[photo.id.uuidString] = photo.image
@@ -448,7 +459,7 @@ struct ShareSlideshowView: View {
             if self.scrubberPosition >= Double(self.filteredPhotos.count) {
                 self.scrubberPosition = 0
             }
-            let newPhotoIndex = Int(self.scrubberPosition) % max(1, self.filteredPhotos.count)
+            let newPhotoIndex = Int(self.scrubberPosition) % self.filteredPhotos.count
             if newPhotoIndex != self.currentFilteredPhotoIndex {
                 withAnimation(self.effectOption == .none ? .none : .easeInOut(duration: self.imageDuration * 0.5)) {
                     self.currentFilteredPhotoIndex = newPhotoIndex
@@ -477,8 +488,15 @@ struct ShareSlideshowView: View {
 
     private var shareButton: some View {
         Button("Share") {
-            showComingSoonAlert = true
+            if filteredPhotos.count < 2 {
+                showComingSoonAlert = true
+            } else {
+                // Implement your sharing logic here
+                // For now, we'll just show the alert
+                showComingSoonAlert = true
+            }
         }
+        .disabled(filteredPhotos.count < 2)
     }
 
     private var filteredPhotos: [Photo] {
