@@ -178,10 +178,8 @@ struct FullScreenPhotoView: View {
                         currentIndex = newIndex
                         resetZoomAndPan()
                     },
-                    showAgePicker: $showAgePicker,
-                    selectedAge: $selectedAge,
-                    showDatePicker: $showDatePicker,
-                    selectedDate: $selectedDate
+                    onUpdateAge: updatePhotoAge,
+                    onUpdateDate: updatePhotoDate
                 )
                 .opacity(1 - dismissProgress)
             }
@@ -212,19 +210,6 @@ struct FullScreenPhotoView: View {
                         self.activeSheet = nil
                     }
             }
-        }
-        .sheet(isPresented: $showAgePicker) {
-            AgePickerSheet(age: selectedAge, isPresented: $showAgePicker) { newAge in
-                selectedAge = newAge
-                updatePhotoAge()
-            }
-            .presentationDetents([.height(300)])
-        }
-        .sheet(isPresented: $showDatePicker) {
-            DatePickerSheet(date: $selectedDate, isPresented: $showDatePicker) { newDate in
-                updatePhotoDate(newDate)
-            }
-            .presentationDetents([.height(300)])
         }
         .alert(isPresented: $showDeleteConfirmation) {
             Alert(
@@ -320,21 +305,18 @@ struct FullScreenPhotoView: View {
         }
     }
 
-    private func updatePhotoAge() {
+    private func updatePhotoAge(_ newAge: ExactAge) {
         let calendar = Calendar.current
-        let newDate = calendar.date(byAdding: .year, value: selectedAge.years, to: person.dateOfBirth)!
-        let newDate2 = calendar.date(byAdding: .month, value: selectedAge.months, to: newDate)!
-        let finalDate = calendar.date(byAdding: .day, value: selectedAge.days, to: newDate2)!
-        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: finalDate)
-        currentIndex = newIndex
-        photos = person.photos // Update the photos array to reflect the new order
+        let newDate = calendar.date(byAdding: .year, value: newAge.years, to: person.dateOfBirth)!
+        let newDate2 = calendar.date(byAdding: .month, value: newAge.months, to: newDate)!
+        let finalDate = calendar.date(byAdding: .day, value: newAge.days, to: newDate2)!
+        updatePhotoDate(finalDate)
     }
 
     private func updatePhotoDate(_ newDate: Date) {
         let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: newDate)
         currentIndex = newIndex
         photos = person.photos // Update the photos array to reflect the new order
-        selectedDate = newDate
     }
 }
 
@@ -349,10 +331,29 @@ private struct ControlsOverlay: View {
     @Binding var currentIndex: Int
     let totalPhotos: Int
     let onScrub: (Int) -> Void
-    @Binding var showAgePicker: Bool
-    @Binding var selectedAge: ExactAge
-    @Binding var showDatePicker: Bool
-    @Binding var selectedDate: Date
+    let onUpdateAge: (ExactAge) -> Void
+    let onUpdateDate: (Date) -> Void
+    @State private var showAgePicker = false
+    @State private var showDatePicker = false
+    @State private var selectedAge: ExactAge
+    @State private var selectedDate: Date
+    
+    init(showControls: Bool, person: Person, photo: Photo, photos: [Photo], onClose: @escaping () -> Void, onShare: @escaping () -> Void, onDelete: @escaping () -> Void, currentIndex: Binding<Int>, totalPhotos: Int, onScrub: @escaping (Int) -> Void, onUpdateAge: @escaping (ExactAge) -> Void, onUpdateDate: @escaping (Date) -> Void) {
+        self.showControls = showControls
+        self.person = person
+        self.photo = photo
+        self.photos = photos
+        self.onClose = onClose
+        self.onShare = onShare
+        self.onDelete = onDelete
+        self._currentIndex = currentIndex
+        self.totalPhotos = totalPhotos
+        self.onScrub = onScrub
+        self.onUpdateAge = onUpdateAge
+        self.onUpdateDate = onUpdateDate
+        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person, at: photo.dateTaken))
+        self._selectedDate = State(initialValue: photo.dateTaken)
+    }
     
     var body: some View {
         VStack { 
@@ -395,7 +396,6 @@ private struct ControlsOverlay: View {
                             .font(.subheadline)
                             .foregroundColor(.white.opacity(0.8))
                             .onTapGesture {
-                                selectedAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
                                 showAgePicker = true
                             }
                         Text(formatDate(selectedDate))
@@ -414,6 +414,23 @@ private struct ControlsOverlay: View {
         }
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
+        .sheet(isPresented: $showAgePicker) {
+            AgePickerSheet(age: selectedAge, isPresented: $showAgePicker) { newAge in
+                selectedAge = newAge
+                onUpdateAge(newAge)
+            }
+            .presentationDetents([.height(300)])
+        }
+        .sheet(isPresented: $showDatePicker) {
+            DatePickerSheet(date: $selectedDate, isPresented: $showDatePicker) { newDate in
+                onUpdateDate(newDate)
+            }
+            .presentationDetents([.height(300)])
+        }
+        .onChange(of: currentIndex) { _, _ in
+            selectedAge = AgeCalculator.calculate(for: person, at: photos[currentIndex].dateTaken)
+            selectedDate = photos[currentIndex].dateTaken
+        }
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -622,9 +639,10 @@ struct AgePickerSheet: View {
     var onSave: (ExactAge) -> Void
     
     init(age: ExactAge, isPresented: Binding<Bool>, onSave: @escaping (ExactAge) -> Void) {
-        self._years = State(initialValue: age.years)
-        self._months = State(initialValue: age.months)
-        self._days = State(initialValue: age.days)
+        let (y, m, d) = Self.convertToYearsMonthsDays(age: age)
+        self._years = State(initialValue: y)
+        self._months = State(initialValue: m)
+        self._days = State(initialValue: d)
         self._isPresented = isPresented
         self.onSave = onSave
     }
@@ -689,6 +707,18 @@ struct AgePickerSheet: View {
             )
             .navigationBarTitle("Change Age", displayMode: .inline)
         }
+    }
+    
+    private static func convertToYearsMonthsDays(age: ExactAge) -> (Int, Int, Int) {
+        if age.isPregnancy {
+            return (0, 0, 0) // Handle pregnancy case if needed
+        }
+        
+        let totalMonths = age.years * 12 + age.months
+        let years = totalMonths / 12
+        let remainingMonths = totalMonths % 12
+        
+        return (years, remainingMonths, age.days)
     }
 }
 
