@@ -343,7 +343,7 @@ struct ShareSlideshowView: View {
                 .padding(.vertical, 10)
             }
         }
-        .frame(height: 100)
+        .frame(height: 80)
         .background(Color(UIColor.secondarySystemBackground))
     }
 
