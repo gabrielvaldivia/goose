@@ -527,6 +527,7 @@ struct ThumbnailScrubber: View {
         if newIndex != currentIndex {
             currentIndex = newIndex
             onScrub(newIndex)
+            generateHapticFeedback()
         }
     }
     
@@ -538,8 +539,8 @@ struct ThumbnailScrubber: View {
     
     private func generateHapticFeedback() {
         if currentIndex != lastFeedbackIndex {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
             lastFeedbackIndex = currentIndex
         }
     }
