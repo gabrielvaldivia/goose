@@ -11,28 +11,17 @@ import Photos
 import Vision
 import AVFoundation
 
-enum SlideshowRange: Hashable, CaseIterable {
-    case allPhotos
-    case pregnancy
-    case birthMonth
-    case month(Int)
-    case year(Int)
-    case custom(String)
+enum SlideshowRange: Hashable {
+    case allPhotos, pregnancy, birthMonth, month(Int), year(Int), custom(String)
 
     var displayName: String {
         switch self {
-        case .allPhotos:
-            return "All Photos"
-        case .pregnancy:
-            return "Pregnancy"
-        case .birthMonth:
-            return "Birth Month"
-        case .month(let value):
-            return "\(value) Month\(value == 1 ? "" : "s")"
-        case .year(let value):
-            return "\(value) Year\(value == 1 ? "" : "s")"
-        case .custom(let value):
-            return value
+        case .allPhotos: return "All Photos"
+        case .pregnancy: return "Pregnancy"
+        case .birthMonth: return "Birth Month"
+        case .month(let value): return "\(value) Month\(value == 1 ? "" : "s")"
+        case .year(let value): return "\(value) Year\(value == 1 ? "" : "s")"
+        case .custom(let value): return value
         }
     }
     
@@ -45,43 +34,6 @@ enum SlideshowRange: Hashable, CaseIterable {
             cases.append(.year(year))
         }
         return cases
-    }
-
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .allPhotos:
-            hasher.combine(0)
-        case .pregnancy:
-            hasher.combine(1)
-        case .birthMonth:
-            hasher.combine(2)
-        case .month(let value):
-            hasher.combine(3)
-            hasher.combine(value)
-        case .year(let value):
-            hasher.combine(4)
-            hasher.combine(value)
-        case .custom(let value):
-            hasher.combine(5)
-            hasher.combine(value)
-        }
-    }
-
-    static func == (lhs: SlideshowRange, rhs: SlideshowRange) -> Bool {
-        switch (lhs, rhs) {
-        case (.allPhotos, .allPhotos),
-             (.pregnancy, .pregnancy),
-             (.birthMonth, .birthMonth):
-            return true
-        case let (.month(lhsValue), .month(rhsValue)):
-            return lhsValue == rhsValue
-        case let (.year(lhsValue), .year(rhsValue)):
-            return lhsValue == rhsValue
-        case let (.custom(lhsValue), .custom(rhsValue)):
-            return lhsValue == rhsValue
-        default:
-            return false
-        }
     }
 }
 
@@ -154,12 +106,7 @@ struct ShareSlideshowView: View {
         VStack(alignment: .center, spacing: 10) {
             navigationBar
             
-            if filteredPhotos.isEmpty {
-                emptyStateView
-            } else {
-                photoView
-                bottomControls
-            }
+            contentView
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(UIColor.secondarySystemBackground))
@@ -179,6 +126,16 @@ struct ShareSlideshowView: View {
         }
     }
     
+    @ViewBuilder
+    private var contentView: some View {
+        if filteredPhotos.isEmpty {
+            emptyStateView
+        } else {
+            photoView
+            bottomControls
+        }
+    }
+
     private var navigationBar: some View {
         HStack {
             cancelButton
@@ -281,21 +238,7 @@ struct ShareSlideshowView: View {
                         icon: "music.note",
                         title: "Music",
                         options: ["None"] + availableMusic,
-                        selection: Binding(
-                            get: { self.selectedMusic ?? "None" },
-                            set: { newValue in
-                                self.stopAudio() // Stop current audio
-                                if newValue == "None" {
-                                    self.selectedMusic = nil
-                                } else {
-                                    self.selectedMusic = newValue
-                                    self.setupAudioPlayer()
-                                    if self.isPlaying {
-                                        self.audioPlayer?.play()
-                                    }
-                                }
-                            }
-                        )
+                        selection: musicBinding
                     )
                     .frame(width: 80)
                     
@@ -345,6 +288,22 @@ struct ShareSlideshowView: View {
         }
         .frame(height: 80)
         .background(Color(UIColor.secondarySystemBackground))
+    }
+
+    private var musicBinding: Binding<String> {
+        Binding(
+            get: { self.selectedMusic ?? "None" },
+            set: { newValue in
+                self.stopAudio()
+                self.selectedMusic = newValue == "None" ? nil : newValue
+                if self.selectedMusic != nil {
+                    self.setupAudioPlayer()
+                    if self.isPlaying {
+                        self.audioPlayer?.play()
+                    }
+                }
+            }
+        )
     }
 
     private func onAppear() {
@@ -414,14 +373,40 @@ struct ShareSlideshowView: View {
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: date)
         
-        if exactAge.isNewborn || (exactAge.years == 0 && exactAge.months == 0) {
+        if exactAge.isPregnancy {
+            switch person.pregnancyTracking {
+            case .none:
+                return ""
+            case .trimesters:
+                let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
+                return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
+            case .weeks:
+                return "Week \(exactAge.pregnancyWeeks)"
+            }
+        }
+        
+        let calendar = Calendar.current
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
+        let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+        if date >= person.dateOfBirth && date <= endOfBirthMonth {
             return "Birth Month"
-        } else if exactAge.isPregnancy {
-            return "Pregnancy"
-        } else if exactAge.years == 0 {
-            return "\(exactAge.months) month\(exactAge.months == 1 ? "" : "s")"
-        } else {
-            return "\(exactAge.years) year\(exactAge.years == 1 ? "" : "s")"
+        }
+        
+        switch person.birthMonthsDisplay {
+        case .none:
+            return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+        case .twelveMonths:
+            if exactAge.years == 0 {
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
+            } else {
+                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+            }
+        case .twentyFourMonths:
+            if exactAge.months < 24 {
+                return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
+            } else {
+                return "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+            }
         }
     }
     
@@ -500,12 +485,6 @@ struct ShareSlideshowView: View {
     }
 
     private var filteredPhotos: [Photo] {
-        if person.pregnancyTracking == .none {
-            return photos.filter { photo in
-                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                return !age.isPregnancy
-            }
-        }
         return photos
     }
 
@@ -556,8 +535,7 @@ struct LazyImage: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .scaleEffect(effectOption == .kenBurns ? scale : 1.0)
-                        .offset(effectOption == .kenBurns ? offset : .zero)
+                        .modifier(KenBurnsEffect(isActive: effectOption == .kenBurns, duration: duration))
                         .clipped()
                 } else {
                     ProgressView()
@@ -620,30 +598,42 @@ struct LazyImage: View {
                     withAnimation(.easeIn(duration: 0.5)) {
                         self.opacity = 1
                     }
-                    self.startKenBurnsEffect()
                 } else {
                     self.opacity = 1
-                }
-            }
-            .onChange(of: isPlaying) { oldValue, newValue in
-                if newValue && effectOption == .kenBurns {
-                    self.startKenBurnsEffect()
-                } else {
-                    self.stopKenBurnsEffect()
-                }
-            }
-            .onChange(of: effectOption) { oldValue, newValue in
-                if newValue == .kenBurns && isPlaying {
-                    self.startKenBurnsEffect()
-                } else {
-                    self.stopKenBurnsEffect()
                 }
             }
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
     }
+}
 
-    private func startKenBurnsEffect() {
+struct KenBurnsEffect: ViewModifier {
+    let isActive: Bool
+    let duration: Double
+    @State private var scale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isActive ? scale : 1.0)
+            .offset(isActive ? offset : .zero)
+            .onAppear(perform: startEffectIfNeeded)
+            .onChange(of: isActive, perform: { newValue in
+                if newValue {
+                    startEffect()
+                } else {
+                    stopEffect()
+                }
+            })
+    }
+
+    private func startEffectIfNeeded() {
+        if isActive {
+            startEffect()
+        }
+    }
+
+    private func startEffect() {
         let scales = [1.02, 1.03, 1.04]
         let offsets: [CGSize] = [
             CGSize(width: 5, height: 5),
@@ -660,10 +650,10 @@ struct LazyImage: View {
         }
     }
 
-    private func stopKenBurnsEffect() {
+    private func stopEffect() {
         withAnimation(.easeInOut(duration: 0.5)) {
-            self.scale = 1.0
-            self.offset = .zero
+            scale = 1.0
+            offset = .zero
         }
     }
 }
