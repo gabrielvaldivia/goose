@@ -436,6 +436,7 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhoto(to person: Person, asset: PHAsset, completion: @escaping (Photo?) -> Void) {
+        print("Starting to add photo for \(person.name) with asset ID: \(asset.localIdentifier)")
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.isNetworkAccessAllowed = true
@@ -443,29 +444,30 @@ class PersonViewModel: ObservableObject {
 
         PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
             if image == nil {
-                print("Failed to get image from asset")
+                print("Failed to get image from asset: \(asset.localIdentifier)")
                 completion(nil)
                 return
             }
 
             if let newPhoto = Photo(asset: asset) {
-                var updatedPerson = person
-                updatedPerson.photos.append(newPhoto)
-                updatedPerson.photos.sort { $0.dateTaken < $1.dateTaken }
-                
+                print("Created new Photo object for asset: \(asset.localIdentifier)")
                 if let index = self.people.firstIndex(where: { $0.id == person.id }) {
-                    self.people[index] = updatedPerson
+                    self.people[index].photos.append(newPhoto)
+                    self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
+                    
                     self.savePeople()
-                    self.objectWillChange.send()
-                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                    print("Photo added successfully. Total photos for \(updatedPerson.name): \(updatedPerson.photos.count)")
+                    DispatchQueue.main.async {
+                        self.objectWillChange.send()
+                        NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                    }
+                    print("Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)")
                     completion(newPhoto)
                 } else {
                     print("Failed to find person \(person.name) in people array")
                     completion(nil)
                 }
             } else {
-                print("Failed to create Photo object from asset")
+                print("Failed to create Photo object from asset: \(asset.localIdentifier)")
                 completion(nil)
             }
         }

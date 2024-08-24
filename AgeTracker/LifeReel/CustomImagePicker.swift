@@ -78,6 +78,7 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
         }
 
         func imagePicker(_ picker: CustomImagePickerViewController, didSelectAssets assets: [PHAsset]) {
+            print("Selected \(assets.count) assets")
             DispatchQueue.main.async {
                 picker.showLoadingIndicator()
             }
@@ -85,11 +86,15 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
             let dispatchGroup = DispatchGroup()
             var addedPhotos: [Photo] = []
 
-            for asset in assets {
+            for (index, asset) in assets.enumerated() {
                 dispatchGroup.enter()
+                print("Processing asset \(index + 1) of \(assets.count)")
                 parent.viewModel.addPhoto(to: parent.person, asset: asset) { photo in
                     if let photo = photo {
                         addedPhotos.append(photo)
+                        print("Successfully added photo \(index + 1)")
+                    } else {
+                        print("Failed to add photo \(index + 1)")
                     }
                     dispatchGroup.leave()
                 }
@@ -101,7 +106,7 @@ struct CustomImagePickerRepresentable: UIViewControllerRepresentable {
                 self.parent.isPresented = false
                 self.parent.onPhotosAdded(addedPhotos)
                 
-                print("Added \(addedPhotos.count) photos to \(self.parent.person.name) for section: \(self.parent.sectionTitle)")
+                print("Finished processing. Added \(addedPhotos.count) photos to \(self.parent.person.name) for section: \(self.parent.sectionTitle)")
             }
         }
 
