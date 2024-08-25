@@ -578,7 +578,7 @@ struct LazyImage: View {
                                     .font(.system(size: geometry.size.width * 0.04))
                                     .foregroundColor(.white.opacity(0.7))
                                 
-                                Text("LifeReel.app")
+                                Text("Life Reel")
                                     .font(.system(size: geometry.size.width * 0.05, weight: .bold))
                                     .foregroundColor(.white)
                             }
@@ -673,6 +673,7 @@ struct PlayButton: View {
         .background(Color.clear)
         .clipShape(Circle())
     }
+
 }
 
 // Add these new structs outside the main view

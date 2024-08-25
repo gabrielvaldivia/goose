@@ -29,6 +29,7 @@ struct PhotoView: View {
     }
 }
 
+// Share button component
 struct ShareButton: View {
     var body: some View {
         Button(action: {
@@ -41,6 +42,7 @@ struct ShareButton: View {
     }
 }
 
+// Utility functions for photo management
 public struct PhotoUtils {
 
     static func groupAndSortPhotos(for person: Person) -> [(String, [Photo])] {
@@ -270,7 +272,7 @@ public struct PhotoUtils {
     }
 }
 
-
+// Date of birth selection sheet
 struct BirthDaySheet: View {
     @Binding var dateOfBirth: Date
     @Binding var isPresented: Bool
@@ -289,6 +291,7 @@ struct BirthDaySheet: View {
     }
 }
 
+// Empty state view for when there are no photos
 struct EmptyStateView: View {
     let title: String
     let subtitle: String
@@ -311,6 +314,7 @@ struct EmptyStateView: View {
     }
 }
 
+// Date picker sheet for editing photo dates
 struct PhotoDatePickerSheet: View {
     @Binding var date: Date
     @Binding var isPresented: Bool
@@ -343,54 +347,208 @@ struct PhotoDatePickerSheet: View {
     }
 }
 
+// Main timeline view for displaying photos
 struct SharedTimelineView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     @Binding var selectedPhoto: Photo?
     let forceUpdate: Bool
-    let sectionTitle: String?  // Make this optional
+    let sectionTitle: String?
     @State private var photoUpdateTrigger = UUID()
-    
+    @State private var currentAge: String = ""
+    @State private var scrollPosition: CGFloat = 0
+    @State private var scrollViewHeight: CGFloat = 0
+    @State private var timelineContentHeight: CGFloat = 0
+    @State private var isDraggingTimeline: Bool = false
+    @State private var indicatorPosition: CGFloat = 0
+    @State private var scrubberHeight: CGFloat = 0
+    private let pillOffsetConstant: CGFloat = 10 // Constant offset to move the pill higher
+
+    // Layout constants
+    private let timelineWidth: CGFloat = 20
+    private let timelinePadding: CGFloat = 12
+    private let horizontalPadding: CGFloat = 16
+    private let verticalPadding: CGFloat = 14
+    private let bottomPadding: CGFloat = 60
+    private let agePillPadding: CGFloat = 8
+    private let timelineScrubberPadding: CGFloat = 24
+
     var body: some View {
-        GeometryReader { outerGeometry in
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(filteredPhotos()) { photo in
-                        FilmReelItemView(photo: photo, person: person, selectedPhoto: $selectedPhoto, geometry: outerGeometry)
-                            .id(photo.id)
+        GeometryReader { geometry in
+            ZStack(alignment: .topTrailing) {
+                CustomScrollView(content: {
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredPhotos()) { photo in
+                            FilmReelItemView(photo: photo,
+                                             person: person,
+                                             selectedPhoto: $selectedPhoto,
+                                             geometry: geometry,
+                                             horizontalPadding: horizontalPadding,
+                                             timelineWidth: timelineWidth,
+                                             timelinePadding: timelinePadding)
+                                .id(photo.id)
+                        }
                     }
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, verticalPadding)
+                    .padding(.bottom, bottomPadding)
+                    .padding(.trailing, timelineWidth + timelinePadding)
+                    .background(GeometryReader { contentGeometry in
+                        Color.clear.onAppear {
+                            timelineContentHeight = contentGeometry.size.height
+                        }
+                    })
+                }, scrollPosition: $scrollPosition, isDraggingTimeline: $isDraggingTimeline)
+                .id(photoUpdateTrigger)
+                .background(GeometryReader { scrollViewGeometry in
+                    Color.clear.onAppear {
+                        scrollViewHeight = scrollViewGeometry.size.height
+                    }
+                })
+                .onChange(of: scrollPosition) { _ in
+                    updateCurrentAge()
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 60)
+
+                TimelineScrubber(photos: filteredPhotos(),
+                                 scrollPosition: $scrollPosition,
+                                 contentHeight: timelineContentHeight,
+                                 isDraggingTimeline: $isDraggingTimeline,
+                                 indicatorPosition: $indicatorPosition)
+                    .frame(width: timelineWidth)
+                    .padding(.trailing, timelineScrubberPadding)
+                    .padding(.top, verticalPadding)
+                    .background(GeometryReader { scrubberGeometry in
+                        Color.clear.onAppear {
+                            scrubberHeight = scrubberGeometry.size.height
+                        }
+                    })
+
+                AgePillView(age: currentAge)
+                    .padding(.trailing, timelineWidth + timelineScrubberPadding + agePillPadding)
+                    .offset(y: pillOffset)
             }
         }
-        .id(photoUpdateTrigger)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
             photoUpdateTrigger = UUID()
         }
+        .onAppear {
+            updateCurrentAge()
+        }
     }
-    
+
+    private var pillOffset: CGFloat {
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
+        let progress = min(1, max(0, indicatorPosition / availableHeight))
+        return verticalPadding + (availableHeight * progress) - pillOffsetConstant
+    }
+
+    private func updateCurrentAge() {
+        let visiblePhotoIndex = Int(scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth - timelinePadding))
+        let photos = filteredPhotos()
+        if visiblePhotoIndex < photos.count {
+            let visiblePhoto = photos[visiblePhotoIndex]
+            currentAge = AgeCalculator.calculate(for: person, at: visiblePhoto.dateTaken).toString()
+        }
+    }
+
     private func filteredPhotos() -> [Photo] {
         let filteredPhotos = person.photos.filter { photo in
             if let title = sectionTitle, title != "All Photos" {
                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
-            return true  // If sectionTitle is nil or "All Photos", include all photos
+            return true
         }
         return sortPhotos(filteredPhotos)
     }
-    
+
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
         photos.sorted { $0.dateTaken > $1.dateTaken }
     }
 }
 
+// Custom scroll view for timeline
+struct CustomScrollView<Content: View>: UIViewRepresentable {
+    let content: Content
+    @Binding var scrollPosition: CGFloat
+    @Binding var isDraggingTimeline: Bool
+
+    init(@ViewBuilder content: () -> Content, scrollPosition: Binding<CGFloat>, isDraggingTimeline: Binding<Bool>) {
+        self.content = content()
+        self._scrollPosition = scrollPosition
+        self._isDraggingTimeline = isDraggingTimeline
+    }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.decelerationRate = .normal
+        let hostView = UIHostingController(rootView: content)
+        hostView.view.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(hostView.view)
+        
+        NSLayoutConstraint.activate([
+            hostView.view.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            hostView.view.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            hostView.view.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            hostView.view.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            hostView.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+        ])
+        
+        return scrollView
+    }
+
+    func updateUIView(_ uiView: UIScrollView, context: Context) {
+        if isDraggingTimeline {
+            uiView.setContentOffset(CGPoint(x: 0, y: scrollPosition), animated: false)
+        }
+        uiView.subviews.first?.setNeedsLayout()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        var parent: CustomScrollView
+
+        init(_ parent: CustomScrollView) {
+            self.parent = parent
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            if !parent.isDraggingTimeline {
+                parent.scrollPosition = scrollView.contentOffset.y
+            }
+        }
+    }
+}
+
+// Age indicator pill view
+struct AgePillView: View {
+    let age: String
+    
+    var body: some View {
+        Text(age)
+            .font(.caption)
+            .fontWeight(.medium)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(Color.black.opacity(0.6))
+            .foregroundColor(.white)
+            .clipShape(Capsule())
+    }
+}
+
+// Individual photo item view for film reel
 struct FilmReelItemView: View {
     let photo: Photo
     let person: Person
     @Binding var selectedPhoto: Photo?
     let geometry: GeometryProxy
+    let horizontalPadding: CGFloat
+    let timelineWidth: CGFloat
+    let timelinePadding: CGFloat
     @Environment(\.colorScheme) var colorScheme
     @State private var imageLoadingState: ImageLoadingState = .initial
 
@@ -403,22 +561,22 @@ struct FilmReelItemView: View {
                 case .loading:
                     ProgressView()
                         .scaleEffect(1.5)
-                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                        .frame(width: itemWidth, height: itemWidth)
                 case .loaded(let image):
                     image
                         .resizable()
                         .scaledToFill()
-                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                        .frame(width: itemWidth, height: itemWidth)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 case .failed:
                     Image(systemName: "photo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+                        .frame(width: itemWidth, height: itemWidth)
                         .foregroundColor(.gray)
                 }
             }
-            .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+            .frame(width: itemWidth, height: itemWidth)
 
             if case .loaded = imageLoadingState {
                 LinearGradient(
@@ -437,13 +595,17 @@ struct FilmReelItemView: View {
                     .padding(10)
             }
         }
-        .frame(width: geometry.size.width - 32, height: geometry.size.width - 32)
+        .frame(width: itemWidth, height: itemWidth)
         .padding(.vertical, 2)
         .onTapGesture {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             selectedPhoto = photo
         }
         .background(colorScheme == .dark ? Color.black : Color.white)
+    }
+    
+    private var itemWidth: CGFloat {
+        geometry.size.width - (2 * horizontalPadding) - timelineWidth - timelinePadding
     }
     
     private var exactAge: String {
@@ -470,6 +632,7 @@ struct FilmReelItemView: View {
     }
 }
 
+// Image loading state enum
 enum ImageLoadingState {
     case initial
     case loading
@@ -477,6 +640,7 @@ enum ImageLoadingState {
     case failed
 }
 
+// Grid view for displaying photos
 struct SharedGridView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
@@ -526,6 +690,7 @@ struct SharedGridView: View {
     }
 }
 
+// Circular button component
 struct CircularButton: View {
     let systemName: String
     let action: () -> Void
@@ -562,6 +727,7 @@ struct CircularButton: View {
     }
 }
 
+// Segmented control for switching between grid and timeline views
 struct SegmentedControlView: View {
     @Binding var selectedTab: Int
     @Binding var animationDirection: UIPageViewController.NavigationDirection
@@ -609,6 +775,7 @@ struct SegmentedControlView: View {
     }
 }
 
+// Bottom control bar with share, view toggle, and add photo buttons
 struct BottomControls: View {
     let shareAction: () -> Void
     let addPhotoAction: () -> Void
@@ -633,5 +800,106 @@ struct BottomControls: View {
             }, size: 50, backgroundColor: .blue)
         }
         .padding(.horizontal)
+    }
+}
+
+// Scrubber handle
+struct ScrubberHandle: View {
+    let tapAreaSize: CGFloat
+    let circleSize: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Semi-transparent yellow background for tap area
+            Rectangle()
+                .fill(Color.yellow.opacity(0.3))
+                .frame(width: tapAreaSize, height: tapAreaSize)
+            
+            Circle()
+                .fill(Color.red)
+                .frame(width: circleSize, height: circleSize)
+            
+            // Transparent overlay for larger tap area
+            Color.clear
+                .frame(width: tapAreaSize, height: tapAreaSize)
+                .contentShape(Rectangle())
+        }
+    }
+}
+
+// Timeline scrubber
+struct TimelineScrubber: View {
+    let photos: [Photo]
+    @Binding var scrollPosition: CGFloat
+    let contentHeight: CGFloat
+    @Binding var isDraggingTimeline: Bool
+    @Binding var indicatorPosition: CGFloat
+    @State private var isDragging = false
+    @State private var dragOffset: CGFloat = 0
+    
+    private let circleSize: CGFloat = 20
+    private let tapAreaSize: CGFloat = 44
+    private let blueDotSize: CGFloat = 6
+    private let bottomPadding: CGFloat = 60
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                ForEach(photos.indices, id: \.self) { index in
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: blueDotSize, height: blueDotSize)
+                        .offset(y: photoOffset(for: index, in: geometry))
+                }
+
+                // Indicator for current scroll position
+                ScrubberHandle(tapAreaSize: tapAreaSize, circleSize: circleSize)
+                    .offset(y: indicatorPosition - tapAreaSize / 2)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                isDragging = true
+                                isDraggingTimeline = true
+                                let newDragOffset = value.translation.height
+                                updateScrollPosition(newDragOffset - dragOffset, in: geometry)
+                                dragOffset = newDragOffset
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                                isDraggingTimeline = false
+                                dragOffset = 0
+                            }
+                    )
+            }
+            .padding(.bottom, bottomPadding)
+            .onAppear {
+                // Set initial indicator position
+                indicatorPosition = currentScrollIndicatorOffset(in: geometry)
+            }
+            .onChange(of: scrollPosition) { _ in
+                indicatorPosition = currentScrollIndicatorOffset(in: geometry)
+            }
+        }
+    }
+
+    private func photoOffset(for index: Int, in geometry: GeometryProxy) -> CGFloat {
+        let totalPhotos = CGFloat(photos.count)
+        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
+        let offset = (CGFloat(index) / (totalPhotos - 1)) * availableHeight
+        return offset + tapAreaSize / 2
+    }
+
+    private func currentScrollIndicatorOffset(in geometry: GeometryProxy) -> CGFloat {
+        let scrollPercentage = min(1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
+        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
+        return scrollPercentage * availableHeight + tapAreaSize / 2
+    }
+
+    private func updateScrollPosition(_ dragAmount: CGFloat, in geometry: GeometryProxy) {
+        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
+        let dragPercentage = dragAmount / availableHeight
+        let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
+        let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
+        scrollPosition = newScrollPercentage * max(1, contentHeight - geometry.size.height)
     }
 }
