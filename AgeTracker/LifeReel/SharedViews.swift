@@ -365,7 +365,11 @@ struct SharedTimelineView: View {
     @State private var isScrolling: Bool = false
     @State private var controlsOpacity: Double = 0
     @State private var controlsTimer: Timer?
-    private let pillOffsetConstant: CGFloat = 10
+    private let pillOffsetConstant: CGFloat = 10 
+    private let handleHeight: CGFloat = 60
+    @State private var isDraggingPill: Bool = false
+    @State private var pillHeight: CGFloat = 0
+    @State private var lastHapticIndex: Int = -1
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -373,7 +377,7 @@ struct SharedTimelineView: View {
     private let horizontalPadding: CGFloat = 16
     private let verticalPadding: CGFloat = 14
     private let bottomPadding: CGFloat = 80
-    private let agePillPadding: CGFloat = 8
+    private let agePillPadding: CGFloat = 0
     private let timelineScrubberPadding: CGFloat = 0
 
     var body: some View {
@@ -394,7 +398,7 @@ struct SharedTimelineView: View {
                     }
                     .padding(.horizontal, horizontalPadding)
                     .padding(.top, verticalPadding)
-                    .padding(.bottom, 80) 
+                    .padding(.bottom, bottomPadding)
                     .background(GeometryReader { contentGeometry in
                         Color.clear.onAppear {
                             timelineContentHeight = contentGeometry.size.height
@@ -407,35 +411,55 @@ struct SharedTimelineView: View {
                         scrollViewHeight = scrollViewGeometry.size.height
                     }
                 })
-                .onChange(of: scrollPosition) { _ in
+                .onChange(of: scrollPosition) { oldValue, newValue in
                     updateCurrentAge()
                     isScrolling = true
                     controlsOpacity = 1 // Show controls when scrolling starts
                     startControlsTimer()
                 }
 
-                TimelineScrubber(photos: filteredPhotos(),
-                                 scrollPosition: $scrollPosition,
-                                 contentHeight: timelineContentHeight,
-                                 isDraggingTimeline: $isDraggingTimeline,
-                                 indicatorPosition: $indicatorPosition)
-                    .frame(width: timelineWidth)
-                    .padding(.top, verticalPadding)
-                    .opacity(controlsOpacity)
-                    .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
-                    .background(GeometryReader { scrubberGeometry in
-                        Color.clear.onAppear {
-                            scrubberHeight = scrubberGeometry.size.height
-                        }
-                    })
+                ZStack(alignment: .topTrailing) {
+                    TimelineScrubber(photos: filteredPhotos(),
+                                     scrollPosition: $scrollPosition,
+                                     contentHeight: timelineContentHeight,
+                                     isDraggingTimeline: $isDraggingTimeline,
+                                     indicatorPosition: $indicatorPosition)
+                        .frame(width: timelineWidth)
+                        .padding(.top, verticalPadding)
+                        .background(GeometryReader { scrubberGeometry in
+                            Color.clear.onAppear {
+                                scrubberHeight = scrubberGeometry.size.height
+                            }
+                        })
 
-                if isScrolling {
-                    AgePillView(age: currentAge)
-                        .padding(.trailing, timelineWidth + agePillPadding)
-                        .offset(y: pillOffset)
-                        .opacity(controlsOpacity)
-                        .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
+                    if isScrolling || isDraggingPill {
+                        AgePillView(age: currentAge)
+                            .padding(.trailing, timelineWidth + agePillPadding)
+                            .offset(y: pillOffset)
+                            .background(GeometryReader { pillGeometry in
+                                Color.clear.onAppear {
+                                    pillHeight = pillGeometry.size.height
+                                }
+                            })
+                            .gesture(
+                                DragGesture()
+                                    .onChanged { value in
+                                        isDraggingPill = true
+                                        isDraggingTimeline = true
+                                        let dragPosition = value.location.y
+                                        updateScrollPositionFromPill(dragPosition)
+                                        checkForHapticFeedback(dragPosition: dragPosition)
+                                    }
+                                    .onEnded { _ in
+                                        isDraggingPill = false
+                                        isDraggingTimeline = false
+                                        lastHapticIndex = -1
+                                    }
+                            )
+                    }
                 }
+                .opacity(controlsOpacity)
+                .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
             }
         }
         .ignoresSafeArea(.all, edges: .bottom) // Add this line to ignore safe areas at the bottom
@@ -448,8 +472,8 @@ struct SharedTimelineView: View {
     }
 
     private var pillOffset: CGFloat {
-        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = min(1, max(0, indicatorPosition / availableHeight))
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding - pillHeight
+        let progress = min(1, max(0, scrollPosition / (timelineContentHeight - scrollViewHeight)))
         return verticalPadding + (availableHeight * progress) - pillOffsetConstant
     }
 
@@ -479,13 +503,30 @@ struct SharedTimelineView: View {
     private func startControlsTimer() {
         controlsTimer?.invalidate()
 
-        controlsTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+        controlsTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { timer in
             withAnimation(.easeOut(duration: 0.5)) {
                 controlsOpacity = 0
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isScrolling = false
             }
+        }
+    }
+
+    private func updateScrollPositionFromPill(_ dragPosition: CGFloat) {
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
+        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+        scrollPosition = progress * (timelineContentHeight - scrollViewHeight)
+    }
+
+    private func checkForHapticFeedback(dragPosition: CGFloat) {
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
+        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+        let currentIndex = Int(round(progress * CGFloat(filteredPhotos().count - 1)))
+        
+        if currentIndex != lastHapticIndex {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            lastHapticIndex = currentIndex
         }
     }
 }
@@ -559,12 +600,19 @@ struct AgePillView: View {
                 .fontWeight(.medium)
                 .padding(.vertical, 4)
                 .padding(.horizontal, 8)
-                .background(Color.black.opacity(0.6))
+                .background(
+                    ZStack {
+                        VisualEffectView(effect: UIBlurEffect(style: .dark))
+                        Color.black.opacity(0.1)
+                    }
+                )
                 .foregroundColor(.white)
                 .clipShape(Capsule())
         }
     }
 }
+
+
 
 // Individual photo item view for film reel
 struct FilmReelItemView: View {
@@ -861,7 +909,6 @@ struct ScrubberHandle: View {
         }
     }
 }
-
 // Timeline scrubber
 struct TimelineScrubber: View {
     let photos: [Photo]
@@ -871,6 +918,8 @@ struct TimelineScrubber: View {
     @Binding var indicatorPosition: CGFloat
     @State private var isDragging = false
     @State private var dragOffset: CGFloat = 0
+    @State private var lastHapticIndex: Int = -1
+    @State private var isDraggingPill = false
     
     private let tapAreaSize: CGFloat = 20
     private let lineWidth: CGFloat = 8
@@ -902,14 +951,18 @@ struct TimelineScrubber: View {
                             .onChanged { value in
                                 isDragging = true
                                 isDraggingTimeline = true
+                                isDraggingPill = true
                                 let newDragOffset = value.translation.height
                                 updateScrollPosition(newDragOffset - dragOffset, in: geometry)
                                 dragOffset = newDragOffset
+                                checkForHapticFeedback(in: geometry)
                             }
                             .onEnded { _ in
                                 isDragging = false
                                 isDraggingTimeline = false
+                                isDraggingPill = false
                                 dragOffset = 0
+                                lastHapticIndex = -1 // Reset last haptic index
                             }
                     )
             }
@@ -944,4 +997,22 @@ struct TimelineScrubber: View {
         let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
         scrollPosition = newScrollPercentage * max(1, contentHeight - geometry.size.height)
     }
+
+    private func checkForHapticFeedback(in geometry: GeometryProxy) {
+        if isDraggingPill {
+            let currentIndex = getCurrentPhotoIndex(in: geometry)
+            if currentIndex != lastHapticIndex {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                lastHapticIndex = currentIndex
+            }
+        }
+    }
+
+    private func getCurrentPhotoIndex(in geometry: GeometryProxy) -> Int {
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        let currentPosition = indicatorPosition - topPadding
+        let percentage = currentPosition / availableHeight
+        return Int(round(percentage * CGFloat(photos.count - 1)))
+    }
 }
+
