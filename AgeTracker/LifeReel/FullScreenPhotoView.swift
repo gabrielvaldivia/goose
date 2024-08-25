@@ -427,10 +427,15 @@ private struct ControlsOverlay: View {
             }
             .presentationDetents([.height(300)])
         }
-        .onChange(of: currentIndex) { _, _ in
-            selectedAge = AgeCalculator.calculate(for: person, at: photos[currentIndex].dateTaken)
-            selectedDate = photos[currentIndex].dateTaken
+        .onChange(of: currentIndex) { _, newIndex in
+            updateSelectedAgeAndDate(for: newIndex)
         }
+    }
+    
+    private func updateSelectedAgeAndDate(for index: Int) {
+        let photo = photos[index]
+        selectedAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+        selectedDate = photo.dateTaken
     }
     
     private func formatDate(_ date: Date) -> String {

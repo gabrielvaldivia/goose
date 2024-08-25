@@ -70,11 +70,11 @@ struct SharePhotoView: View {
                         
                         // Template views
                         TabView(selection: $selectedTemplate) {
-                            LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
-                                .tag(0)
-                            DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
-                                .tag(1)
                             OverlayTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
+                                .tag(0)
+                            LightTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
+                                .tag(1)
+                            DarkTemplateView(image: image, name: name, age: age, titleOption: titleOption, subtitleOption: subtitleOption, showWatermark: showWatermark, isRendering: isRendering, aspectRatio: aspectRatio)
                                 .tag(2)
                         }
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -126,7 +126,7 @@ struct SharePhotoView: View {
         VStack {
             Divider()
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 20) {
+                HStack(spacing: 4) {
                     SimplifiedCustomizationButton(
                         icon: "textformat",
                         title: "Title",
@@ -218,10 +218,12 @@ struct SharePhotoView: View {
 
         // Handle different templates
         switch selectedTemplate {
-        case 0, 1: // Light and Dark templates
-            renderStandardTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
-        case 2: // Overlay template
+        case 0: // Overlay template
             renderOverlayTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
+        case 1: // Light template
+            renderStandardTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
+        case 2: // Dark template
+            renderStandardTemplate(baseWidth: baseWidth, baseHeight: baseHeight, padding: padding, imageHeight: imageHeight)
         default:
             break
         }
@@ -237,7 +239,7 @@ struct SharePhotoView: View {
 
     private func renderStandardTemplate(baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat, imageHeight: CGFloat) {
         // Draw background
-        let backgroundColor: UIColor = selectedTemplate == 1 ? .black : .white
+        let backgroundColor: UIColor = selectedTemplate == 2 ? .black : .white
         backgroundColor.setFill()
         UIRectFill(CGRect(x: 0, y: 0, width: baseWidth, height: baseHeight))
 
@@ -312,7 +314,7 @@ struct SharePhotoView: View {
     private func drawTextAndIcon(at point: CGPoint, maxWidth: CGFloat, baseWidth: CGFloat, baseHeight: CGFloat, padding: CGFloat) {
         let titleFont = UIFont.systemFont(ofSize: baseWidth * 0.05, weight: .bold)
         let subtitleFont = UIFont.systemFont(ofSize: baseWidth * 0.04)
-        let textColor: UIColor = selectedTemplate == 0 ? .black : .white
+        let textColor: UIColor = selectedTemplate == 1 ? .black : .white
 
         let titleAttributes: [NSAttributedString.Key: Any] = [
             .font: titleFont,

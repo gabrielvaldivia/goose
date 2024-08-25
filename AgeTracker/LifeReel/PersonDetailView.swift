@@ -85,6 +85,25 @@ struct ImagePickerRepresentable: UIViewControllerRepresentable {
     }
 }
 
+struct TransparentNavigationBar: ViewModifier {
+    init() {
+        UINavigationBar.appearance().setBackgroundImage(UIImage(), for: .default)
+        UINavigationBar.appearance().shadowImage = UIImage()
+        UINavigationBar.appearance().isTranslucent = true
+        UINavigationBar.appearance().tintColor = .black
+    }
+
+    func body(content: Content) -> some View {
+        content
+    }
+}
+
+extension View {
+    func transparentNavigationBar() -> some View {
+        self.modifier(TransparentNavigationBar())
+    }
+}
+
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -125,14 +144,13 @@ struct PersonDetailView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)
-                        .ignoresSafeArea(edges: .bottom)),
+                    AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)),
                     AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos"))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
             )
-            .ignoresSafeArea(edges: .bottom)
+            .edgesIgnoringSafeArea(.all)
 
             bottomControls
         }
@@ -148,6 +166,8 @@ struct PersonDetailView: View {
                 settingsButton
             }
         }
+        .transparentNavigationBar()
+        .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
                 .edgesIgnoringSafeArea(.all)
