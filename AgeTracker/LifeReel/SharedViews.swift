@@ -362,7 +362,10 @@ struct SharedTimelineView: View {
     @State private var isDraggingTimeline: Bool = false
     @State private var indicatorPosition: CGFloat = 0
     @State private var scrubberHeight: CGFloat = 0
-    private let pillOffsetConstant: CGFloat = 10 // Constant offset to move the pill higher
+    @State private var isScrolling: Bool = false
+    @State private var scrollingTimer: Timer?
+    @State private var pillOpacity: Double = 0
+    private let pillOffsetConstant: CGFloat = 10
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -407,6 +410,9 @@ struct SharedTimelineView: View {
                 })
                 .onChange(of: scrollPosition) { _ in
                     updateCurrentAge()
+                    isScrolling = true
+                    pillOpacity = 1
+                    startScrollingTimer()
                 }
 
                 TimelineScrubber(photos: filteredPhotos(),
@@ -423,9 +429,13 @@ struct SharedTimelineView: View {
                         }
                     })
 
-                AgePillView(age: currentAge)
-                    .padding(.trailing, timelineWidth + timelineScrubberPadding + agePillPadding)
-                    .offset(y: pillOffset)
+                if isScrolling {
+                    AgePillView(age: currentAge)
+                        .padding(.trailing, timelineWidth + timelineScrubberPadding + agePillPadding)
+                        .offset(y: pillOffset)
+                        .opacity(pillOpacity)
+                        .animation(.easeInOut(duration: 0.2), value: pillOpacity)
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
@@ -447,7 +457,7 @@ struct SharedTimelineView: View {
         let photos = filteredPhotos()
         if visiblePhotoIndex < photos.count {
             let visiblePhoto = photos[visiblePhotoIndex]
-            currentAge = AgeCalculator.calculate(for: person, at: visiblePhoto.dateTaken).toString()
+            currentAge = PhotoUtils.sectionForPhoto(visiblePhoto, person: person)
         }
     }
 
@@ -463,6 +473,18 @@ struct SharedTimelineView: View {
 
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
         photos.sorted { $0.dateTaken > $1.dateTaken }
+    }
+
+    private func startScrollingTimer() {
+        scrollingTimer?.invalidate()
+        scrollingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { timer in
+            withAnimation(.easeOut(duration: 0.5)) {
+                pillOpacity = 0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isScrolling = false
+            }
+        }
     }
 }
 
@@ -529,14 +551,16 @@ struct AgePillView: View {
     let age: String
     
     var body: some View {
-        Text(age)
-            .font(.caption)
-            .fontWeight(.medium)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 8)
-            .background(Color.black.opacity(0.6))
-            .foregroundColor(.white)
-            .clipShape(Capsule())
+        if !age.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text(age)
+                .font(.caption)
+                .fontWeight(.medium)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 8)
+                .background(Color.black.opacity(0.6))
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+        }
     }
 }
 
@@ -806,22 +830,26 @@ struct BottomControls: View {
 // Scrubber handle
 struct ScrubberHandle: View {
     let tapAreaSize: CGFloat
-    let circleSize: CGFloat
+    let lineHeight: CGFloat = 2 // Height of the blue line
+    let leftPadding: CGFloat = 12 // Padding to the left of the blue line
+    let tapAreaHeight: CGFloat = 60 // Increased from 44 to 60 for better touch response
 
     var body: some View {
         ZStack {
-            // Semi-transparent yellow background for tap area
-            Rectangle()
-                .fill(Color.yellow.opacity(0.3))
-                .frame(width: tapAreaSize, height: tapAreaSize)
-            
-            Circle()
-                .fill(Color.red)
-                .frame(width: circleSize, height: circleSize)
+            HStack(spacing: 0) {
+                Spacer()
+                    .frame(width: leftPadding)
+                
+                // Blue line
+                Rectangle()
+                    .fill(Color.blue)
+                    .frame(height: lineHeight)
+            }
+            .frame(width: tapAreaSize)
             
             // Transparent overlay for larger tap area
             Color.clear
-                .frame(width: tapAreaSize, height: tapAreaSize)
+                .frame(width: tapAreaSize, height: tapAreaHeight)
                 .contentShape(Rectangle())
         }
     }
@@ -837,23 +865,24 @@ struct TimelineScrubber: View {
     @State private var isDragging = false
     @State private var dragOffset: CGFloat = 0
     
-    private let circleSize: CGFloat = 20
-    private let tapAreaSize: CGFloat = 44
-    private let blueDotSize: CGFloat = 6
-    private let bottomPadding: CGFloat = 60
+    private let tapAreaSize: CGFloat = 60
+    private let lineWidth: CGFloat = 30
+    private let lineHeight: CGFloat = 1
+    private let bottomPadding: CGFloat = 20
+    private let topExtension: CGFloat = -4 // Amount to extend the timeline upwards
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .top) {
+            ZStack(alignment: .topTrailing) {
                 ForEach(photos.indices, id: \.self) { index in
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: blueDotSize, height: blueDotSize)
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: lineWidth, height: lineHeight)
                         .offset(y: photoOffset(for: index, in: geometry))
                 }
 
                 // Indicator for current scroll position
-                ScrubberHandle(tapAreaSize: tapAreaSize, circleSize: circleSize)
+                ScrubberHandle(tapAreaSize: tapAreaSize)
                     .offset(y: indicatorPosition - tapAreaSize / 2)
                     .gesture(
                         DragGesture()
@@ -871,9 +900,9 @@ struct TimelineScrubber: View {
                             }
                     )
             }
+            .padding(.top, -topExtension)
             .padding(.bottom, bottomPadding)
             .onAppear {
-                // Set initial indicator position
                 indicatorPosition = currentScrollIndicatorOffset(in: geometry)
             }
             .onChange(of: scrollPosition) { _ in
@@ -884,19 +913,19 @@ struct TimelineScrubber: View {
 
     private func photoOffset(for index: Int, in geometry: GeometryProxy) -> CGFloat {
         let totalPhotos = CGFloat(photos.count)
-        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
+        let availableHeight = geometry.size.height + topExtension - bottomPadding - tapAreaSize
         let offset = (CGFloat(index) / (totalPhotos - 1)) * availableHeight
-        return offset + tapAreaSize / 2
+        return offset
     }
 
     private func currentScrollIndicatorOffset(in geometry: GeometryProxy) -> CGFloat {
         let scrollPercentage = min(1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
-        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
-        return scrollPercentage * availableHeight + tapAreaSize / 2
+        let availableHeight = geometry.size.height + topExtension - bottomPadding - tapAreaSize
+        return scrollPercentage * availableHeight
     }
 
     private func updateScrollPosition(_ dragAmount: CGFloat, in geometry: GeometryProxy) {
-        let availableHeight = geometry.size.height - bottomPadding - tapAreaSize
+        let availableHeight = geometry.size.height + topExtension - bottomPadding - tapAreaSize
         let dragPercentage = dragAmount / availableHeight
         let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
         let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
