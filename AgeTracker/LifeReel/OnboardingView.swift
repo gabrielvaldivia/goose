@@ -56,11 +56,16 @@ struct OnboardingView: View {
     
     private var appTourStep: some View {
         VStack(spacing: 0) {
+            Text("Life Reel")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding(.vertical, 40)
+            
             TabView {
                 tourPage(description: "Relive the joy of watching your loved ones grow", imageName: "onboarding-welcome")
                 tourPage(description: "Upload a photo, see the age—it's that simple!", imageName: "onboarding-age")
-                tourPage(description: "Time travel through your memories", imageName: "onboarding-organize")
-                tourPage(description: "Share stunning slideshows of cherished moments", imageName: "onboarding-share")
+                tourPage(description: "Time travel through your favorite moments", imageName: "onboarding-organize")
+                tourPage(description: "Share stunning slideshows of cherished memories", imageName: "onboarding-share")
                 tourPage(description: "Get reminders to capture key milestones", imageName: "onboarding-reminders")
                 tourPage(description: "Perfect for your children, pets, and beyond", imageName: "onboarding-get-started")
 
@@ -88,7 +93,6 @@ struct OnboardingView: View {
     private func tourPage(description: String, imageName: String) -> some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                Spacer() 
 
                 ZStack {
                     randomBackgroundColor()
