@@ -53,7 +53,8 @@ struct ContentView: View {
                             NavigationLink(destination: SettingsView(viewModel: viewModel, onShowOnboarding: {
                                 showOnboarding = true
                             })) {
-                                Image(systemName: "gearshape.fill")
+                                Image(systemName: "slider.vertical.3")
+                                    .fontWeight(.bold)
                             }
                         }
                     }

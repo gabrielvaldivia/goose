@@ -21,6 +21,9 @@ struct OnboardingView: View {
                 appTourStep
             }
             .background(Color(UIColor.systemBackground))
+            .onAppear {
+                setupPageControlAppearance()
+            }
             .onDisappear {
                 UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             }
@@ -52,45 +55,75 @@ struct OnboardingView: View {
     }
     
     private var appTourStep: some View {
-        VStack {
-            Spacer()
-            
+        VStack(spacing: 0) {
             TabView {
-                tourPage(title: "Welcome to Life Reel", description: "Track the growth of your loved ones through photos and memories.", imageName: "hourglass")
-                tourPage(title: "Organize Memories", description: "Create personalized timelines for each person in your life.", imageName: "rectangle.stack.fill.badge.person.crop")
-                tourPage(title: "Share Moments", description: "Easily share beautiful slideshows of your memories.", imageName: "square.and.arrow.up")
+                tourPage(description: "Relive the joy of watching your loved ones grow", imageName: "onboarding-welcome")
+                tourPage(description: "Upload a photo, see the age—it's that simple!", imageName: "onboarding-age")
+                tourPage(description: "Time travel through your memories", imageName: "onboarding-organize")
+                tourPage(description: "Share stunning slideshows of cherished moments", imageName: "onboarding-share")
+                tourPage(description: "Get reminders to capture key milestones", imageName: "onboarding-reminders")
+                tourPage(description: "Perfect for your children, pets, and beyond", imageName: "onboarding-get-started")
+
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-            .frame(height: 300)
-            
-            Spacer()
+            .ignoresSafeArea()
             
             Button(action: {
                 showAddPersonView = true
             }) {
                 Text("Get Started")
+                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.blue)
                     .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .cornerRadius(16)
             }
             .padding(.horizontal)
-            .padding(.bottom)
+            .padding(.vertical, 20)
+        }
+        .background(Color(UIColor.systemBackground))
+    }
+    
+    private func tourPage(description: String, imageName: String) -> some View {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                Spacer() 
+
+                ZStack {
+                    randomBackgroundColor()
+                    Image(imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(40)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.width) // Square frame
+                .clipped() // Ensure the ZStack doesn't exceed its frame
+
+
+
+                Text(description)
+                    .font(.title)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                    
+                Spacer() 
+
+            }
         }
     }
     
-    private func tourPage(title: String, description: String, imageName: String) -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: imageName)
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
-            Text(title)
-                .font(.title2)
-                .fontWeight(.bold)
-            Text(description)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
+    private func randomBackgroundColor() -> Color {
+        Color(
+            red: .random(in: 0.1...0.9),
+            green: .random(in: 0.1...0.9),
+            blue: .random(in: 0.1...0.9)
+        ).opacity(0.3)
+    }
+    
+    private func setupPageControlAppearance() {
+        UIPageControl.appearance().currentPageIndicatorTintColor = UIColor.secondaryLabel
+        UIPageControl.appearance().pageIndicatorTintColor = UIColor.secondaryLabel.withAlphaComponent(0.2)
     }
 }
