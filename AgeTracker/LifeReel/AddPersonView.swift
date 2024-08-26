@@ -12,6 +12,8 @@ import PhotosUI
 struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var isPresented: Bool
+    var onboardingMode: Bool
+    @State private var currentStep: Int
     @State private var name = ""
     @State private var dateOfBirth: Date?
     @State private var selectedAssets: [PHAsset] = []
@@ -22,8 +24,8 @@ struct AddPersonView: View {
     @State private var isLoading = false
     @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     @State private var showingPermissionAlert = false
-    @State private var currentStep = 1 // 1 for name and birth date, 2 for photos
-    @State private var navigateToPersonDetail = false
+    @State private var navigateToPersonDetail: Person?
+    @State private var shouldNavigateToDetail = false
     
     let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 111, maximum: 111), spacing: 10)
@@ -40,8 +42,15 @@ struct AddPersonView: View {
         }
     }
     
+    init(viewModel: PersonViewModel, isPresented: Binding<Bool>, onboardingMode: Bool, currentStep: Binding<Int>) {
+        self.viewModel = viewModel
+        self._isPresented = isPresented
+        self.onboardingMode = onboardingMode
+        self._currentStep = State(initialValue: currentStep.wrappedValue)
+    }
+    
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .center, spacing: 30) {
                     if currentStep == 1 {
@@ -54,32 +63,54 @@ struct AddPersonView: View {
             }
             .background(Color(UIColor.systemGroupedBackground))
             .ignoresSafeArea(.keyboard)
-            .navigationTitle(currentStep == 1 ? "Add Someone" : "")
+            .navigationTitle(onboardingMode ? (currentStep == 1 ? "Create First Person" : "Add Photos") : "Add Someone")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
+            .navigationBarBackButtonHidden(onboardingMode)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        if currentStep == 1 {
+                    if !onboardingMode {
+                        Button("Cancel") {
                             isPresented = false
-                        } else {
-                            currentStep = 1
                         }
-                    }) {
-                        Text(currentStep == 1 ? "Cancel" : "Back")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(currentStep == 1 ? "Next" : "Save") {
+                    if onboardingMode {
                         if currentStep == 1 {
-                            currentStep = 2
+                            Button("Next") {
+                                withAnimation {
+                                    currentStep = 2
+                                }
+                            }
+                            .disabled(name.isEmpty || dateOfBirth == nil)
                         } else {
-                            saveNewPerson()
+                            Button("Save") {
+                                saveNewPerson()
+                            }
+                            .disabled(selectedAssets.isEmpty)
+                        }
+                    } else {
+                        if currentStep == 1 {
+                            Button("Next") {
+                                withAnimation {
+                                    currentStep = 2
+                                }
+                            }
+                            .disabled(name.isEmpty || dateOfBirth == nil)
+                        } else {
+                            Button("Save") {
+                                saveNewPerson()
+                            }
+                            .disabled(name.isEmpty || dateOfBirth == nil || selectedAssets.isEmpty)
                         }
                     }
-                    .disabled(currentStep == 1 ? (name.isEmpty || dateOfBirth == nil) : selectedAssets.isEmpty)
                 }
             }
+            .background(
+                NavigationLink(destination: PersonDetailView(person: viewModel.bindingForPerson(viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel),
+                               isActive: $shouldNavigateToDetail,
+                               label: { EmptyView() })
+            )
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
@@ -246,13 +277,9 @@ struct AddPersonView: View {
     }
     
     private func saveNewPerson() {
-        guard let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else {
-            print("Missing date of birth or no selected assets")
-            return
-        }
+        guard !name.isEmpty, let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else { return }
         
         isLoading = true
-        print("Selected assets count: \(selectedAssets.count)")
         
         let ageInMonths = Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
         let birthMonthsDisplay = ageInMonths < 24 ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
@@ -262,20 +289,20 @@ struct AddPersonView: View {
         
         for asset in selectedAssets {
             viewModel.addPhoto(to: &newPerson, asset: asset)
-            print("Added photo to new person")
         }
         
         viewModel.updatePerson(newPerson)
-        print("New person created with \(newPerson.photos.count) photos")
         
         self.isLoading = false
         viewModel.selectedPerson = newPerson
         viewModel.setLastOpenedPerson(newPerson)
         
-        // Navigate to PersonDetailView
-        DispatchQueue.main.async {
-            self.navigateToPersonDetail = true
+        if onboardingMode {
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         }
+        
+        isPresented = false
+        viewModel.navigateToPersonDetail(newPerson)
     }
     
     private func requestPhotoLibraryAuthorization() {

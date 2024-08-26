@@ -19,6 +19,7 @@ class PersonViewModel: ObservableObject {
     @Published var lastOpenedPersonId: UUID?
     @Published var loadingStacks: Set<String> = []
     @Published var selectedPerson: Person?
+    @Published var navigationPath = NavigationPath()
 
     init() {
         loadPeople()
@@ -488,18 +489,14 @@ class PersonViewModel: ObservableObject {
         }
         return 0 // Return 0 if the photo wasn't found (shouldn't happen)
     }
+
+    func navigateToPersonDetail(_ person: Person) {
+        navigationPath.append(person)
+    }
 }
 
 enum PhotoAccessError: Error {
     case denied
     case unknown
     case albumNotFound
-}
-
-private struct OldPerson: Codable {
-    let id: UUID
-    var name: String
-    var dateOfBirth: Date
-    var photos: [Photo]
-    var syncedAlbumIdentifier: String?
 }

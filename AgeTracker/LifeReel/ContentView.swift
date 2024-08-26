@@ -5,6 +5,8 @@ struct ContentView: View {
     @State private var showingAddPerson = false
     @State private var navigationPath = NavigationPath()
     @State private var selectedPerson: Person?
+    @State private var showOnboarding = false
+    @State private var onboardingStep = 0
     
     let columns = [
         GridItem(.flexible()),
@@ -13,54 +15,85 @@ struct ContentView: View {
     ]
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ZStack {
-                if viewModel.people.isEmpty {
-                    VStack {
-                        Spacer()
-                        addPersonButton
-                        Spacer()
-                    }
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(viewModel.people, id: \.id) { person in
-                                NavigationLink(value: person) {
-                                    PersonGridItem(person: person)
-                                }
+        ZStack {
+            if showOnboarding {
+                OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
+            } else {
+                NavigationStack(path: $viewModel.navigationPath) {
+                    ZStack {
+                        if viewModel.people.isEmpty {
+                            VStack {
+                                Spacer()
+                                addPersonButton
+                                Spacer()
                             }
-                            addPersonButton
+                        } else {
+                            ScrollView {
+                                LazyVGrid(columns: columns, spacing: 20) {
+                                    ForEach(viewModel.people, id: \.id) { person in
+                                        NavigationLink(value: person) {
+                                            PersonGridItem(person: person)
+                                        }
+                                    }
+                                    addPersonButton
+                                }
+                                .padding()
+                            }
                         }
-                        .padding()
+                    }
+                    .navigationTitle("People")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .principal) {
+                            Text("People")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                        }
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            NavigationLink(destination: SettingsView(viewModel: viewModel, onShowOnboarding: {
+                                showOnboarding = true
+                            })) {
+                                Image(systemName: "gearshape.fill")
+                            }
+                        }
+                    }
+                    .navigationDestination(for: Person.self) { person in
+                        PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
+                    }
+                    .sheet(isPresented: $showingAddPerson) {
+                        NavigationView {
+                            AddPersonView(
+                                viewModel: viewModel,
+                                isPresented: $showingAddPerson,
+                                onboardingMode: false,
+                                currentStep: .constant(1)
+                            )
+                        }
                     }
                 }
-            }
-            .navigationTitle("People")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("People")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SettingsView(viewModel: viewModel)) {
-                        Image(systemName: "gearshape.fill")
-                    }
-                }
-            }
-            .navigationDestination(for: Person.self) { person in
-                PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingAddPerson) {
-                AddPersonView(viewModel: viewModel, isPresented: $showingAddPerson)
+                .environmentObject(viewModel)
             }
         }
-        .environmentObject(viewModel)
         .onAppear {
-            if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
-               let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
-                navigationPath.append(lastOpenedPerson)
+            if viewModel.people.isEmpty && !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+                showOnboarding = true
+            } else if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
+                      let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
+                viewModel.navigationPath.append(lastOpenedPerson)
+            } else if !viewModel.people.isEmpty {
+                // If there are people but no last opened person, show the first person
+                viewModel.navigationPath.append(viewModel.people[0])
+            }
+        }
+        .onChange(of: viewModel.people.count) { _, newCount in
+            if newCount > 0 && showOnboarding {
+                showOnboarding = false
+            }
+        }
+        .onChange(of: viewModel.people.count) { oldCount, newCount in
+            if oldCount > newCount {
+                // A person was deleted, pop to root
+                viewModel.navigationPath.removeLast(viewModel.navigationPath.count)
             }
         }
     }
@@ -141,21 +174,28 @@ struct ContentView_Previews: PreviewProvider {
 struct SettingsView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingDeleteConfirmation = false
+    var onShowOnboarding: () -> Void
 
     var body: some View {
         List {
             // New section for Twitter link
-            Section (header: Text("Support")) {
+            Section(header: Text("Support")) {
                 Link(destination: URL(string: "https://x.com/gabrielvaldivia")!) {
                     HStack {
-                        Image(systemName: "link")
                         Text("Follow on Twitter")
                     }
                 }
             }
             
+            // New section for onboarding
+            Section(header: Text("App Tour")) {
+                Button("Replay Onboarding") {
+                    onShowOnboarding()
+                }
+            }
+            
             // Existing delete all data section
-            Section (header: Text("Danger Zone")) {
+            Section(header: Text("Danger Zone")) {
                 Button("Delete All Data") {
                     showingDeleteConfirmation = true
                 }

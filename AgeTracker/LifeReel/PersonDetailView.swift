@@ -131,6 +131,10 @@ struct PersonDetailView: View {
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var currentSection: String?
     @State private var forceUpdate: Bool = false
+    
+    // Add this state variable
+    @State private var shouldNavigateBack = false
+    @State private var showShareSlideshowOnAppear = false
 
     // Initializer
     init(person: Binding<Person>, viewModel: PersonViewModel) {
@@ -145,7 +149,7 @@ struct PersonDetailView: View {
             PageViewController(
                 pages: [
                     AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos"))
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos", showScrubber: true))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -196,10 +200,16 @@ struct PersonDetailView: View {
         .onAppear {
             viewModel.setLastOpenedPerson(person)
             if person.isNewlyAdded {
+                showShareSlideshowOnAppear = true
+                person.isNewlyAdded = false
+                viewModel.updatePerson(person)
+            }
+        }
+        .onChange(of: showShareSlideshowOnAppear) { _, newValue in
+            if newValue {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     activeSheet = .shareView
-                    person.isNewlyAdded = false
-                    viewModel.updatePerson(person)
+                    showShareSlideshowOnAppear = false
                 }
             }
         }
@@ -234,6 +244,12 @@ struct PersonDetailView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             // Force view update on orientation change
             viewModel.objectWillChange.send()
+        }
+        // Add this modifier
+        .onChange(of: shouldNavigateBack) { _, newValue in
+            if newValue {
+                viewModel.navigationPath.removeLast(viewModel.navigationPath.count)
+            }
         }
     }
 
@@ -527,6 +543,11 @@ struct PersonDetailView: View {
                 viewModel.updatePerson(person)
             }
         )
+    }
+
+    private func deletePerson() {
+        viewModel.deletePerson(person)
+        shouldNavigateBack = true
     }
 }
 

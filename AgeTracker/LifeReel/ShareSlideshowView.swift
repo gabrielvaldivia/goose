@@ -491,8 +491,8 @@ struct ShareSlideshowView: View {
     private func setupAudioPlayer() {
         guard let musicFileName = selectedMusic else { return }
         
-        guard let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3") else {
-            print("Unable to find \(musicFileName).mp3 in bundle")
+        guard let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3", inDirectory: "Music") else {
+            print("Unable to find \(musicFileName).mp3 in Music folder")
             return
         }
         

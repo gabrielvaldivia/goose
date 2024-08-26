@@ -354,6 +354,7 @@ struct SharedTimelineView: View {
     @Binding var selectedPhoto: Photo?
     let forceUpdate: Bool
     let sectionTitle: String?
+    let showScrubber: Bool  // Add this line
     @State private var photoUpdateTrigger = UUID()
     @State private var currentAge: String = ""
     @State private var scrollPosition: CGFloat = 0
@@ -418,51 +419,53 @@ struct SharedTimelineView: View {
                     startControlsTimer()
                 }
 
-                ZStack(alignment: .topTrailing) {
-                    TimelineScrubber(photos: filteredPhotos(),
-                                     scrollPosition: $scrollPosition,
-                                     contentHeight: timelineContentHeight,
-                                     isDraggingTimeline: $isDraggingTimeline,
-                                     indicatorPosition: $indicatorPosition)
-                        .frame(width: timelineWidth)
-                        .padding(.top, verticalPadding)
-                        .background(GeometryReader { scrubberGeometry in
-                            Color.clear.onAppear {
-                                scrubberHeight = scrubberGeometry.size.height
-                            }
-                        })
-
-                    if isScrolling || isDraggingPill {
-                        AgePillView(age: currentAge)
-                            .padding(.trailing, timelineWidth + agePillPadding)
-                            .offset(y: pillOffset)
-                            .background(GeometryReader { pillGeometry in
+                if showScrubber {  // Add this condition
+                    ZStack(alignment: .topTrailing) {
+                        TimelineScrubber(photos: filteredPhotos(),
+                                         scrollPosition: $scrollPosition,
+                                         contentHeight: timelineContentHeight,
+                                         isDraggingTimeline: $isDraggingTimeline,
+                                         indicatorPosition: $indicatorPosition)
+                            .frame(width: timelineWidth)
+                            .padding(.top, verticalPadding)
+                            .background(GeometryReader { scrubberGeometry in
                                 Color.clear.onAppear {
-                                    pillHeight = pillGeometry.size.height
+                                    scrubberHeight = scrubberGeometry.size.height
                                 }
                             })
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        isDraggingPill = true
-                                        isDraggingTimeline = true
-                                        let dragPosition = value.location.y
-                                        updateScrollPositionFromPill(dragPosition)
-                                        checkForHapticFeedback(dragPosition: dragPosition)
+
+                        if isScrolling || isDraggingPill {
+                            AgePillView(age: currentAge)
+                                .padding(.trailing, timelineWidth + agePillPadding)
+                                .offset(y: pillOffset)
+                                .background(GeometryReader { pillGeometry in
+                                    Color.clear.onAppear {
+                                        pillHeight = pillGeometry.size.height
                                     }
-                                    .onEnded { _ in
-                                        isDraggingPill = false
-                                        isDraggingTimeline = false
-                                        lastHapticIndex = -1
-                                    }
-                            )
+                                })
+                                .gesture(
+                                    DragGesture()
+                                        .onChanged { value in
+                                            isDraggingPill = true
+                                            isDraggingTimeline = true
+                                            let dragPosition = value.location.y
+                                            updateScrollPositionFromPill(dragPosition)
+                                            checkForHapticFeedback(dragPosition: dragPosition)
+                                        }
+                                        .onEnded { _ in
+                                            isDraggingPill = false
+                                            isDraggingTimeline = false
+                                            lastHapticIndex = -1
+                                        }
+                                )
+                        }
                     }
+                    .opacity(controlsOpacity)
+                    .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
                 }
-                .opacity(controlsOpacity)
-                .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
             }
         }
-        .ignoresSafeArea(.all, edges: .bottom) // Add this line to ignore safe areas at the bottom
+        .ignoresSafeArea(.all, edges: .bottom)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
             photoUpdateTrigger = UUID()
         }

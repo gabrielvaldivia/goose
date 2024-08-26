@@ -29,7 +29,7 @@ struct StackDetailView: View {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
                         AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: sectionTitle))
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: sectionTitle, showScrubber: false))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
