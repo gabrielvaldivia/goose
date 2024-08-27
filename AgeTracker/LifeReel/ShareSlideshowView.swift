@@ -70,6 +70,8 @@ struct ShareSlideshowView: View {
     
     private let availableMusic = ["Serenity", "Echoes", "Sunshine", "Whispers"]
     
+    @State private var milestoneMode: MilestoneMode = .milestones
+    
     init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
         self.photos = photos
         self.person = person
@@ -83,6 +85,9 @@ struct ShareSlideshowView: View {
         
         // Ensure isPlaying is true by default
         _isPlaying = State(initialValue: true)
+        
+        // Set default milestone mode to milestones
+        _milestoneMode = State(initialValue: .milestones)
     }
     
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -98,6 +103,13 @@ struct ShareSlideshowView: View {
         case kenBurns = "Ken Burns"
         case none = "None"
 
+        var description: String { self.rawValue }
+    }
+    
+    enum MilestoneMode: String, CaseIterable, CustomStringConvertible {
+        case allPhotos = "All Photos"
+        case milestones = "Milestones"
+        
         var description: String { self.rawValue }
     }
     
@@ -267,7 +279,17 @@ struct ShareSlideshowView: View {
                         selection: $aspectRatio
                     )
                     .frame(width: 80)
-                    
+                
+
+                    // Milestone Mode
+                    SimplifiedCustomizationButton(
+                        icon: "photo.on.rectangle.angled",
+                        title: "Photos",
+                        options: MilestoneMode.allCases,
+                        selection: $milestoneMode
+                    )
+                    .frame(width: 80)
+
                     // Watermark
                     Button(action: { showAppIcon.toggle() }) {
                         VStack(spacing: 6) {
@@ -280,7 +302,6 @@ struct ShareSlideshowView: View {
                         .frame(width: 80)
                     }
                     .foregroundColor(.primary)
-
                 }
                 .padding(.horizontal, 15)
                 .padding(.vertical, 10)
@@ -486,7 +507,27 @@ struct ShareSlideshowView: View {
     }
 
     private var filteredPhotos: [Photo] {
-        return photos
+        switch milestoneMode {
+        case .allPhotos:
+            return photos
+        case .milestones:
+            return filterMilestoneStack(photos: photos)
+        }
+    }
+
+    private func filterMilestoneStack(photos: [Photo]) -> [Photo] {
+        var milestoneStack: [Photo] = []
+        var lastMilestone: String?
+
+        for photo in photos {
+            let currentMilestone = calculateGeneralAge(for: person, at: photo.dateTaken)
+            if currentMilestone != lastMilestone {
+                milestoneStack.append(photo)
+                lastMilestone = currentMilestone
+            }
+        }
+
+        return milestoneStack
     }
 
     private func setupAudioPlayer() {

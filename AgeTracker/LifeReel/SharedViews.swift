@@ -811,7 +811,7 @@ struct SegmentedControlView: View {
     @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
     
-    let options = ["square.grid.2x2", "person.crop.rectangle.stack"]
+    let options = ["person.crop.rectangle.stack", "square.grid.2x2"]
     
     var body: some View {
         HStack(spacing: 8) {
@@ -858,6 +858,7 @@ struct BottomControls: View {
     let addPhotoAction: () -> Void
     @Binding var selectedTab: Int
     @Binding var animationDirection: UIPageViewController.NavigationDirection
+    let options: [String]
 
     var body: some View {
         HStack {

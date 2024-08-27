@@ -16,7 +16,7 @@ struct StackDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedPhoto: Photo? = nil
     @State private var isShareSlideshowPresented = false
-    @State private var selectedTab = 1 // 0 for Grid, 1 for Timeline
+    @State private var selectedTab = 0 // 0 for Timeline, 1 for Grid
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var isLoading = false
@@ -28,8 +28,8 @@ struct StackDetailView: View {
             } else {
                 ZStack(alignment: .bottom) {
                     PageViewController(pages: [
-                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle)),
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: sectionTitle, showScrubber: false))
+                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: sectionTitle, showScrubber: false)),
+                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle))
                     ], currentPage: $selectedTab, animationDirection: $animationDirection)
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -43,7 +43,8 @@ struct StackDetailView: View {
                                 showingImagePicker = true
                             },
                             selectedTab: $selectedTab,
-                            animationDirection: $animationDirection
+                            animationDirection: $animationDirection,
+                            options: ["person.crop.rectangle.stack", "square.grid.2x2"]
                         )
                     }
                 }

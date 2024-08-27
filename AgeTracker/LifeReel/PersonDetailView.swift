@@ -113,7 +113,7 @@ struct PersonDetailView: View {
     @State private var selectedAssets: [PHAsset] = []
     @State private var showingDeleteAlert = false
     @State private var photoToDelete: Photo?
-    @State private var selectedTab = 1 // Changed from 0 to 1 for Timeline
+    @State private var selectedTab = 0 // 0 for Timeline, 1 for Grid
     @State private var activeSheet: ActiveSheet?
     @State private var selectedPhoto: Photo? = nil 
     @State private var isShareSheetPresented = false
@@ -148,8 +148,8 @@ struct PersonDetailView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate)),
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos", showScrubber: true))
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: "All Photos", showScrubber: true)),
+                    AnyView(StackGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, openImagePickerForMoment: openImagePickerForMoment, forceUpdate: forceUpdate))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -255,7 +255,8 @@ struct PersonDetailView: View {
 
     // Bottom controls
     private var bottomControls: some View {
-        BottomControls(
+        let options = ["person.crop.rectangle.stack", "square.grid.2x2"]
+        return BottomControls(
             shareAction: {
                 if !person.photos.isEmpty {
                     activeSheet = .shareView
@@ -267,7 +268,8 @@ struct PersonDetailView: View {
                 showingImagePicker = true
             },
             selectedTab: $selectedTab,
-            animationDirection: $animationDirection
+            animationDirection: $animationDirection,
+            options: options
         )
     }
 
@@ -513,7 +515,7 @@ struct PersonDetailView: View {
             )
         case .sharingComingSoon:
             SharingComingSoonView()
-        case .customImagePicker(let moment, _):
+        case .customImagePicker(let moment, let dateRange):
             NavigationView {
                 CustomImagePicker(
                     viewModel: viewModel,
