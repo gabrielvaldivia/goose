@@ -307,6 +307,7 @@ struct ShareSlideshowView: View {
     }
 
     private func onAppear() {
+        print("View appeared, isPlaying: \(isPlaying)")
         loadImagesAround(index: currentFilteredPhotoIndex)
         setupAudioPlayer()
         startTimer()
@@ -491,15 +492,39 @@ struct ShareSlideshowView: View {
     private func setupAudioPlayer() {
         guard let musicFileName = selectedMusic else { return }
         
-        guard let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3", inDirectory: "Music") else {
-            print("Unable to find \(musicFileName).mp3 in Music folder")
-            return
+        print("Attempting to set up audio player for: \(musicFileName)")
+        
+        // List all resources in the bundle
+        if let resourcePath = Bundle.main.resourcePath {
+            do {
+                let items = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
+                print("Bundle contents:")
+                for item in items {
+                    print(item)
+                }
+            } catch {
+                print("Error listing bundle contents: \(error)")
+            }
         }
         
+        // Try to find the file directly in the bundle
+        if let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3") {
+            createAudioPlayer(with: path)
+        } else {
+            print("Unable to find \(musicFileName).mp3 in bundle")
+            if let resourcePath = Bundle.main.resourcePath {
+                let fullPath = (resourcePath as NSString).appendingPathComponent("\(musicFileName).mp3")
+                print("Searched path: \(fullPath)")
+            }
+        }
+    }
+    
+    private func createAudioPlayer(with path: String) {
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
             audioPlayer?.numberOfLoops = -1 // Loop indefinitely
             audioPlayer?.prepareToPlay()
+            print("Successfully set up audio player for: \(path)")
         } catch {
             print("Error setting up audio player: \(error.localizedDescription)")
         }
