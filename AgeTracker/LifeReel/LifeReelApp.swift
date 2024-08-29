@@ -18,9 +18,7 @@ struct LifeReelApp: App {
     
     var body: some Scene {
         WindowGroup {
-            NavigationView {
-                ContentView(viewModel: personViewModel)
-            }
+            ContentView(viewModel: personViewModel)
             .onAppear {
                 if let lastOpenedPersonIdString = UserDefaults.standard.string(forKey: "lastOpenedPersonId"),
                    let lastOpenedPersonId = UUID(uuidString: lastOpenedPersonIdString),

@@ -171,7 +171,6 @@ struct ContentView_Previews: PreviewProvider {
         ContentView(viewModel: PersonViewModel())
     }
 }
-
 struct SettingsView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingDeleteConfirmation = false

@@ -12,10 +12,10 @@ import UniformTypeIdentifiers
 import Photos
 import UIKit
 
+// Enum for managing different sheet presentations
 enum ActiveSheet: Identifiable, Hashable {
     case settings
     case shareView
-    case sharingComingSoon
     case customImagePicker(moment: String, _: (start: Date, end: Date))
     
     var id: Self { self }
@@ -26,8 +26,6 @@ enum ActiveSheet: Identifiable, Hashable {
             hasher.combine(0)
         case .shareView:
             hasher.combine(1)
-        case .sharingComingSoon:
-            hasher.combine(2)
         case .customImagePicker(let moment, _):
             hasher.combine(3)
             hasher.combine(moment)
@@ -37,8 +35,7 @@ enum ActiveSheet: Identifiable, Hashable {
     static func == (lhs: ActiveSheet, rhs: ActiveSheet) -> Bool {
         switch (lhs, rhs) {
         case (.settings, .settings),
-             (.shareView, .shareView),
-             (.sharingComingSoon, .sharingComingSoon):
+             (.shareView, .shareView):
             return true
         case let (.customImagePicker(lMoment, _), .customImagePicker(rMoment, _)):
             return lMoment == rMoment
@@ -48,6 +45,7 @@ enum ActiveSheet: Identifiable, Hashable {
     }
 }
 
+// UIViewControllerRepresentable for PHPickerViewController
 struct ImagePickerRepresentable: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let targetDate: Date
@@ -85,25 +83,6 @@ struct ImagePickerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-struct TransparentNavigationBar: ViewModifier {
-    init() {
-        UINavigationBar.appearance().setBackgroundImage(UIImage(), for: .default)
-        UINavigationBar.appearance().shadowImage = UIImage()
-        UINavigationBar.appearance().isTranslucent = true
-        UINavigationBar.appearance().tintColor = .black
-    }
-
-    func body(content: Content) -> some View {
-        content
-    }
-}
-
-extension View {
-    func transparentNavigationBar() -> some View {
-        self.modifier(TransparentNavigationBar())
-    }
-}
-
 // Main view struct
 struct PersonDetailView: View {
     // State and observed properties
@@ -121,7 +100,6 @@ struct PersonDetailView: View {
     @State private var showingDatePicker = false
     @State private var selectedPhotoForDateEdit: Photo?
     @State private var editedDate: Date = Date()
-    @State private var showingSharingComingSoon = false
     @State private var currentScrollPosition: String?
     @State private var isImagePickerPresented = false
     @State private var currentMoment: String = ""
@@ -145,6 +123,7 @@ struct PersonDetailView: View {
     
     // Main body of the view
     var body: some View {
+        // ZStack for main content and bottom controls
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
@@ -160,6 +139,7 @@ struct PersonDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Navigation bar configuration
             ToolbarItem(placement: .principal) {
                 Text(person.name)
                     .font(.headline)
@@ -170,9 +150,9 @@ struct PersonDetailView: View {
                 settingsButton
             }
         }
-        .transparentNavigationBar()
         .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showingImagePicker, onDismiss: loadImage) {
+            // Various sheet presentations
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
                 .edgesIgnoringSafeArea(.all)
                 .presentationDetents([.large])
@@ -182,6 +162,7 @@ struct PersonDetailView: View {
             ActivityViewController(activityItems: activityItems)
         }
         .onChange(of: selectedAssets) { oldValue, newValue in
+            // Event handlers and lifecycle methods
             handleSelectedAssetsChange(oldValue: oldValue, newValue: newValue)
         }
         .onAppear(perform: handleOnAppear)
@@ -193,7 +174,7 @@ struct PersonDetailView: View {
                 photos: person.photos,
                 onDelete: deletePhoto,
                 person: person,
-                viewModel: viewModel  // Add this line to pass the viewModel
+                viewModel: viewModel 
             )
         }
         .sheet(isPresented: $showingDatePicker, content: photoDatePickerSheet)
@@ -253,7 +234,7 @@ struct PersonDetailView: View {
         }
     }
 
-    // Bottom controls
+    // Bottom controls view
     private var bottomControls: some View {
         let options = ["person.crop.rectangle.stack", "square.grid.2x2"]
         return BottomControls(
@@ -273,57 +254,11 @@ struct PersonDetailView: View {
         )
     }
 
-    private struct PhotoView: View {
-        let photo: Photo
-        let containerWidth: CGFloat
-        let isGridView: Bool
-        @Binding var selectedPhoto: Photo?
-        
-        var body: some View {
-            Group {
-                if let image = photo.image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: isGridView ? .fill : .fit)
-                        .frame(width: isGridView ? containerWidth : nil, height: isGridView ? containerWidth : nil)
-                        .clipped()
-                } else {
-                    ProgressView()
-                        .frame(width: isGridView ? containerWidth : nil, height: isGridView ? containerWidth : 200)
-                        .background(Color.gray.opacity(0.2))
-                }
-            }
-            .cornerRadius(isGridView ? 10 : 0)
-            .onTapGesture {
-                selectedPhoto = photo
-            }
-        }
-    }
-
-    // New function to open image picker for a specific moment
+    // Function to open image picker for a specific moment
     private func openImagePickerForMoment(_ section: String, _ dateRange: (Date, Date)) {
         currentSection = section
         currentMoment = section
         isImagePickerPresented = true
-    }
-
-    // Helper function to get the date for a specific moment
-    private func dateForMoment(_ moment: String) -> Date {
-        let calendar = Calendar.current
-        
-        if moment == "Pregnancy" {
-            return calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
-        } else if moment == "Birth Month" {
-            return person.dateOfBirth
-        } else if moment.contains("Month") {
-            let months = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
-            return calendar.date(byAdding: .month, value: months, to: person.dateOfBirth) ?? person.dateOfBirth
-        } else if moment.contains("Year") {
-            let years = Int(moment.components(separatedBy: " ").first ?? "0") ?? 0
-            return calendar.date(byAdding: .year, value: years, to: person.dateOfBirth) ?? person.dateOfBirth
-        }
-        
-        return person.dateOfBirth
     }
 
     // Image loading function
@@ -374,6 +309,7 @@ struct PersonDetailView: View {
         return formatter.string(from: date)
     }
     
+    // Function to update photo date
     private func updatePhotoDate(_ photo: Photo, newDate: Date) {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
             person.photos[index].dateTaken = newDate
@@ -381,6 +317,7 @@ struct PersonDetailView: View {
         }
     }
 
+    // Handler for selected assets change
     private func handleSelectedAssetsChange(oldValue: [PHAsset], newValue: [PHAsset]) {
         if !newValue.isEmpty {
             print("Assets selected: \(newValue)")
@@ -390,12 +327,14 @@ struct PersonDetailView: View {
         }
     }
 
+    // Handler for view appearance
     private func handleOnAppear() {
         if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
             person = updatedPerson
         }
     }
 
+    // Alert for photo deletion confirmation
     private func deletePhotoAlert() -> Alert {
         Alert(
             title: Text("Delete Photo"),
@@ -409,6 +348,7 @@ struct PersonDetailView: View {
         )
     }
 
+    // Sheet for photo date picker
     private func photoDatePickerSheet() -> some View {
         PhotoDatePickerSheet(date: $editedDate, isPresented: $showingDatePicker) {
             if let photoToUpdate = selectedPhotoForDateEdit {
@@ -418,7 +358,7 @@ struct PersonDetailView: View {
         .presentationDetents([.height(300)])
     }
 
-    // New function to update scroll position
+    // Function to update scroll position
     private func updateScrollPosition(_ value: CGPoint) {
         let sections = sortedGroupedPhotosForAll().map { $0.0 }
         if let index = sections.firstIndex(where: { section in
@@ -429,7 +369,7 @@ struct PersonDetailView: View {
         }
     }
 
-    // New function to scroll to stored position
+    // Function to scroll to stored position
     private func scrollToStoredPosition(proxy: ScrollViewProxy, section: String? = nil) {
         let positionToScroll = section ?? currentScrollPosition
         if let position = positionToScroll {
@@ -439,6 +379,7 @@ struct PersonDetailView: View {
         }
     }
 
+    // Functions for sorting and grouping photos
     private func sortedGroupedPhotosForAll() -> [(String, [Photo])] {
         return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
     }
@@ -447,50 +388,7 @@ struct PersonDetailView: View {
         return PhotoUtils.groupAndSortPhotos(for: person)
     }
 
-    private func bigMoments() -> [(String, [Photo])] {
-        var moments: [(String, [Photo])] = []
-        let calendar = Calendar.current
-        let sortedPhotos = person.photos.sorted { $0.dateTaken < $1.dateTaken }
-        
-        // Birth
-        let birthPhotos = sortedPhotos.filter { calendar.isDate($0.dateTaken, inSameDayAs: person.dateOfBirth) }
-        moments.append(("Birth", birthPhotos))
-        
-        // First 24 months
-        for month in 1...24 {
-            let startDate = calendar.date(byAdding: .month, value: month - 1, to: person.dateOfBirth)!
-            let endDate = calendar.date(byAdding: .month, value: month, to: person.dateOfBirth)!
-            let monthPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let exactAge = AgeCalculator.calculate(for: person, at: startDate)
-            moments.append((exactAge.toString(), monthPhotos))
-        }
-        
-        // Years
-        let currentDate = Date()
-        let ageComponents = calendar.dateComponents([.year], from: person.dateOfBirth, to: currentDate)
-        let age = ageComponents.year ?? 0
-        
-        for year in 3...max(age, 3) {
-            let startDate = calendar.date(byAdding: .year, value: year - 1, to: person.dateOfBirth)!
-            let endDate = calendar.date(byAdding: .year, value: year, to: person.dateOfBirth)!
-            let yearPhotos = sortedPhotos.filter { $0.dateTaken >= startDate && $0.dateTaken < endDate }
-            let exactAge = AgeCalculator.calculate(for: person, at: startDate)
-            moments.append((exactAge.toString(), yearPhotos))
-        }
-        
-        return moments
-    }
-
-    private func getDateRangeForSection(_ section: String) -> (start: Date, end: Date) {
-        do {
-            return try PhotoUtils.getDateRangeForSection(section, person: person)
-        } catch {
-            print("Error getting date range for section \(section): \(error)")
-            // Return a default date range or handle the error as appropriate for your app
-            return (Date(), Date())
-        }
-    }
-
+    // Settings button view
     private var settingsButton: some View {
         Button(action: {
             activeSheet = .settings
@@ -500,6 +398,7 @@ struct PersonDetailView: View {
         }
     }
 
+    // Content for different sheet presentations
     @ViewBuilder
     private func sheetContent(_ item: ActiveSheet) -> some View {
         switch item {
@@ -513,8 +412,6 @@ struct PersonDetailView: View {
                 person: person,
                 sectionTitle: "All Photos"
             )
-        case .sharingComingSoon:
-            SharingComingSoonView()
         case .customImagePicker(let moment, let dateRange):
             NavigationView {
                 CustomImagePicker(
@@ -534,6 +431,7 @@ struct PersonDetailView: View {
         }
     }
 
+    // Content for image picker
     private func imagePickerContent() -> some View {
         CustomImagePicker(
             viewModel: viewModel,
@@ -547,44 +445,20 @@ struct PersonDetailView: View {
         )
     }
 
+    // Function to delete a person
     private func deletePerson() {
         viewModel.deletePerson(person)
         shouldNavigateBack = true
     }
 }
 
-struct SharingComingSoonView: View {
-    @Environment(\.presentationMode) var presentationMode
-
-    var body: some View {
-        VStack {
-            Text("Sharing multiple photos is coming soon")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-                .padding()
-            
-            Button("Dismiss") {
-                presentationMode.wrappedValue.dismiss()
-            }
-            .padding()
-        }
-        .presentationDetents([.large])
-    }
-}
-
-struct VisualEffectView: UIViewRepresentable {
-    var effect: UIVisualEffect?
-    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
-    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
-}
-
-// New preference key for scroll offset
+// Preference key for scroll offset
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGPoint = .zero
     static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {}
 }
 
-// New view modifier to track scroll position
+// View modifier to track scroll position
 struct ScrollOffsetModifier: ViewModifier {
     let coordinateSpace: String
     @Binding var offset: CGPoint
@@ -603,14 +477,14 @@ struct ScrollOffsetModifier: ViewModifier {
     }
 }
 
-// Extension to make the modifier easier to use
+// Extension for easier use of scroll tracking
 extension View {
     func trackScrollOffset(coordinateSpace: String, offset: Binding<CGPoint>) -> some View {
         modifier(ScrollOffsetModifier(coordinateSpace: coordinateSpace, offset: offset))
     }
 }
 
-// Custom PageViewController
+// Custom PageViewController for swipe navigation
 struct PageViewController: UIViewControllerRepresentable {
     var pages: [AnyView]
     @Binding var currentPage: Int
