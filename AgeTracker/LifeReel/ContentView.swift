@@ -145,28 +145,32 @@ struct PersonGridItem: View {
     }
 }
 
-// struct WelcomeView: View {
-//     @Binding var showingAddPerson: Bool
+struct WelcomeView: View {
+    @Binding var showingAddPerson: Bool
     
-//     var body: some View {
-//         VStack {
-//             Text("Add someone to get started")
-//                 .font(.subheadline)
-//                 .foregroundColor(.secondary)
+    var body: some View {
+        VStack {
+            Text("Add someone to get started")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
             
-//             Button(action: { showingAddPerson = true }) {
-//                 Text("Add Someone")
-//                     .padding()
-//                     .background(Color.blue)
-//                     .foregroundColor(.white)
-//                     .cornerRadius(10)
-//             }
-//             .padding()
-//         }
-//     }
-// }
+            Button(action: { showingAddPerson = true }) {
+                Text("Add Someone")
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .padding()
+        }
+    }
+}
 
-
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView(viewModel: PersonViewModel())
+    }
+}
 struct SettingsView: View {
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingDeleteConfirmation = false

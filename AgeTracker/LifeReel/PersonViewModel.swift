@@ -20,6 +20,7 @@ class PersonViewModel: ObservableObject {
     @Published var loadingStacks: Set<String> = []
     @Published var selectedPerson: Person?
     @Published var navigationPath = NavigationPath()
+    @Published var newlyAddedPerson: Person?
 
     init() {
         loadPeople()
