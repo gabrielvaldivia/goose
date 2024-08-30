@@ -114,6 +114,9 @@ struct PersonDetailView: View {
     @State private var shouldNavigateBack = false
     @State private var showShareSlideshowOnAppear = false
 
+    @State private var isPersonGridSheetPresented = false
+    @State private var selectedPersonFromGrid: Person?
+
     // Initializer
     init(person: Binding<Person>, viewModel: PersonViewModel) {
         self._person = person
@@ -141,10 +144,14 @@ struct PersonDetailView: View {
         .toolbar {
             // Navigation bar configuration
             ToolbarItem(placement: .principal) {
-                Text(person.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                Button(action: {
+                    isPersonGridSheetPresented = true
+                }) {
+                    Text(person.name)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 settingsButton
@@ -163,7 +170,7 @@ struct PersonDetailView: View {
         }
         .onChange(of: selectedAssets) { oldValue, newValue in
             // Event handlers and lifecycle methods
-            handleSelectedAssetsChange(oldValue: oldValue, newValue: newValue)
+            print("Selected assets changed from \(oldValue.count) to \(newValue.count)")
         }
         .onAppear(perform: handleOnAppear)
         .alert(isPresented: $showingDeleteAlert, content: deletePhotoAlert)
@@ -232,6 +239,17 @@ struct PersonDetailView: View {
                 viewModel.navigationPath.removeLast(viewModel.navigationPath.count)
             }
         }
+        .sheet(isPresented: $isPersonGridSheetPresented) {
+            PersonGridSheet(viewModel: viewModel, isPresented: $isPersonGridSheetPresented, selectedPerson: $selectedPersonFromGrid)
+                .presentationDetents([.medium])
+        }
+        .onChange(of: selectedPersonFromGrid) { _, newPerson in
+            if let newPerson = newPerson {
+                viewModel.setLastOpenedPerson(newPerson)
+                person = newPerson
+                selectedPersonFromGrid = nil
+            }
+        }
     }
 
     // Bottom controls view
@@ -263,42 +281,17 @@ struct PersonDetailView: View {
 
     // Image loading function
     func loadImage() {
-        guard !selectedAssets.isEmpty else { 
-            print("No assets to load")
-            return 
-        }
-        
-        let dispatchGroup = DispatchGroup()
-        
         for asset in selectedAssets {
-            dispatchGroup.enter()
-            DispatchQueue.global(qos: .userInitiated).async {
-                if let newPhoto = Photo(asset: asset) {
-                    DispatchQueue.main.async {
-                        self.viewModel.addPhoto(to: &self.person, asset: asset)
-                        print("Added photo with date: \(newPhoto.dateTaken) and identifier: \(newPhoto.assetIdentifier)")
-                        dispatchGroup.leave()
-                    }
-                } else {
-                    dispatchGroup.leave()
-                }
+            if let newPhoto = Photo(asset: asset) {
+                viewModel.addPhoto(to: &person, photo: newPhoto)
             }
         }
-        
-        dispatchGroup.notify(queue: .main) {
-            self.viewModel.updatePerson(self.person)
-            print("All photos have been added")
-            self.forceUpdate.toggle()
-            self.viewModel.objectWillChange.send()
-        }
+        selectedAssets.removeAll()
     }
 
     // Function to delete a photo
     func deletePhoto(_ photo: Photo) {
-        if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
-            person.photos.remove(at: index)
-            viewModel.updatePerson(person)
-        }
+        viewModel.deletePhoto(photo, from: &person)
     }
     
     // Helper function to format date
@@ -314,16 +307,6 @@ struct PersonDetailView: View {
         if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
             person.photos[index].dateTaken = newDate
             viewModel.updatePerson(person)
-        }
-    }
-
-    // Handler for selected assets change
-    private func handleSelectedAssetsChange(oldValue: [PHAsset], newValue: [PHAsset]) {
-        if !newValue.isEmpty {
-            print("Assets selected: \(newValue)")
-            loadImage()
-        } else {
-            print("No assets selected")
         }
     }
 
@@ -384,7 +367,7 @@ struct PersonDetailView: View {
         return PhotoUtils.sortedGroupedPhotosForAll(person: person, viewModel: viewModel)
     }
 
-    private func groupAndSortPhotos(forYearView: Bool) -> [(String, [Photo])] {
+    private func groupAndSortPhotos() -> [(String, [Photo])] {
         return PhotoUtils.groupAndSortPhotos(for: person)
     }
 
@@ -419,11 +402,10 @@ struct PersonDetailView: View {
                     person: $person,
                     sectionTitle: moment,
                     isPresented: Binding(
-                        get: { self.activeSheet != nil },
-                        set: { if !$0 { self.activeSheet = nil } }
+                        get: { true },
+                        set: { _ in }
                     ),
                     onPhotosAdded: { newPhotos in
-                        // Handle newly added photos
                         viewModel.updatePerson(person)
                     }
                 )
@@ -439,7 +421,6 @@ struct PersonDetailView: View {
             sectionTitle: currentMoment,
             isPresented: $isImagePickerPresented,
             onPhotosAdded: { newPhotos in
-                // Handle newly added photos
                 viewModel.updatePerson(person)
             }
         )
@@ -544,3 +525,72 @@ struct PageViewController: UIViewControllerRepresentable {
         }
     }
 }
+
+struct PersonGridSheet: View {
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var isPresented: Bool
+    @Binding var selectedPerson: Person?
+    @State private var showingAddPerson = false
+
+    let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(viewModel.people) { person in
+                        PersonGridItem(person: person)
+                            .onTapGesture {
+                                selectedPerson = person
+                                isPresented = false
+                            }
+                    }
+                    addPersonButton
+                }
+                .padding()
+            }
+            .navigationTitle("People")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddPerson) {
+            NavigationView {
+                AddPersonView(
+                    viewModel: viewModel,
+                    isPresented: $showingAddPerson,
+                    onboardingMode: false,
+                    currentStep: .constant(1)
+                )
+            }
+        }
+    }
+
+    private var addPersonButton: some View {
+        Button(action: { showingAddPerson = true }) {
+            VStack {
+                Image(systemName: "plus")
+                    .font(.system(size: 40))
+                    .foregroundColor(.blue)
+                    .frame(width: 100, height: 100)
+                    .background(Color.blue.opacity(0.1))
+                    .clipShape(Circle())
+                
+                Text("Add Someone")
+                    .font(.caption)
+                    .foregroundColor(.primary)
+            }
+        }
+    }
+}
+
+
