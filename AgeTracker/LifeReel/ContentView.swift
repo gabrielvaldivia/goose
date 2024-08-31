@@ -2,7 +2,9 @@ import SwiftUI
 import UIKit
 import PhotosUI
 
+// Main ContentView struct
 struct ContentView: View {
+    // State and ObservedObject properties
     @ObservedObject var viewModel: PersonViewModel
     @State private var showingAddPerson = false
     @State private var showOnboarding = false
@@ -17,6 +19,7 @@ struct ContentView: View {
     @State private var selectedPhoto: Photo?
     @State private var showingPeopleGrid = false
 
+    // Enums
     enum ActiveSheet: Identifiable {
         case settings, shareView, addPerson, addPersonSheet, peopleGrid
         var id: Int { hashValue }
@@ -30,12 +33,14 @@ struct ContentView: View {
         var id: Int { hashValue }
     }
 
+    // Grid layout
     let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
     
+    // Main body of the view
     var body: some View {
         ZStack {
             if showOnboarding {
@@ -69,6 +74,7 @@ struct ContentView: View {
         }
     }
     
+    // Main view component
     private var mainView: some View {
         NavigationView {
             ZStack {
@@ -106,15 +112,6 @@ struct ContentView: View {
                 case .peopleGrid:
                     NavigationView {
                         peopleGridView
-                            .navigationTitle("People")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button("Done") {
-                                        activeSheet = nil
-                                    }
-                                }
-                            }
                     }
                 case .settings:
                     if let selectedPerson = viewModel.selectedPerson {
@@ -134,6 +131,7 @@ struct ContentView: View {
         }
     }
     
+    // People grid view component
     private var peopleGridView: some View {
         VStack {
             Text("People")
@@ -168,6 +166,7 @@ struct ContentView: View {
         }
     }
     
+    // Person detail view component
     private func personDetailView(for person: Person) -> some View {
         ZStack(alignment: .bottom) {
             PageViewController(
@@ -245,6 +244,7 @@ struct ContentView: View {
         }
     }
     
+    // Bottom controls component
     private func bottomControls(for person: Person) -> some View {
         BottomControls(
             shareAction: {
@@ -259,6 +259,7 @@ struct ContentView: View {
         )
     }
     
+    // Settings button component
     private func settingsButton(for person: Person) -> some View {
         Button(action: {
             showingPersonSettings = true
@@ -273,6 +274,7 @@ struct ContentView: View {
         }
     }
 
+    // Handle selected assets change
     private func handleSelectedAssetsChange() {
         guard !selectedAssets.isEmpty, let person = viewModel.selectedPerson else { return }
         
@@ -284,6 +286,7 @@ struct ContentView: View {
     }
 }
 
+// PersonGridItem component
 struct PersonGridItem: View {
     let person: Person
     
@@ -385,7 +388,7 @@ struct AddPersonGridItem: View {
                 Image(systemName: "plus")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 40, height: 40)
+                    .frame(width: 28, height: 28)
                     .foregroundColor(.blue)
             }
             
