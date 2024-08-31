@@ -143,6 +143,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private var isLoadingFaces = false
     private var currentPage = 0
     private let pageSize = 20
+    private var loadingIndicator: UIActivityIndicatorView!
     private var sortDescriptor: NSSortDescriptor {
         return NSSortDescriptor(key: "creationDate", ascending: isSortedAscending)
     }
@@ -167,6 +168,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         setupCollectionView()
         setupNavigationBar()
         setupBottomBar()
+        setupLoadingIndicator()
         showLoadingIndicator()
         fetchAssets()
     }
@@ -299,16 +301,10 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     @objc private func segmentedControlValueChanged() {
         showOnlyFaces = segmentedControl.selectedSegmentIndex == 1
         
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [sortDescriptor]
-        
         if showOnlyFaces {
-            if facesAssets.isEmpty {
-                loadMoreFaces()
-            } else {
-                assets = PHAsset.fetchAssets(withLocalIdentifiers: facesAssets.map { $0.localIdentifier }, options: fetchOptions)
-                collectionView.reloadData()
-            }
+            facesAssets.removeAll()
+            currentPage = 0
+            loadMoreFaces()
         } else {
             assets = allAssets
             collectionView.reloadData()
@@ -318,9 +314,20 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
     private func loadMoreFaces() {
         guard !isLoadingFaces else { return }
         isLoadingFaces = true
+        loadingIndicator.startAnimating()
         
         let startIndex = currentPage * pageSize
         let endIndex = min(startIndex + pageSize, allAssets.count)
+        
+        // Add this check to prevent invalid range creation
+        guard startIndex < endIndex else {
+            // We've processed all assets, so we should stop here
+            DispatchQueue.main.async {
+                self.isLoadingFaces = false
+                self.loadingIndicator.stopAnimating()
+            }
+            return
+        }
         
         DispatchQueue.global(qos: .userInitiated).async {
             let assetsToProcess = (startIndex..<endIndex).compactMap { self.allAssets.object(at: $0) }
@@ -336,11 +343,18 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
                 self.collectionView.reloadData()
                 self.currentPage += 1
                 self.isLoadingFaces = false
+                self.loadingIndicator.stopAnimating()
                 
                 if self.showOnlyFaces && endIndex < self.allAssets.count {
                     self.loadMoreFaces()
                 }
             }
+        }
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        if showOnlyFaces && indexPath.item == assets.count - 1 && !isLoadingFaces {
+            loadMoreFaces()
         }
     }
 
@@ -353,7 +367,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         var assetsWithFaces: [PHAsset] = []
         
         for asset in assets {
-            _ = autoreleasepool {
+            autoreleasepool {
                 PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
                     if let cgImage = image?.cgImage {
                         let ciImage = CIImage(cgImage: cgImage)
@@ -369,12 +383,6 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         }
         
         return assetsWithFaces
-    }
-
-    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        if showOnlyFaces && indexPath.item == assets.count - 1 && !isLoadingFaces {
-            loadMoreFaces()
-        }
     }
 
     private func setupTitleLabel() {
@@ -457,6 +465,13 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
             segmentedControl.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
             segmentedControl.widthAnchor.constraint(lessThanOrEqualTo: bottomBar.widthAnchor, multiplier: 0.6)
         ])
+    }
+
+    private func setupLoadingIndicator() {
+        loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.center = view.center
+        view.addSubview(loadingIndicator)
     }
 
     @objc private func cancelButtonTapped() {
