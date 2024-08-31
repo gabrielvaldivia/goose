@@ -559,6 +559,10 @@ class PersonViewModel: ObservableObject {
             }
         }
     }
+
+    func forceUpdate() {
+        self.objectWillChange.send()
+    }
 }
 
 enum PhotoAccessError: Error {

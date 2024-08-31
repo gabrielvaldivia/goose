@@ -129,6 +129,7 @@ struct ContentView: View {
                 }
             }
         }
+        .id(viewModel.selectedPerson?.id ?? UUID())
     }
     
     // People grid view component
@@ -141,11 +142,7 @@ struct ContentView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
                     ForEach(viewModel.people) { person in
-                        PersonGridItem(person: person)
-                            .onTapGesture {
-                                viewModel.selectedPerson = person
-                                showingPeopleGrid = false
-                            }
+                        PersonGridItem(person: person, viewModel: viewModel, showingPeopleGrid: $showingPeopleGrid)
                     }
                     
                     AddPersonGridItem()
@@ -289,6 +286,8 @@ struct ContentView: View {
 // PersonGridItem component
 struct PersonGridItem: View {
     let person: Person
+    @ObservedObject var viewModel: PersonViewModel
+    @Binding var showingPeopleGrid: Bool
     
     var body: some View {
         VStack {
@@ -311,6 +310,11 @@ struct PersonGridItem: View {
                 .font(.caption)
                 .lineLimit(1)
                 .foregroundColor(.primary)
+        }
+        .onTapGesture {
+            viewModel.selectedPerson = person
+            showingPeopleGrid = false
+            viewModel.objectWillChange.send()
         }
     }
 }
