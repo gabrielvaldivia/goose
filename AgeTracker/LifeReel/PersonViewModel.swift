@@ -494,6 +494,49 @@ class PersonViewModel: ObservableObject {
     func navigateToPersonDetail(_ person: Person) {
         navigationPath.append(person)
     }
+
+    func setSelectedPerson(_ person: Person?) {
+        if let person = person {
+            setLastOpenedPerson(person)
+        }
+        objectWillChange.send()
+    }
+
+    func bindingForSelectedPerson() -> Binding<Person>? {
+        guard let selectedPerson = selectedPerson else { return nil }
+        return Binding<Person>(
+            get: { self.selectedPerson ?? selectedPerson },
+            set: { newValue in
+                self.selectedPerson = newValue
+                if let index = self.people.firstIndex(where: { $0.id == newValue.id }) {
+                    self.people[index] = newValue
+                }
+                self.savePeople()
+            }
+        )
+    }
+
+    func addPhotoToSelectedPerson(asset: PHAsset) {
+        guard var person = selectedPerson else { return }
+        
+        if let newPhoto = Photo(asset: asset) {
+            if let index = self.people.firstIndex(where: { $0.id == person.id }) {
+                self.people[index].photos.append(newPhoto)
+                self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
+                
+                self.savePeople()
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
+                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                }
+                print("Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)")
+            } else {
+                print("Failed to find person \(person.name) in people array")
+            }
+        } else {
+            print("Failed to create Photo object from asset: \(asset.localIdentifier)")
+        }
+    }
 }
 
 enum PhotoAccessError: Error {

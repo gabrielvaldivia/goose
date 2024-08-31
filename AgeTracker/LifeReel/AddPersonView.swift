@@ -106,11 +106,12 @@ struct AddPersonView: View {
                     }
                 }
             }
-            .background(
-                NavigationLink(destination: PersonDetailView(person: viewModel.bindingForPerson(viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())), viewModel: viewModel),
-                               isActive: $shouldNavigateToDetail,
-                               label: { EmptyView() })
-            )
+            .onChange(of: viewModel.people.count) { oldValue, newValue in
+                if newValue > oldValue, let newPerson = viewModel.people.last {
+                    viewModel.setSelectedPerson(newPerson)
+                    isPresented = false
+                }
+            }
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)

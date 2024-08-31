@@ -38,17 +38,10 @@ struct OnboardingView: View {
             .onChange(of: viewModel.people.count) { oldCount, newCount in
                 if newCount > oldCount, let newPerson = viewModel.people.last {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        navigateToPersonDetail = newPerson
+                        viewModel.setSelectedPerson(newPerson)
+                        showOnboarding = false
                         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
                     }
-                }
-            }
-            .navigationDestination(isPresented: Binding(
-                get: { navigateToPersonDetail != nil },
-                set: { if !$0 { navigateToPersonDetail = nil } }
-            )) {
-                if let person = navigateToPersonDetail {
-                    PersonDetailView(person: viewModel.bindingForPerson(person), viewModel: viewModel)
                 }
             }
         }
