@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var selectedAssets: [PHAsset] = []
     @State private var selectedPhoto: Photo?
     @State private var showingPeopleGrid = false
+    @State private var orientation = UIDeviceOrientation.unknown
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -42,34 +43,42 @@ struct ContentView: View {
     
     // Main body of the view
     var body: some View {
-        ZStack {
-            if showOnboarding {
-                OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
-            } else {
-                mainView
+        GeometryReader { geometry in
+            ZStack {
+                if showOnboarding {
+                    OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
+                } else {
+                    mainView
+                }
             }
-        }
-        .sheet(isPresented: $showingPeopleGrid) {
-            peopleGridView
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $showingAddPersonSheet) {
-            AddPersonView(
-                viewModel: viewModel,
-                isPresented: $showingAddPersonSheet,
-                onboardingMode: false,
-                currentStep: .constant(1)
-            )
-        }
-        .onAppear {
-            if viewModel.people.isEmpty && !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
-                showOnboarding = true
-            } else if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
-                      let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
-                viewModel.selectedPerson = lastOpenedPerson
-            } else if !viewModel.people.isEmpty {
-                viewModel.selectedPerson = viewModel.people[0]
+            .sheet(isPresented: $showingPeopleGrid) {
+                peopleGridView
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showingAddPersonSheet) {
+                AddPersonView(
+                    viewModel: viewModel,
+                    isPresented: $showingAddPersonSheet,
+                    onboardingMode: false,
+                    currentStep: .constant(1)
+                )
+            }
+            .onAppear {
+                if viewModel.people.isEmpty && !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+                    showOnboarding = true
+                } else if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
+                          let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
+                    viewModel.selectedPerson = lastOpenedPerson
+                } else if !viewModel.people.isEmpty {
+                    viewModel.selectedPerson = viewModel.people[0]
+                }
+            }
+            .onChange(of: geometry.size) { _ in
+                let newOrientation = UIDevice.current.orientation
+                if newOrientation != orientation {
+                    orientation = newOrientation
+                }
             }
         }
     }
@@ -144,6 +153,7 @@ struct ContentView: View {
             }
         }
         .id(viewModel.selectedPerson?.id ?? UUID())
+        .id(orientation) // Force view update on orientation change
     }
     
     // People grid view component

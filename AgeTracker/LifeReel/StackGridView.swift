@@ -15,20 +15,22 @@ struct StackGridView: View {
     var openImagePickerForMoment: (String, (Date, Date)) -> Void
     let forceUpdate: Bool
 
+    @State private var orientation = UIDeviceOrientation.unknown
+
     var body: some View {
         GeometryReader { geometry in
-            if person.photos.isEmpty {
-                EmptyStateView(
-                    title: "No photos in grid",
-                    subtitle: "Add photos to create stacks",
-                    systemImageName: "photo.on.rectangle.angled",
-                    action: {
-                        openImagePickerForEmptyState()
-                    }
-                )
-                .frame(width: geometry.size.width, height: geometry.size.height)
-            } else {
-                ScrollView {
+            ScrollView {
+                if person.photos.isEmpty {
+                    EmptyStateView(
+                        title: "No photos in grid",
+                        subtitle: "Add photos to create stacks",
+                        systemImageName: "photo.on.rectangle.angled",
+                        action: {
+                            openImagePickerForEmptyState()
+                        }
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                } else {
                     LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
                         ForEach(sortedStacks(), id: \.self) { section in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == section }
@@ -48,6 +50,14 @@ struct StackGridView: View {
                     }
                     .padding()
                     .padding(.bottom, 80)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(person.name)
+                        .font(.headline)
+                        .fontWeight(.bold)
                 }
             }
         }
@@ -72,10 +82,10 @@ struct StackGridView: View {
             )
             .background(Color.clear)
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-            // Force view update on orientation change
-            viewModel.objectWillChange.send()
+        .onChange(of: UIDevice.current.orientation) { _ in
+            orientation = UIDevice.current.orientation
         }
+        .id(orientation) // Force view update on orientation change
         .id(forceUpdate)
     }
 
