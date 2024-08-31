@@ -14,9 +14,19 @@ struct ContentView: View {
     @State private var showingImagePicker = false
     @State private var activeSheet: ActiveSheet?
     @State private var selectedAssets: [PHAsset] = []
+    @State private var selectedPhoto: Photo?
+    @State private var showingPeopleGrid = false
 
     enum ActiveSheet: Identifiable {
-        case settings, shareView
+        case settings, shareView, addPerson, addPersonSheet, peopleGrid
+        var id: Int { hashValue }
+    }
+
+    enum SheetType: Identifiable {
+        case addPerson
+        case addPersonSheet
+        case peopleGrid
+        
         var id: Int { hashValue }
     }
 
@@ -33,6 +43,19 @@ struct ContentView: View {
             } else {
                 mainView
             }
+        }
+        .sheet(isPresented: $showingPeopleGrid) {
+            peopleGridView
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingAddPersonSheet) {
+            AddPersonView(
+                viewModel: viewModel,
+                isPresented: $showingAddPersonSheet,
+                onboardingMode: false,
+                currentStep: .constant(1)
+            )
         }
         .onAppear {
             if viewModel.people.isEmpty && !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
@@ -59,7 +82,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Button(action: {
-                        showPeopleSheet = true
+                        showingPeopleGrid = true
                     }) {
                         Text(viewModel.selectedPerson?.name ?? "Select Person")
                             .font(.headline)
@@ -68,51 +91,80 @@ struct ContentView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showPeopleSheet) {
-                peopleGridView
-            }
-            .sheet(isPresented: $showingAddPerson) {
-                AddPersonView(
-                    viewModel: viewModel,
-                    isPresented: $showingAddPerson,
-                    onboardingMode: false,
-                    currentStep: .constant(1)
-                )
+            .sheet(item: $activeSheet) { sheetType in
+                switch sheetType {
+                case .addPerson, .addPersonSheet:
+                    AddPersonView(
+                        viewModel: viewModel,
+                        isPresented: Binding(
+                            get: { activeSheet != nil },
+                            set: { if !$0 { activeSheet = nil } }
+                        ),
+                        onboardingMode: false,
+                        currentStep: .constant(1)
+                    )
+                case .peopleGrid:
+                    NavigationView {
+                        peopleGridView
+                            .navigationTitle("People")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Done") {
+                                        activeSheet = nil
+                                    }
+                                }
+                            }
+                    }
+                case .settings:
+                    if let selectedPerson = viewModel.selectedPerson {
+                        PersonSettingsView(viewModel: viewModel, person: Binding(
+                            get: { selectedPerson },
+                            set: { newValue in
+                                viewModel.updatePerson(newValue)
+                            }
+                        ))
+                    }
+                case .shareView:
+                    if let person = viewModel.selectedPerson {
+                        ShareSlideshowView(photos: person.photos, person: person, sectionTitle: "All Photos")
+                    }
+                }
             }
         }
     }
     
     private var peopleGridView: some View {
-        ZStack {
-            NavigationView {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
-                        ForEach(viewModel.people) { person in
-                            PersonGridItem(person: person)
-                                .onTapGesture {
-                                    viewModel.selectedPerson = person
-                                    showPeopleSheet = false
-                                }
-                        }
-                        
-                        AddPersonGridItem()
+        VStack {
+            Text("People")
+                .font(.headline)
+                .padding()
+            
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
+                    ForEach(viewModel.people) { person in
+                        PersonGridItem(person: person)
                             .onTapGesture {
-                                showingAddPersonSheet = true
+                                viewModel.selectedPerson = person
+                                showingPeopleGrid = false
                             }
                     }
-                    .padding()
+                    
+                    AddPersonGridItem()
+                        .onTapGesture {
+                            showingAddPersonSheet = true
+                        }
                 }
-                .navigationTitle("People")
-                .navigationBarTitleDisplayMode(.inline)
+                .padding()
             }
-            
-            if showingAddPersonSheet {
-                Color.black.opacity(0.3)
-                    .edgesIgnoringSafeArea(.all)
-                    .onTapGesture {
-                        showingAddPersonSheet = false
-                    }
-            }
+        }
+        .sheet(isPresented: $showingAddPersonSheet) {
+            AddPersonView(
+                viewModel: viewModel,
+                isPresented: $showingAddPersonSheet,
+                onboardingMode: false,
+                currentStep: .constant(1)
+            )
         }
     }
     
@@ -120,7 +172,7 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: .constant(nil), forceUpdate: false, sectionTitle: "All Photos", showScrubber: true)),
+                    AnyView(SharedTimelineView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: $selectedPhoto, forceUpdate: false, sectionTitle: "All Photos", showScrubber: true)),
                     AnyView(StackGridView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: .constant(nil), openImagePickerForMoment: { _, _ in }, forceUpdate: false))
                 ],
                 currentPage: $selectedTab,
@@ -145,7 +197,7 @@ struct ContentView: View {
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
         }
-        .sheet(item: $activeSheet) { (item: ActiveSheet) in
+        .sheet(item: $activeSheet) { item in
             switch item {
             case .shareView:
                 if let person = viewModel.selectedPerson {
@@ -160,10 +212,36 @@ struct ContentView: View {
                         }
                     ))
                 }
+            case .addPerson, .addPersonSheet, .peopleGrid:
+                EmptyView() // Handle these cases if needed
             }
         }
         .onChange(of: selectedAssets) { _, _ in
             handleSelectedAssetsChange()
+        }
+        .fullScreenCover(item: $selectedPhoto) { photo in
+            FullScreenPhotoView(
+                photo: photo,
+                currentIndex: person.photos.firstIndex(of: photo) ?? 0,
+                photos: Binding(
+                    get: { person.photos },
+                    set: { newPhotos in
+                        viewModel.updatePersonPhotos(person, newPhotos: newPhotos)
+                    }
+                ),
+                onDelete: { deletedPhoto in
+                    viewModel.deletePhoto(deletedPhoto, from: person)
+                    selectedPhoto = nil
+                    viewModel.objectWillChange.send()
+                },
+                person: Binding(
+                    get: { person },
+                    set: { newPerson in
+                        viewModel.updatePerson(newPerson)
+                    }
+                ),
+                viewModel: viewModel
+            )
         }
     }
     

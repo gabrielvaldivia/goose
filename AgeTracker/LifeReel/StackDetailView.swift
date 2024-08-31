@@ -68,13 +68,16 @@ struct StackDetailView: View {
             FullScreenPhotoView(
                 photo: photo,
                 currentIndex: photosToDisplay().firstIndex(of: photo) ?? 0,
-                photos: photosToDisplay(),
+                photos: Binding(
+                    get: { self.photosToDisplay() },
+                    set: { _ in }
+                ),
                 onDelete: { deletedPhoto in
-                    viewModel.deletePhoto(deletedPhoto, from: &person)
+                    viewModel.deletePhoto(deletedPhoto, from: $person)
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: person,
+                person: $person,
                 viewModel: viewModel
             )
         }

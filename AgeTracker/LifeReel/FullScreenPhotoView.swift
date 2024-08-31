@@ -15,7 +15,7 @@ struct FullScreenPhotoView: View {
     @State var currentIndex: Int
     @Binding var photos: [Photo]
     var onDelete: (Photo) -> Void
-    let person: Person
+    @Binding var person: Person
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: PersonViewModel
     @State private var offset: CGSize = .zero
@@ -49,13 +49,13 @@ struct FullScreenPhotoView: View {
         }
     }
     
-    init(photo: Photo, currentIndex: Int, photos: [Photo], onDelete: @escaping (Photo) -> Void, person: Person, viewModel: PersonViewModel) {
-        self._photo = Binding(get: { photo }, set: { newValue in })
+    init(photo: Photo, currentIndex: Int, photos: Binding<[Photo]>, onDelete: @escaping (Photo) -> Void, person: Binding<Person>, viewModel: PersonViewModel) {
+        self._photo = Binding(get: { photo }, set: { _ in })
         self._currentIndex = State(initialValue: currentIndex)
-        self._photos = Binding(get: { photos }, set: { newValue in })
+        self._photos = photos
         self.onDelete = onDelete
-        self.person = person
-        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person, at: photo.dateTaken))
+        self._person = person
+        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person.wrappedValue, at: photo.dateTaken))
         self.viewModel = viewModel
         self._selectedDate = State(initialValue: photo.dateTaken)
     }

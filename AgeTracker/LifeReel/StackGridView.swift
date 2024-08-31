@@ -55,14 +55,20 @@ struct StackGridView: View {
             FullScreenPhotoView(
                 photo: photo,
                 currentIndex: person.photos.firstIndex(of: photo) ?? 0,
-                photos: person.photos,
+                photos: Binding(
+                    get: { self.person.photos },
+                    set: { newValue in
+                        self.person.photos = newValue
+                        self.viewModel.updatePerson(self.person)
+                    }
+                ),
                 onDelete: { deletedPhoto in
-                    viewModel.deletePhoto(deletedPhoto, from: &person)
+                    viewModel.deletePhoto(deletedPhoto, from: $person)
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: person,
-                viewModel: viewModel  // Add this line to pass the viewModel
+                person: $person,
+                viewModel: viewModel
             )
             .background(Color.clear)
         }

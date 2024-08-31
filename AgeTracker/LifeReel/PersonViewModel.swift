@@ -343,11 +343,11 @@ class PersonViewModel: ObservableObject {
         }
     }
     
-    func deletePhoto(_ photo: Photo, from person: inout Person) {
-        if let index = person.photos.firstIndex(where: { $0.id == photo.id }) {
-            person.photos.remove(at: index)
-            if let personIndex = people.firstIndex(where: { $0.id == person.id }) {
-                people[personIndex] = person
+    func deletePhoto(_ photo: Photo, from personBinding: Binding<Person>) {
+        if let index = personBinding.wrappedValue.photos.firstIndex(where: { $0.id == photo.id }) {
+            personBinding.photos.wrappedValue.remove(at: index)
+            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }) {
+                people[personIndex] = personBinding.wrappedValue
                 savePeople()
                 objectWillChange.send()
                 NotificationCenter.default.post(name: .photosUpdated, object: nil)
@@ -535,6 +535,28 @@ class PersonViewModel: ObservableObject {
             }
         } else {
             print("Failed to create Photo object from asset: \(asset.localIdentifier)")
+        }
+    }
+
+    func updatePersonPhotos(_ person: Person, newPhotos: [Photo]) {
+        if var updatedPerson = people.first(where: { $0.id == person.id }) {
+            updatedPerson.photos = newPhotos
+            if let index = people.firstIndex(where: { $0.id == person.id }) {
+                people[index] = updatedPerson
+                savePeople()
+                objectWillChange.send()
+            }
+        }
+    }
+
+    func deletePhoto(_ photo: Photo, from person: Person) {
+        if var updatedPerson = people.first(where: { $0.id == person.id }) {
+            updatedPerson.photos.removeAll { $0.id == photo.id }
+            if let index = people.firstIndex(where: { $0.id == person.id }) {
+                people[index] = updatedPerson
+                savePeople()
+                objectWillChange.send()
+            }
         }
     }
 }
