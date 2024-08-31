@@ -129,7 +129,7 @@ struct PersonSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle("\(person.name)'s Settings")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarItems(
             leading: Button("Cancel") {

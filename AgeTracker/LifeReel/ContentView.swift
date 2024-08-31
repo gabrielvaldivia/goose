@@ -90,10 +90,22 @@ struct ContentView: View {
                     Button(action: {
                         showingPeopleGrid = true
                     }) {
-                        Text(viewModel.selectedPerson?.name ?? "Select Person")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                        HStack {
+                            Text(viewModel.selectedPerson?.name ?? "Select Person")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            
+                            ZStack {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 20, height: 20)
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(.primary)
+                            }
+                        }
                     }
                 }
             }
@@ -115,12 +127,14 @@ struct ContentView: View {
                     }
                 case .settings:
                     if let selectedPerson = viewModel.selectedPerson {
-                        PersonSettingsView(viewModel: viewModel, person: Binding(
-                            get: { selectedPerson },
-                            set: { newValue in
-                                viewModel.updatePerson(newValue)
-                            }
-                        ))
+                        NavigationView {
+                            PersonSettingsView(viewModel: viewModel, person: Binding(
+                                get: { selectedPerson },
+                                set: { newValue in
+                                    viewModel.updatePerson(newValue)
+                                }
+                            ))
+                        }
                     }
                 case .shareView:
                     if let person = viewModel.selectedPerson {
@@ -201,12 +215,14 @@ struct ContentView: View {
                 }
             case .settings:
                 if let selectedPerson = viewModel.selectedPerson {
-                    PersonSettingsView(viewModel: viewModel, person: Binding(
-                        get: { selectedPerson },
-                        set: { newValue in
-                            viewModel.updatePerson(newValue)
-                        }
-                    ))
+                    NavigationView {
+                        PersonSettingsView(viewModel: viewModel, person: Binding(
+                            get: { selectedPerson },
+                            set: { newValue in
+                                viewModel.updatePerson(newValue)
+                            }
+                        ))
+                    }
                 }
             case .addPerson, .addPersonSheet, .peopleGrid:
                 EmptyView() // Handle these cases if needed
@@ -266,7 +282,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingPersonSettings) {
             if let index = viewModel.people.firstIndex(where: { $0.id == person.id }) {
-                PersonSettingsView(viewModel: viewModel, person: $viewModel.people[index])
+                NavigationView {
+                    PersonSettingsView(viewModel: viewModel, person: $viewModel.people[index])
+                }
             }
         }
     }
