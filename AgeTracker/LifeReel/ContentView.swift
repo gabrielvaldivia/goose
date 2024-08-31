@@ -86,35 +86,37 @@ struct ContentView: View {
     // Main view component
     private var mainView: some View {
         NavigationView {
-            ZStack {
+            ZStack(alignment: .top) {
                 if let person = viewModel.selectedPerson {
                     personDetailView(for: person)
                 } else {
                     Text("Add someone to get started")
                 }
+                
+                NavigationBarGradientBackground()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         showingPeopleGrid = true
                     }) {
-                        HStack {
+                        HStack(spacing: 4) {
                             Text(viewModel.selectedPerson?.name ?? "Select Person")
-                                .font(.headline)
+                                .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
                             
-                            ZStack {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 20, height: 20)
-                                
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.primary)
-                            }
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.primary)
                         }
+                        .padding(.horizontal)
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if let person = viewModel.selectedPerson {
+                        settingsButton(for: person)
                     }
                 }
             }
@@ -151,6 +153,14 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithTransparentBackground()
+            UINavigationBar.appearance().standardAppearance = appearance
+            UINavigationBar.appearance().compactAppearance = appearance
+            UINavigationBar.appearance().scrollEdgeAppearance = appearance
         }
         .id(viewModel.selectedPerson?.id ?? UUID())
         .id(orientation) // Force view update on orientation change
@@ -202,18 +212,7 @@ struct ContentView: View {
 
             bottomControls(for: person)
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(person.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                settingsButton(for: person)
-            }
-        }
+        .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
         }
@@ -284,19 +283,14 @@ struct ContentView: View {
     
     // Settings button component
     private func settingsButton(for person: Person) -> some View {
-        Button(action: {
-            showingPersonSettings = true
-        }) {
-            Image(systemName: "gearshape.fill")
-                .foregroundColor(.blue)
-        }
-        .sheet(isPresented: $showingPersonSettings) {
-            if let index = viewModel.people.firstIndex(where: { $0.id == person.id }) {
-                NavigationView {
-                    PersonSettingsView(viewModel: viewModel, person: $viewModel.people[index])
-                }
-            }
-        }
+        CustomIconButton(
+            systemName: "gearshape.fill",
+            action: {
+                activeSheet = .settings
+            },
+            containerSize: 32,
+            iconSize: 10
+        )
     }
 
     // Handle selected assets change
@@ -428,6 +422,66 @@ struct AddPersonGridItem: View {
                 .font(.caption)
                 .lineLimit(1)
                 .foregroundColor(.primary)
+        }
+    }
+}
+
+struct NavigationBarGradientBackground: View {
+    var body: some View {
+        GeometryReader { geometry in
+            LinearGradient(
+                gradient: Gradient(
+                    colors: [
+                        Color(UIColor.systemBackground),
+                        Color(UIColor.systemBackground),
+                        Color(UIColor.systemBackground).opacity(0.75),
+                        Color(UIColor.systemBackground).opacity(0.5),
+                        Color(UIColor.systemBackground).opacity(0.25),
+                        Color(UIColor.systemBackground).opacity(0)
+                    ]
+                ),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: geometry.safeAreaInsets.top + 20)
+            .edgesIgnoringSafeArea(.top)
+        }
+    }
+}
+
+struct CustomIconButton: View {
+    let systemName: String
+    let action: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    var containerSize: CGFloat = 40
+    var iconSize: CGFloat = 14
+    var backgroundColor: Color?
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        }) {
+            Image(systemName: systemName)
+                .foregroundColor(.white)
+                .font(.system(size: iconSize, weight: .bold))
+                .frame(width: containerSize, height: containerSize)
+                .background(
+                    ZStack {
+                        if let backgroundColor = backgroundColor {
+                            backgroundColor
+                        } else {
+                            VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                            if colorScheme == .light {
+                                Color.black.opacity(0.4)
+                            }
+                            if colorScheme == .dark {
+                                Color.white.opacity(0.2)
+                            }
+                        }
+                    }
+                )
+                .clipShape(Circle())
         }
     }
 }

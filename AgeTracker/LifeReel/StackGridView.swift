@@ -53,13 +53,14 @@ struct StackGridView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(person.name)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                }
-            }
+            // Remove the toolbar item that sets the centered title
+            // .toolbar {
+            //     ToolbarItem(placement: .principal) {
+            //         Text(person.name)
+            //             .font(.headline)
+            //             .fontWeight(.bold)
+            //     }
+            // }
         }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
