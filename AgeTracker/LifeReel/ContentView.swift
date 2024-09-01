@@ -159,7 +159,7 @@ struct ContentView: View {
     // People grid view component
     private var peopleGridView: some View {
         VStack {
-            Text("People")
+            Text("Life Reels")
                 .font(.headline)
                 .padding()
             
@@ -424,7 +424,7 @@ struct AddPersonGridItem: View {
                     .foregroundColor(.blue)
             }
             
-            Text("Add Person")
+            Text("New Life Reel")
                 .font(.caption)
                 .lineLimit(1)
                 .foregroundColor(.primary)
