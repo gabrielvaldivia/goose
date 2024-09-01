@@ -354,7 +354,7 @@ struct SharedTimelineView: View {
     @Binding var selectedPhoto: Photo?
     let forceUpdate: Bool
     let sectionTitle: String?
-    let showScrubber: Bool
+    let showScrubber: Bool  // Add this line
     @State private var photoUpdateTrigger = UUID()
     @State private var currentAge: String = ""
     @State private var scrollPosition: CGFloat = 0
@@ -371,7 +371,6 @@ struct SharedTimelineView: View {
     @State private var isDraggingPill: Bool = false
     @State private var pillHeight: CGFloat = 0
     @State private var lastHapticIndex: Int = -1
-    @State private var pillOffset: CGFloat = 0
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -420,14 +419,13 @@ struct SharedTimelineView: View {
                     startControlsTimer()
                 }
 
-                if showScrubber {
+                if showScrubber {  // Add this condition
                     ZStack(alignment: .topTrailing) {
                         TimelineScrubber(photos: filteredPhotos(),
                                          scrollPosition: $scrollPosition,
                                          contentHeight: timelineContentHeight,
                                          isDraggingTimeline: $isDraggingTimeline,
-                                         indicatorPosition: $indicatorPosition,
-                                         pillOffset: $pillOffset)
+                                         indicatorPosition: $indicatorPosition)
                             .frame(width: timelineWidth)
                             .padding(.top, verticalPadding)
                             .background(GeometryReader { scrubberGeometry in
@@ -467,13 +465,19 @@ struct SharedTimelineView: View {
                 }
             }
         }
-        .edgesIgnoringSafeArea(.all)
+        .ignoresSafeArea(.all, edges: .bottom)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
             photoUpdateTrigger = UUID()
         }
         .onAppear {
             updateCurrentAge()
         }
+    }
+
+    private var pillOffset: CGFloat {
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding - pillHeight
+        let progress = min(1, max(0, scrollPosition / (timelineContentHeight - scrollViewHeight)))
+        return verticalPadding + (availableHeight * progress) - pillOffsetConstant
     }
 
     private func updateCurrentAge() {
@@ -514,13 +518,13 @@ struct SharedTimelineView: View {
 
     private func updateScrollPositionFromPill(_ dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(0, min(1, (dragPosition - verticalPadding) / availableHeight))
+        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
         scrollPosition = progress * (timelineContentHeight - scrollViewHeight)
     }
 
     private func checkForHapticFeedback(dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(0, min(1, (dragPosition - verticalPadding) / availableHeight))
+        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
         let currentIndex = Int(round(progress * CGFloat(filteredPhotos().count - 1)))
         
         if currentIndex != lastHapticIndex {
@@ -651,22 +655,22 @@ struct FilmReelItemView: View {
             }
             .frame(width: itemWidth, height: itemWidth)
 
-            if case .loaded = imageLoadingState {
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
-                    startPoint: .bottom,
-                    endPoint: .top
-                )
-                .frame(height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            // if case .loaded = imageLoadingState {
+            //     LinearGradient(
+            //         gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
+            //         startPoint: .bottom,
+            //         endPoint: .top
+            //     )
+            //     .frame(height: 60)
+            //     .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                Text(exactAge)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .padding(6)
-                    .foregroundColor(.white)
-                    .padding(10)
-            }
+            //     Text(exactAge)
+            //         .font(.caption)
+            //         .fontWeight(.medium)
+            //         .padding(6)
+            //         .foregroundColor(.white)
+            //         .padding(10)
+            // }
         }
         .frame(width: itemWidth, height: itemWidth)
         .padding(.vertical, 2)
@@ -916,7 +920,6 @@ struct TimelineScrubber: View {
     let contentHeight: CGFloat
     @Binding var isDraggingTimeline: Bool
     @Binding var indicatorPosition: CGFloat
-    @Binding var pillOffset: CGFloat
     @State private var isDragging = false
     @State private var dragOffset: CGFloat = 0
     @State private var lastHapticIndex: Int = -1
@@ -925,12 +928,9 @@ struct TimelineScrubber: View {
     private let tapAreaSize: CGFloat = 20
     private let lineWidth: CGFloat = 8
     private let lineHeight: CGFloat = 1
-    private let bottomPadding: CGFloat = 150 
+    private let bottomPadding: CGFloat = 100 
     private let topPadding: CGFloat = 0 
-    private let scrubberTopPadding: CGFloat = 50 // New property for the entire scrubber top padding
-    private let handleHeight: CGFloat = 60
-    private let pillHeight: CGFloat = 28 // Approximate height of the AgePillView
-    private let blueLineHeight: CGFloat = 2 // Height of the blue line in ScrubberHandle
+    private let handleHeight: CGFloat = 60 // Same as tapAreaHeight in ScrubberHandle
     
     var body: some View {
         GeometryReader { geometry in
@@ -960,7 +960,6 @@ struct TimelineScrubber: View {
                                 updateScrollPosition(newDragOffset - dragOffset, in: geometry)
                                 dragOffset = newDragOffset
                                 checkForHapticFeedback(in: geometry)
-                                updatePillOffset(in: geometry)
                             }
                             .onEnded { _ in
                                 isDragging = false
@@ -973,32 +972,30 @@ struct TimelineScrubber: View {
             }
             .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
-            .padding(.top, scrubberTopPadding) // Add this line to apply top padding to the entire ZStack
             .onAppear {
                 indicatorPosition = currentScrollIndicatorOffset(in: geometry)
             }
             .onChange(of: scrollPosition) { _ in
                 indicatorPosition = currentScrollIndicatorOffset(in: geometry)
-                updatePillOffset(in: geometry)
             }
         }
     }
 
     private func photoOffset(for index: Int, in geometry: GeometryProxy) -> CGFloat {
         let totalPhotos = CGFloat(photos.count)
-        let availableHeight = geometry.size.height - bottomPadding - topPadding - scrubberTopPadding // Update this line
-        let offset = (CGFloat(index) / (totalPhotos - 1)) * availableHeight + topPadding + scrubberTopPadding // Update this line
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        let offset = (CGFloat(index) / (totalPhotos - 1)) * availableHeight + topPadding
         return offset
     }
 
     private func currentScrollIndicatorOffset(in geometry: GeometryProxy) -> CGFloat {
         let scrollPercentage = min(1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
-        let availableHeight = geometry.size.height - bottomPadding - topPadding - scrubberTopPadding // Update this line
-        return scrollPercentage * availableHeight + topPadding + scrubberTopPadding // Update this line
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        return scrollPercentage * availableHeight + topPadding
     }
 
     private func updateScrollPosition(_ dragAmount: CGFloat, in geometry: GeometryProxy) {
-        let availableHeight = geometry.size.height - bottomPadding - topPadding - scrubberTopPadding // Update this line
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
         let dragPercentage = dragAmount / availableHeight
         let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
         let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
@@ -1016,16 +1013,10 @@ struct TimelineScrubber: View {
     }
 
     private func getCurrentPhotoIndex(in geometry: GeometryProxy) -> Int {
-        let availableHeight = geometry.size.height - bottomPadding - topPadding - scrubberTopPadding // Update this line
-        let currentPosition = indicatorPosition - topPadding - scrubberTopPadding // Update this line
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        let currentPosition = indicatorPosition - topPadding
         let percentage = currentPosition / availableHeight
         return Int(round(percentage * CGFloat(photos.count - 1)))
-    }
-
-    private func updatePillOffset(in geometry: GeometryProxy) {
-        // Position the pill below the blue line
-        let adjustment: CGFloat = 20 // Adjust this value as needed
-        pillOffset = indicatorPosition + handleHeight / 2 + adjustment
     }
 }
 

@@ -15,11 +15,6 @@ extension Notification.Name {
 }
 
 class PersonViewModel: ObservableObject {
-    enum PhotoAccessError: Error {
-        case denied
-        case unknown
-    }
-
     @Published var people: [Person] = []
     @Published var lastOpenedPersonId: UUID?
     @Published var loadingStacks: Set<String> = []
@@ -501,4 +496,10 @@ class PersonViewModel: ObservableObject {
     func forceUpdate() {
         self.objectWillChange.send()
     }
+}
+
+enum PhotoAccessError: Error {
+    case denied
+    case unknown
+    case albumNotFound
 }

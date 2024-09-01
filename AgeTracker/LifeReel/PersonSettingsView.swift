@@ -14,9 +14,11 @@ struct PersonSettingsView: View {
     @Binding var person: Person
     @State private var editedName: String
     @State private var editedDateOfBirth: Date
-    @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
-    @State private var showingBirthDaySheet = false
+    @State private var albums: [PHAssetCollection] = []
     @Environment(\.presentationMode) var presentationMode
+    @State private var showingBirthDaySheet = false
+    @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
+    
 
     // Alert handling
     @State private var showingAlert = false
@@ -137,6 +139,9 @@ struct PersonSettingsView: View {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
                 .presentationDetents([.height(300)]) 
         }
+        .onAppear {
+            fetchAlbums()
+        }
     }
 
     private func updatePerson(_ update: (inout Person) -> Void) {
@@ -159,6 +164,17 @@ struct PersonSettingsView: View {
         
         viewModel.savePeople()
         presentationMode.wrappedValue.dismiss()
+    }
+
+    private func fetchAlbums() {
+        viewModel.fetchAlbums { result in
+            switch result {
+            case .success(let fetchedAlbums):
+                self.albums = fetchedAlbums
+            case .failure(let error):
+                print("Failed to fetch albums: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func deleteAllPhotos() {
