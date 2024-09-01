@@ -193,7 +193,7 @@ struct ContentView: View {
             PageViewController(
                 pages: [
                     AnyView(SharedTimelineView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: $selectedPhoto, forceUpdate: false, sectionTitle: "All Photos", showScrubber: true)),
-                    AnyView(StackGridView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: .constant(nil), openImagePickerForMoment: { _, _ in }, forceUpdate: false))
+                    AnyView(StackGridView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: $selectedPhoto, openImagePickerForMoment: { _, _ in }, forceUpdate: false))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -235,7 +235,7 @@ struct ContentView: View {
                     }
                 }
             case .addPerson, .addPersonSheet, .peopleGrid:
-                EmptyView() // Handle these cases if needed
+                EmptyView()
             }
         }
         .onChange(of: selectedAssets) { _, _ in
@@ -244,9 +244,9 @@ struct ContentView: View {
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
-                currentIndex: person.photos.firstIndex(of: photo) ?? 0,
+                currentIndex: getCurrentIndex(for: photo, in: person),
                 photos: Binding(
-                    get: { person.photos },
+                    get: { getCurrentPhotos(for: person) },
                     set: { newPhotos in
                         viewModel.updatePersonPhotos(person, newPhotos: newPhotos)
                     }
@@ -256,14 +256,24 @@ struct ContentView: View {
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: Binding(
-                    get: { person },
-                    set: { newPerson in
-                        viewModel.updatePerson(newPerson)
-                    }
-                ),
+                person: viewModel.bindingForPerson(person),
                 viewModel: viewModel
             )
+        }
+    }
+    
+    private func getCurrentIndex(for photo: Photo, in person: Person) -> Int {
+        let currentPhotos = getCurrentPhotos(for: person)
+        return currentPhotos.firstIndex(of: photo) ?? 0
+    }
+
+    private func getCurrentPhotos(for person: Person) -> [Photo] {
+        if selectedTab == 0 {
+            // Timeline view (all photos)
+            return person.photos
+        } else {
+            // Grid view (filtered photos)
+            return person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == "All Photos" }
         }
     }
     
@@ -307,7 +317,15 @@ struct ContentView: View {
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
         
+        // Update the person object to ensure we have the latest photos
+        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
+            viewModel.selectedPerson = updatedPerson
+        }
+        
         selectedAssets.removeAll()
+        
+        // Force a view update
+        viewModel.objectWillChange.send()
     }
 }
 

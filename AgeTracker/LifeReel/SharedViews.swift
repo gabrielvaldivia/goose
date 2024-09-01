@@ -655,22 +655,22 @@ struct FilmReelItemView: View {
             }
             .frame(width: itemWidth, height: itemWidth)
 
-            // if case .loaded = imageLoadingState {
-            //     LinearGradient(
-            //         gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
-            //         startPoint: .bottom,
-            //         endPoint: .top
-            //     )
-            //     .frame(height: 60)
-            //     .clipShape(RoundedRectangle(cornerRadius: 10))
+            if case .loaded = imageLoadingState {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.6), Color.clear]),
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+                .frame(height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            //     Text(exactAge)
-            //         .font(.caption)
-            //         .fontWeight(.medium)
-            //         .padding(6)
-            //         .foregroundColor(.white)
-            //         .padding(10)
-            // }
+                Text(exactAge)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .padding(6)
+                    .foregroundColor(.white)
+                    .padding(10)
+            }
         }
         .frame(width: itemWidth, height: itemWidth)
         .padding(.vertical, 2)
