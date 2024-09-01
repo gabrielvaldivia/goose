@@ -14,12 +14,9 @@ struct PersonSettingsView: View {
     @Binding var person: Person
     @State private var editedName: String
     @State private var editedDateOfBirth: Date
-    @State private var albums: [PHAssetCollection] = []
-    @State private var selectedAlbum: PHAssetCollection?
-    @Environment(\.presentationMode) var presentationMode
-    @State private var showingBirthDaySheet = false
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
-    
+    @State private var showingBirthDaySheet = false
+    @Environment(\.presentationMode) var presentationMode
 
     // Alert handling
     @State private var showingAlert = false
@@ -86,31 +83,6 @@ struct PersonSettingsView: View {
                     }
             }
 
-            Section {
-                HStack {
-                    Text("Sync Album")
-                    Spacer()
-                    Menu {
-                        Button("No album synced") {
-                            selectedAlbum = nil
-                        }
-                        ForEach(albums, id: \.localIdentifier) { album in
-                            Button(album.localizedTitle ?? "Untitled Album") {
-                                selectedAlbum = album
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) { 
-                            Text(selectedAlbum?.localizedTitle ?? "No album synced")
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                }
-            }
-
             Section(header: Text("Danger Zone")) {
                 Button(action: {
                     activeAlert = .deletePhotos
@@ -165,10 +137,6 @@ struct PersonSettingsView: View {
             BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
                 .presentationDetents([.height(300)]) 
         }
-        .onAppear {
-            fetchAlbums()
-            fetchSelectedAlbum()
-        }
     }
 
     private func updatePerson(_ update: (inout Person) -> Void) {
@@ -183,7 +151,6 @@ struct PersonSettingsView: View {
         updatePerson { person in
             person.name = editedName
             person.dateOfBirth = editedDateOfBirth
-            person.syncedAlbumIdentifier = selectedAlbum?.localIdentifier
             person.birthMonthsDisplay = birthMonthsDisplay
             person.showEmptyStacks = person.showEmptyStacks
             // Keep the user's choice for pregnancyTracking
@@ -192,30 +159,6 @@ struct PersonSettingsView: View {
         
         viewModel.savePeople()
         presentationMode.wrappedValue.dismiss()
-    }
-
-    private func fetchAlbums() {
-        viewModel.fetchAlbums { result in
-            switch result {
-            case .success(let fetchedAlbums):
-                self.albums = fetchedAlbums
-            case .failure(let error):
-                print("Failed to fetch albums: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    private func fetchSelectedAlbum() {
-        if let albumIdentifier = person.syncedAlbumIdentifier {
-            viewModel.fetchAlbum(withIdentifier: albumIdentifier) { result in
-                switch result {
-                case .success(let album):
-                    self.selectedAlbum = album
-                case .failure(let error):
-                    print("Failed to fetch selected album: \(error.localizedDescription)")
-                }
-            }
-        }
     }
 
     private func deleteAllPhotos() {

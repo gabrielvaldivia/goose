@@ -289,7 +289,7 @@ struct ContentView: View {
                 activeSheet = .settings
             },
             containerSize: 32,
-            iconSize: 10
+            iconSize: 12
         )
     }
 
@@ -357,6 +357,10 @@ struct PageViewController: UIViewControllerRepresentable {
             navigationOrientation: .horizontal)
         pageViewController.dataSource = context.coordinator
         pageViewController.delegate = context.coordinator
+        
+        // Ensure the navigation bar stays visible
+        pageViewController.navigationController?.setNavigationBarHidden(false, animated: false)
+        
         return pageViewController
     }
 
@@ -365,6 +369,9 @@ struct PageViewController: UIViewControllerRepresentable {
             [context.coordinator.controllers[currentPage]], 
             direction: animationDirection,
             animated: true)
+        
+        // Ensure the navigation bar stays visible after update
+        pageViewController.navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
@@ -379,7 +386,7 @@ struct PageViewController: UIViewControllerRepresentable {
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
             if index == 0 {
-                return nil // Return nil instead of the last controller
+                return nil
             }
             return controllers[index - 1]
         }
@@ -387,7 +394,7 @@ struct PageViewController: UIViewControllerRepresentable {
         func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
             if index + 1 == controllers.count {
-                return nil // Return nil instead of the first controller
+                return nil
             }
             return controllers[index + 1]
         }
@@ -398,6 +405,9 @@ struct PageViewController: UIViewControllerRepresentable {
                let index = controllers.firstIndex(of: visibleViewController) {
                 parent.currentPage = index
             }
+            
+            // Ensure the navigation bar stays visible after animation
+            pageViewController.navigationController?.setNavigationBarHidden(false, animated: false)
         }
     }
 }
@@ -434,9 +444,6 @@ struct NavigationBarGradientBackground: View {
                     colors: [
                         Color(UIColor.systemBackground),
                         Color(UIColor.systemBackground),
-                        Color(UIColor.systemBackground).opacity(0.75),
-                        Color(UIColor.systemBackground).opacity(0.5),
-                        Color(UIColor.systemBackground).opacity(0.25),
                         Color(UIColor.systemBackground).opacity(0)
                     ]
                 ),
