@@ -63,7 +63,7 @@ struct ContentView: View {
                     onboardingMode: false
                 )
             }
-            .onChange(of: geometry.size) { _ in
+            .onChange(of: geometry.size) { _, _ in
                 let newOrientation = UIDevice.current.orientation
                 if newOrientation != orientation {
                     orientation = newOrientation
@@ -78,6 +78,8 @@ struct ContentView: View {
             ZStack {
                 if let person = viewModel.selectedPerson ?? viewModel.people.first {
                     personDetailView(for: person)
+                } else {
+                    Text("No person selected")
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -202,6 +204,10 @@ struct ContentView: View {
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
         }
+        .onChange(of: selectedAssets) { oldValue, newValue in
+            print("selectedAssets changed. Old count: \(oldValue.count), New count: \(newValue.count)")
+            handleSelectedAssetsChange()
+        }
         .sheet(item: $activeSheet) { item in
             switch item {
             case .shareView:
@@ -221,9 +227,6 @@ struct ContentView: View {
                 EmptyView()
             }
         }
-        .onChange(of: selectedAssets) { _, _ in
-            handleSelectedAssetsChange()
-        }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
@@ -242,6 +245,9 @@ struct ContentView: View {
                 person: viewModel.bindingForPerson(person),
                 viewModel: viewModel
             )
+        }
+        .onChange(of: viewModel.selectedPerson) { _, _ in
+            viewModel.objectWillChange.send()
         }
     }
     
@@ -294,21 +300,30 @@ struct ContentView: View {
 
     // Handle selected assets change
     private func handleSelectedAssetsChange() {
-        guard !selectedAssets.isEmpty, let person = viewModel.selectedPerson else { return }
+        print("handleSelectedAssetsChange called. Selected assets count: \(selectedAssets.count)")
+        guard !selectedAssets.isEmpty else {
+            print("No assets selected")
+            return
+        }
+        
+        if viewModel.selectedPerson == nil {
+            print("No person selected. Selecting the first person in the list.")
+            viewModel.selectedPerson = viewModel.people.first
+        }
+        
+        guard let person = viewModel.selectedPerson else {
+            print("No person available to add photos to")
+            return
+        }
         
         for asset in selectedAssets {
+            print("Adding asset: \(asset.localIdentifier)")
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
         
-        // Update the person object to ensure we have the latest photos
-        if let updatedPerson = viewModel.people.first(where: { $0.id == person.id }) {
-            viewModel.selectedPerson = updatedPerson
-        }
-        
         selectedAssets.removeAll()
-        
-        // Force a view update
         viewModel.objectWillChange.send()
+        print("handleSelectedAssetsChange completed")
     }
 }
 

@@ -457,6 +457,9 @@ class PersonViewModel: ObservableObject {
                 self.people[index].photos.append(newPhoto)
                 self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
                 
+                // Update the selectedPerson
+                self.selectedPerson = self.people[index]
+                
                 self.savePeople()
                 DispatchQueue.main.async {
                     self.objectWillChange.send()
