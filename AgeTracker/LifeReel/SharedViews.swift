@@ -10,6 +10,7 @@ import SwiftUI
 import PhotosUI
 import Photos
 
+// PhotoView: Displays a single photo in the timeline or grid view
 struct PhotoView: View {
     let photo: Photo
     let containerWidth: CGFloat
@@ -29,7 +30,7 @@ struct PhotoView: View {
     }
 }
 
-// Share button component
+// ShareButton: A reusable button component for sharing functionality
 struct ShareButton: View {
     var body: some View {
         Button(action: {
@@ -42,7 +43,7 @@ struct ShareButton: View {
     }
 }
 
-// Utility functions for photo management
+// PhotoUtils: Utility struct containing helper functions for photo management and organization
 public struct PhotoUtils {
 
     static func groupAndSortPhotos(for person: Person) -> [(String, [Photo])] {
@@ -272,26 +273,8 @@ public struct PhotoUtils {
     }
 }
 
-// Date of birth selection sheet
-struct BirthDaySheet: View {
-    @Binding var dateOfBirth: Date
-    @Binding var isPresented: Bool
 
-    var body: some View {
-        NavigationView {
-            DatePicker("", selection: $dateOfBirth, displayedComponents: .date)
-                .datePickerStyle(.wheel)
-                .padding()
-                .navigationTitle("Select Date of Birth")
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarItems(trailing: Button("Done") {
-                    isPresented = false
-                })
-        }
-    }
-}
-
-// Empty state view for when there are no photos
+// EmptyStateView: Displays a message when there are no photos
 struct EmptyStateView: View {
     let title: String
     let subtitle: String
@@ -314,7 +297,26 @@ struct EmptyStateView: View {
     }
 }
 
-// Date picker sheet for editing photo dates
+// BirthDaySheet: View for selecting the date of birth
+struct BirthDaySheet: View {
+    @Binding var dateOfBirth: Date
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationView {
+            DatePicker("", selection: $dateOfBirth, displayedComponents: .date)
+                .datePickerStyle(.wheel)
+                .padding()
+                .navigationTitle("Select Date of Birth")
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarItems(trailing: Button("Done") {
+                    isPresented = false
+                })
+        }
+    }
+}
+
+// PhotoDatePickerSheet: View for editing the date of a photo
 struct PhotoDatePickerSheet: View {
     @Binding var date: Date
     @Binding var isPresented: Bool
@@ -347,7 +349,7 @@ struct PhotoDatePickerSheet: View {
     }
 }
 
-// Main timeline view for displaying photos
+// SharedTimelineView: Main view for displaying photos in a timeline format
 struct SharedTimelineView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
@@ -534,7 +536,7 @@ struct SharedTimelineView: View {
     }
 }
 
-// Custom scroll view for timeline
+// CustomScrollView: A custom scroll view implementation for the timeline
 struct CustomScrollView<Content: View>: UIViewRepresentable {
     let content: Content
     @Binding var scrollPosition: CGFloat
@@ -592,7 +594,7 @@ struct CustomScrollView<Content: View>: UIViewRepresentable {
     }
 }
 
-// Age indicator pill view
+// AgePillView: Displays the current age as a pill-shaped overlay
 struct AgePillView: View {
     let age: String
     
@@ -615,9 +617,7 @@ struct AgePillView: View {
     }
 }
 
-
-
-// Individual photo item view for film reel
+// FilmReelItemView: Represents a single photo item in the timeline view
 struct FilmReelItemView: View {
     let photo: Photo
     let person: Person
@@ -709,7 +709,7 @@ struct FilmReelItemView: View {
     }
 }
 
-// Image loading state enum
+// ImageLoadingState: Enum to manage the loading state of images
 enum ImageLoadingState {
     case initial
     case loading
@@ -717,7 +717,7 @@ enum ImageLoadingState {
     case failed
 }
 
-// Grid view for displaying photos
+// SharedGridView: Displays photos in a grid layout
 struct SharedGridView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
@@ -913,6 +913,7 @@ struct ScrubberHandle: View {
         }
     }
 }
+
 // Timeline scrubber
 struct TimelineScrubber: View {
     let photos: [Photo]
@@ -920,22 +921,18 @@ struct TimelineScrubber: View {
     let contentHeight: CGFloat
     @Binding var isDraggingTimeline: Bool
     @Binding var indicatorPosition: CGFloat
-    @State private var isDragging = false
-    @State private var dragOffset: CGFloat = 0
     @State private var lastHapticIndex: Int = -1
-    @State private var isDraggingPill = false
     
     private let tapAreaSize: CGFloat = 20
     private let lineWidth: CGFloat = 8
     private let lineHeight: CGFloat = 1
     private let bottomPadding: CGFloat = 100 
     private let topPadding: CGFloat = 0 
-    private let handleHeight: CGFloat = 60 // Same as tapAreaHeight in ScrubberHandle
-    
+    private let handleHeight: CGFloat = 60
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
-                // Clear background rectangle
                 Rectangle()
                     .fill(Color.clear)
                     .frame(width: tapAreaSize)
@@ -947,68 +944,61 @@ struct TimelineScrubber: View {
                         .offset(y: photoOffset(for: index, in: geometry))
                 }
 
-                // Indicator for current scroll position
                 ScrubberHandle(tapAreaSize: tapAreaSize)
                     .offset(y: indicatorPosition - handleHeight / 2)
                     .gesture(
                         DragGesture()
                             .onChanged { value in
-                                isDragging = true
-                                isDraggingTimeline = true
-                                isDraggingPill = true
-                                let newDragOffset = value.translation.height
-                                updateScrollPosition(newDragOffset - dragOffset, in: geometry)
-                                dragOffset = newDragOffset
-                                checkForHapticFeedback(in: geometry)
+                                handleDrag(value, in: geometry)
                             }
                             .onEnded { _ in
-                                isDragging = false
-                                isDraggingTimeline = false
-                                isDraggingPill = false
-                                dragOffset = 0
-                                lastHapticIndex = -1 // Reset last haptic index
+                                endDrag()
                             }
                     )
             }
             .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
             .onAppear {
-                indicatorPosition = currentScrollIndicatorOffset(in: geometry)
+                updateIndicatorPosition(in: geometry)
             }
             .onChange(of: scrollPosition) { _ in
-                indicatorPosition = currentScrollIndicatorOffset(in: geometry)
+                updateIndicatorPosition(in: geometry)
             }
         }
     }
 
     private func photoOffset(for index: Int, in geometry: GeometryProxy) -> CGFloat {
-        let totalPhotos = CGFloat(photos.count)
         let availableHeight = geometry.size.height - bottomPadding - topPadding
-        let offset = (CGFloat(index) / (totalPhotos - 1)) * availableHeight + topPadding
-        return offset
+        return (CGFloat(index) / CGFloat(photos.count - 1)) * availableHeight + topPadding
     }
 
-    private func currentScrollIndicatorOffset(in geometry: GeometryProxy) -> CGFloat {
+    private func updateIndicatorPosition(in geometry: GeometryProxy) {
         let scrollPercentage = min(1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
         let availableHeight = geometry.size.height - bottomPadding - topPadding
-        return scrollPercentage * availableHeight + topPadding
+        indicatorPosition = scrollPercentage * availableHeight + topPadding
     }
 
-    private func updateScrollPosition(_ dragAmount: CGFloat, in geometry: GeometryProxy) {
+    private func handleDrag(_ value: DragGesture.Value, in geometry: GeometryProxy) {
+        isDraggingTimeline = true
         let availableHeight = geometry.size.height - bottomPadding - topPadding
-        let dragPercentage = dragAmount / availableHeight
+        let dragPercentage = value.translation.height / availableHeight
         let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
         let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
         scrollPosition = newScrollPercentage * max(1, contentHeight - geometry.size.height)
+        
+        checkForHapticFeedback(in: geometry)
+    }
+
+    private func endDrag() {
+        isDraggingTimeline = false
+        lastHapticIndex = -1
     }
 
     private func checkForHapticFeedback(in geometry: GeometryProxy) {
-        if isDraggingPill {
-            let currentIndex = getCurrentPhotoIndex(in: geometry)
-            if currentIndex != lastHapticIndex {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                lastHapticIndex = currentIndex
-            }
+        let currentIndex = getCurrentPhotoIndex(in: geometry)
+        if currentIndex != lastHapticIndex {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            lastHapticIndex = currentIndex
         }
     }
 

@@ -45,8 +45,8 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                if showOnboarding {
-                    OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
+                if viewModel.people.isEmpty {
+                    OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
                 } else {
                     mainView
                 }
@@ -63,16 +63,6 @@ struct ContentView: View {
                     onboardingMode: false,
                     currentStep: .constant(1)
                 )
-            }
-            .onAppear {
-                if viewModel.people.isEmpty && !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
-                    showOnboarding = true
-                } else if let lastOpenedPersonId = viewModel.lastOpenedPersonId,
-                          let lastOpenedPerson = viewModel.people.first(where: { $0.id == lastOpenedPersonId }) {
-                    viewModel.selectedPerson = lastOpenedPerson
-                } else if !viewModel.people.isEmpty {
-                    viewModel.selectedPerson = viewModel.people[0]
-                }
             }
             .onChange(of: geometry.size) { _ in
                 let newOrientation = UIDevice.current.orientation
