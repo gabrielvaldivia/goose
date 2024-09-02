@@ -31,8 +31,7 @@ struct OnboardingView: View {
                 AddPersonView(
                     viewModel: viewModel,
                     isPresented: $showAddPersonView,
-                    onboardingMode: true,
-                    currentStep: .constant(1)
+                    onboardingMode: true
                 )
             }
             .onChange(of: viewModel.people.count) { oldCount, newCount in

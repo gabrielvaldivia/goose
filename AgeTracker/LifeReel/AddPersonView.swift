@@ -13,7 +13,6 @@ struct AddPersonView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var isPresented: Bool
     var onboardingMode: Bool
-    @State private var currentStep: Int
     @State private var name = ""
     @State private var dateOfBirth: Date?
     @State private var selectedAssets: [PHAsset] = []
@@ -42,28 +41,24 @@ struct AddPersonView: View {
         }
     }
     
-    init(viewModel: PersonViewModel, isPresented: Binding<Bool>, onboardingMode: Bool, currentStep: Binding<Int>) {
+    init(viewModel: PersonViewModel, isPresented: Binding<Bool>, onboardingMode: Bool) {
         self.viewModel = viewModel
         self._isPresented = isPresented
         self.onboardingMode = onboardingMode
-        self._currentStep = State(initialValue: currentStep.wrappedValue)
     }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .center, spacing: 30) {
-                    if currentStep == 1 {
-                        nameAndBirthDateView
-                    } else {
-                        photosView
-                    }
+                    nameAndBirthDateView
+                    photosView
                 }
                 .padding()
             }
             .background(Color(UIColor.systemGroupedBackground))
             .ignoresSafeArea(.keyboard)
-            .navigationTitle(onboardingMode ? (currentStep == 1 ? "Create First Person" : "Add Photos") : "Add Someone")
+            .navigationTitle("Add Someone")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(onboardingMode)
             .toolbar {
@@ -75,35 +70,10 @@ struct AddPersonView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if onboardingMode {
-                        if currentStep == 1 {
-                            Button("Next") {
-                                withAnimation {
-                                    currentStep = 2
-                                }
-                            }
-                            .disabled(name.isEmpty || dateOfBirth == nil)
-                        } else {
-                            Button("Save") {
-                                saveNewPerson()
-                            }
-                            .disabled(selectedAssets.isEmpty)
-                        }
-                    } else {
-                        if currentStep == 1 {
-                            Button("Next") {
-                                withAnimation {
-                                    currentStep = 2
-                                }
-                            }
-                            .disabled(name.isEmpty || dateOfBirth == nil)
-                        } else {
-                            Button("Save") {
-                                saveNewPerson()
-                            }
-                            .disabled(name.isEmpty || dateOfBirth == nil || selectedAssets.isEmpty)
-                        }
+                    Button("Save") {
+                        saveNewPerson()
                     }
+                    .disabled(name.isEmpty || dateOfBirth == nil || selectedAssets.isEmpty)
                 }
             }
             .onChange(of: viewModel.people.count) { oldValue, newValue in
@@ -162,7 +132,7 @@ struct AddPersonView: View {
             
             // Date of Birth section
             VStack(alignment: .leading, spacing: 10) {
-                Text("Date of Birth")
+                Text("Date of birth")
                     .font(.headline)
                 HStack {
                     if let dateOfBirth = dateOfBirth {
@@ -184,36 +154,32 @@ struct AddPersonView: View {
                     showDatePickerSheet = true
                 }
             }
+            
+            if let dateOfBirth = dateOfBirth {
+                let now = Date()
+                if dateOfBirth > now {
+                    let pregnancyAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: now)
+                    Text("\(name)'s mom is \(pregnancyAge.toString()) today")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("\(name) is \(AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: Date()).toString()) today")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                }
+            }
         }
     }
     
     private var photosView: some View {
-        VStack(spacing: 30) {
-            // Title and Subtitle
-            VStack(spacing: 10) {
-                if let dateOfBirth = dateOfBirth {
-                    let now = Date()
-                    if dateOfBirth > now {
-                        let pregnancyAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: now)
-                        Text("\(name)'s mom is \(pregnancyAge.toString()) today")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                    } else {
-                        Text("\(name) is \(AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: Date()).toString()) today")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                    }
-                }
-                Text("Add some of your favorite memories below")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.bottom, 10)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Add some of your favorite memories")
+                .font(.headline)
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Photo selection grid
             LazyVGrid(columns: columns, alignment: .center, spacing: 10) {
                 ForEach(selectedAssets, id: \.localIdentifier) { asset in
                     AssetThumbnail(asset: asset) {

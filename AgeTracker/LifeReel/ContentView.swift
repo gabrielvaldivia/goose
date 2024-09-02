@@ -60,8 +60,7 @@ struct ContentView: View {
                 AddPersonView(
                     viewModel: viewModel,
                     isPresented: $showingAddPersonSheet,
-                    onboardingMode: false,
-                    currentStep: .constant(1)
+                    onboardingMode: false
                 )
             }
             .onChange(of: geometry.size) { _ in
@@ -117,8 +116,7 @@ struct ContentView: View {
                             get: { activeSheet != nil },
                             set: { if !$0 { activeSheet = nil } }
                         ),
-                        onboardingMode: false,
-                        currentStep: .constant(1)
+                        onboardingMode: false
                     )
                 case .peopleGrid:
                     NavigationView {
@@ -171,8 +169,7 @@ struct ContentView: View {
             AddPersonView(
                 viewModel: viewModel,
                 isPresented: $showingAddPersonSheet,
-                onboardingMode: false,
-                currentStep: .constant(1)
+                onboardingMode: false
             )
         }
     }
