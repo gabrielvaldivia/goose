@@ -76,10 +76,8 @@ struct ContentView: View {
     private var mainView: some View {
         NavigationView {
             ZStack {
-                if let person = viewModel.selectedPerson {
+                if let person = viewModel.selectedPerson ?? viewModel.people.first {
                     personDetailView(for: person)
-                } else {
-                    Text("Add someone to get started")
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -89,7 +87,7 @@ struct ContentView: View {
                         showingPeopleGrid = true
                     }) {
                         HStack {
-                            Text(viewModel.selectedPerson?.name ?? "Select Person")
+                            Text(viewModel.selectedPerson?.name ?? viewModel.people.first?.name ?? "Select Person")
                                 .font(.headline)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
@@ -140,7 +138,7 @@ struct ContentView: View {
                 }
             }
         }
-        .id(viewModel.selectedPerson?.id ?? UUID())
+        .id(viewModel.selectedPerson?.id ?? viewModel.people.first?.id ?? UUID())
         .id(orientation) // Force view update on orientation change
     }
     
@@ -207,9 +205,7 @@ struct ContentView: View {
         .sheet(item: $activeSheet) { item in
             switch item {
             case .shareView:
-                if let person = viewModel.selectedPerson {
-                    ShareSlideshowView(photos: person.photos, person: person, sectionTitle: "All Photos")
-                }
+                ShareSlideshowView(photos: person.photos, person: person, sectionTitle: "All Photos")
             case .settings:
                 if let selectedPerson = viewModel.selectedPerson {
                     NavigationView {

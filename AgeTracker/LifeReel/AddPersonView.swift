@@ -58,6 +58,11 @@ struct AddPersonView: View {
             }
             .background(Color(UIColor.systemGroupedBackground))
             .ignoresSafeArea(.keyboard)
+            .gesture(
+                DragGesture().onChanged { _ in
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            )
             .navigationTitle("Add Someone")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(onboardingMode)
