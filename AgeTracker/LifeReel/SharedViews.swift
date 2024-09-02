@@ -733,7 +733,7 @@ struct SharedGridView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
+                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
                     ForEach(filteredPhotos()) { photo in
                         Image(uiImage: photo.displayImage)
                             .resizable()
@@ -762,7 +762,7 @@ struct SharedGridView: View {
             if let title = sectionTitle, title != "All Photos" {
                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
-            return true  // If sectionTitle is nil or "All Photos", include all photos
+            return true
         }
         return sortPhotos(filteredPhotos)
     }

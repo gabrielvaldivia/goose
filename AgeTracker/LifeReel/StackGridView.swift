@@ -31,7 +31,7 @@ struct StackGridView: View {
                     )
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
-                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 20) {
+                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
                         ForEach(sortedStacks(), id: \.self) { section in
                             let photos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == section }
                             let itemWidth = GridLayoutHelper.gridItemWidth(for: geometry.size)
@@ -176,8 +176,8 @@ struct GridLayoutHelper {
     static func gridItemWidth(for size: CGSize) -> CGFloat {
         let isLandscape = size.width > size.height
         let columnCount = CGFloat(isLandscape ? 6 : 3)
-        let totalSpacing = CGFloat(20 * (Int(columnCount) - 1))
-        return (size.width - totalSpacing - 40) / columnCount
+        let totalSpacing = CGFloat(10 * (Int(columnCount) - 1))
+        return (size.width - totalSpacing - 20) / columnCount
     }
 }
 
@@ -188,50 +188,81 @@ struct StackTileView: View {
     let isLoading: Bool
     
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack(alignment: .bottomTrailing) {
-                if let latestPhoto = photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first {
-                    Image(uiImage: latestPhoto.image ?? UIImage())
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: width, height: width)
-                        .clipped()
-                        .cornerRadius(10)
-                } else {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: width, height: width)
-                        .cornerRadius(10)
-                        .overlay(
-                            Group {
-                                if isLoading {
-                                    ProgressView()
-                                } else {
+        ZStack {
+            if let latestPhoto = photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first {
+                Image(uiImage: latestPhoto.image ?? UIImage())
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: width)
+                    .clipped()
+                    .cornerRadius(10)
+                
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text(section)
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(10)
+                        Spacer()
+                    }
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [.clear, .black.opacity(0.5)]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(10, corners: [.bottomLeft, .bottomRight])
+                }
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: width, height: width)
+                    .cornerRadius(10)
+                    .overlay(
+                        Group {
+                            if isLoading {
+                                ProgressView()
+                            } else {
+                                VStack {
+                                    Spacer()
                                     Image(systemName: "plus")
                                         .foregroundColor(.gray)
                                         .font(.system(size: 30))
+                                    Spacer()
+                                    Text(section)
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.gray)
+                                        .padding(.top, 4)
                                 }
+                                .padding(10)
                             }
-                        )
-                }
-                
-                if photos.count >= 2 {
-                    Text("\(photos.count)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .padding(4)
-                        .background(Color.black.opacity(0.6))
-                        .foregroundColor(.white)
-                        .cornerRadius(5)
-                        .padding(4)
-                }
+                        }
+                    )
             }
-            
-            Text(section)
-                .font(.caption)
-                .foregroundColor(.primary)
-                .lineLimit(1)
-                .frame(width: width)
         }
+        .frame(width: width, height: width)
+        .cornerRadius(10)
+    }
+}
+
+// Add this extension to enable corner radius for specific corners
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
     }
 }
