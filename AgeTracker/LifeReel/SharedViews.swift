@@ -374,6 +374,8 @@ struct SharedTimelineView: View {
     @State private var isDraggingPill: Bool = false
     @State private var pillHeight: CGFloat = 0
     @State private var lastHapticIndex: Int = -1
+    @State private var showDeleteAlert = false
+    @State private var photoToDelete: Photo?
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -396,7 +398,11 @@ struct SharedTimelineView: View {
                                              geometry: geometry,
                                              horizontalPadding: horizontalPadding,
                                              timelineWidth: timelineWidth,
-                                             timelinePadding: timelinePadding)
+                                             timelinePadding: timelinePadding,
+                                             onDelete: {
+                                                 photoToDelete = photo
+                                                 showDeleteAlert = true
+                                             })
                                 .id(photo.id)
                         }
                     }
@@ -478,6 +484,20 @@ struct SharedTimelineView: View {
         }
         .onAppear {
             updateCurrentAge()
+        }
+        .alert(isPresented: $showDeleteAlert) {
+            Alert(
+                title: Text("Delete Photo"),
+                message: Text("Are you sure you want to delete this photo?"),
+                primaryButton: .destructive(Text("Delete")) {
+                    if let photoToDelete = photoToDelete {
+                        viewModel.deletePhoto(photoToDelete, from: $person)
+                        self.photoToDelete = nil
+                        viewModel.objectWillChange.send()
+                    }
+                },
+                secondaryButton: .cancel()
+            )
         }
     }
 
@@ -633,6 +653,7 @@ struct FilmReelItemView: View {
     let timelinePadding: CGFloat
     @Environment(\.colorScheme) var colorScheme
     @State private var imageLoadingState: ImageLoadingState = .initial
+    var onDelete: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -683,6 +704,13 @@ struct FilmReelItemView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             selectedPhoto = photo
         }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    onDelete()
+                }
+        )
         .background(colorScheme == .dark ? Color.black : Color.white)
     }
     
