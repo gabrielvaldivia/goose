@@ -408,20 +408,21 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-    func updatePhotoDate(person: Person, photo: Photo, newDate: Date) -> Int {
-        if let personIndex = people.firstIndex(where: { $0.id == person.id }),
-           let photoIndex = people[personIndex].photos.firstIndex(where: { $0.id == photo.id }) {
-            people[personIndex].photos[photoIndex].dateTaken = newDate
-            people[personIndex].photos.sort { $0.dateTaken < $1.dateTaken }
+    func updatePhotoDate(person: Person, photo: Photo, newDate: Date) -> Person {
+        var updatedPerson = person
+        if let index = updatedPerson.photos.firstIndex(where: { $0.id == photo.id }) {
+            updatedPerson.photos[index].dateTaken = newDate
+            updatedPerson.photos.sort { $0.dateTaken < $1.dateTaken }
+        }
+        
+        if let personIndex = people.firstIndex(where: { $0.id == person.id }) {
+            people[personIndex] = updatedPerson
             savePeople()
             objectWillChange.send()
-            
-            // Find the new index of the photo after sorting
-            if let newIndex = people[personIndex].photos.firstIndex(where: { $0.id == photo.id }) {
-                return newIndex
-            }
+            NotificationCenter.default.post(name: .photosUpdated, object: nil)
         }
-        return 0 // Return 0 if the photo wasn't found (shouldn't happen)
+        
+        return updatedPerson
     }
 
     func navigateToPersonDetail(_ person: Person) {

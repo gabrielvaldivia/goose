@@ -409,6 +409,9 @@ struct SharedTimelineView: View {
                             timelineContentHeight = contentGeometry.size.height
                         }
                     })
+                    .onChange(of: person.photos) { _, _ in
+                        photosUpdateTrigger = UUID()
+                    }
                 }, scrollPosition: $scrollPosition, isDraggingTimeline: $isDraggingTimeline)
                 .id(photoUpdateTrigger)
                 .background(GeometryReader { scrollViewGeometry in
@@ -421,9 +424,6 @@ struct SharedTimelineView: View {
                     isScrolling = true
                     controlsOpacity = 1 // Show controls when scrolling starts
                     startControlsTimer()
-                }
-                .onChange(of: person.photos) { _, _ in
-                    photosUpdateTrigger = UUID()
                 }
 
                 if showScrubber {  // Add this condition

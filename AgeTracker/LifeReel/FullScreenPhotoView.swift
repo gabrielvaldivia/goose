@@ -314,9 +314,12 @@ struct FullScreenPhotoView: View {
     }
 
     private func updatePhotoDate(_ newDate: Date) {
-        let newIndex = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: newDate)
-        currentIndex = newIndex
+        let updatedPerson = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: newDate)
+        person = updatedPerson
         photos = person.photos // Update the photos array to reflect the new order
+        if let newIndex = photos.firstIndex(where: { $0.id == photos[currentIndex].id }) {
+            currentIndex = newIndex
+        }
     }
 }
 
