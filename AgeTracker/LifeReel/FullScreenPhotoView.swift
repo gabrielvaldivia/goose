@@ -216,7 +216,7 @@ struct FullScreenPhotoView: View {
                 title: Text("Delete Photo"),
                 message: Text("Are you sure you want to delete this photo?"),
                 primaryButton: .destructive(Text("Delete")) {
-                    onDelete(photos[currentIndex])
+                    viewModel.deletePhoto(photos[currentIndex], from: $person)
                     if currentIndex > 0 {
                         currentIndex -= 1
                     } else {

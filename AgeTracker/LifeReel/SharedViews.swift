@@ -358,6 +358,7 @@ struct SharedTimelineView: View {
     let sectionTitle: String?
     let showScrubber: Bool  // Add this line
     @State private var photoUpdateTrigger = UUID()
+    @State private var photosUpdateTrigger = UUID()
     @State private var currentAge: String = ""
     @State private var scrollPosition: CGFloat = 0
     @State private var scrollViewHeight: CGFloat = 0
@@ -399,6 +400,7 @@ struct SharedTimelineView: View {
                                 .id(photo.id)
                         }
                     }
+                    .id(photosUpdateTrigger)
                     .padding(.horizontal, horizontalPadding)
                     .padding(.top, verticalPadding)
                     .padding(.bottom, bottomPadding)
@@ -419,6 +421,9 @@ struct SharedTimelineView: View {
                     isScrolling = true
                     controlsOpacity = 1 // Show controls when scrolling starts
                     startControlsTimer()
+                }
+                .onChange(of: person.photos) { _, _ in
+                    photosUpdateTrigger = UUID()
                 }
 
                 if showScrubber {  // Add this condition
