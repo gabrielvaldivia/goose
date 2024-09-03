@@ -32,7 +32,6 @@ struct FullScreenPhotoView: View {
     @State private var isDragging = false
     @State private var showDeleteConfirmation = false
     @State private var dismissProgress: CGFloat = 0.0
-    @State private var showActionSheet = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDismissing = false
     @State private var showAgePicker = false
@@ -213,9 +212,9 @@ struct FullScreenPhotoView: View {
         }
         .alert(isPresented: $showDeleteConfirmation) {
             Alert(
-                title: Text("Delete Photo"),
-                message: Text("Are you sure you want to delete this photo?"),
-                primaryButton: .destructive(Text("Delete")) {
+                title: Text("Remove Photo"),
+                message: Text("Are you sure you want to remove this photo?"),
+                primaryButton: .destructive(Text("Remove")) {
                     viewModel.deletePhoto(photos[currentIndex], from: $person)
                     if currentIndex > 0 {
                         currentIndex -= 1
@@ -224,17 +223,6 @@ struct FullScreenPhotoView: View {
                     }
                 },
                 secondaryButton: .cancel()
-            )
-        }
-        .actionSheet(isPresented: $showActionSheet) {
-            ActionSheet(
-                title: Text("Photo Options"),
-                buttons: [
-                    .destructive(Text("Delete Photo")) {
-                        showDeleteConfirmation = true
-                    },
-                    .cancel()
-                ]
             )
         }
     }

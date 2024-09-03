@@ -487,9 +487,9 @@ struct SharedTimelineView: View {
         }
         .alert(isPresented: $showDeleteAlert) {
             Alert(
-                title: Text("Delete Photo"),
-                message: Text("Are you sure you want to delete this photo?"),
-                primaryButton: .destructive(Text("Delete")) {
+                title: Text("Remove Photo"),
+                message: Text("Are you sure you want to remove this photo?"),
+                primaryButton: .destructive(Text("Remove")) {
                     if let photoToDelete = photoToDelete {
                         viewModel.deletePhoto(photoToDelete, from: $person)
                         self.photoToDelete = nil
