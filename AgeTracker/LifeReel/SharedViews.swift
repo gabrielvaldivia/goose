@@ -899,9 +899,11 @@ struct BottomControls: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 shareAction()
             })
+            Spacer()
 
             SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
 
+            Spacer()
 
             CircularButton(systemName: "plus", action: {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()

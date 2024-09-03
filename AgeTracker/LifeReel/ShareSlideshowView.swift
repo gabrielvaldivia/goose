@@ -183,7 +183,8 @@ struct ShareSlideshowView: View {
                             subtitleText: getSubtitleText(for: filteredPhotos[safeIndex]),
                             duration: imageDuration,
                             isPlaying: isPlaying,
-                            effectOption: effectOption
+                            effectOption: effectOption,
+                            isActive: isPlaying
                         )
                         .id(currentImageId)
                         .transition(effectOption == .none ? .identity : .opacity)
@@ -509,9 +510,21 @@ struct ShareSlideshowView: View {
     private var filteredPhotos: [Photo] {
         switch milestoneMode {
         case .allPhotos:
-            return photos
+            return photos.filter { photo in
+                if person.pregnancyTracking == .none {
+                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                    return !age.isPregnancy
+                }
+                return true
+            }
         case .milestones:
-            return filterMilestoneStack(photos: photos)
+            return filterMilestoneStack(photos: photos.filter { photo in
+                if person.pregnancyTracking == .none {
+                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                    return !age.isPregnancy
+                }
+                return true
+            })
         }
     }
 
@@ -588,6 +601,7 @@ struct LazyImage: View {
     let duration: Double
     let isPlaying: Bool
     let effectOption: ShareSlideshowView.EffectOption
+    let isActive: Bool
 
     @State private var opacity: Double = 0
     @State private var scale: CGFloat = 1.0
@@ -668,8 +682,39 @@ struct LazyImage: View {
                     self.opacity = 1
                 }
             }
+            .onChange(of: isActive) { oldValue, newValue in
+                if newValue {
+                    startEffect()
+                } else {
+                    stopEffect()
+                }
+            }
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
+    }
+
+    private func startEffect() {
+        let scales = [1.02, 1.03, 1.04]
+        let offsets: [CGSize] = [
+            CGSize(width: 5, height: 5),
+            CGSize(width: -5, height: -5),
+            CGSize(width: 0, height: 5),
+            CGSize(width: 5, height: 0),
+            CGSize(width: -5, height: 0),
+            CGSize(width: 0, height: -5)
+        ]
+        
+        withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
+            self.scale = scales.randomElement() ?? 1.02
+            self.offset = offsets.randomElement() ?? .zero
+        }
+    }
+
+    private func stopEffect() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            scale = 1.0
+            offset = .zero
+        }
     }
 }
 
@@ -684,13 +729,13 @@ struct KenBurnsEffect: ViewModifier {
             .scaleEffect(isActive ? scale : 1.0)
             .offset(isActive ? offset : .zero)
             .onAppear(perform: startEffectIfNeeded)
-            .onChange(of: isActive, perform: { newValue in
+            .onChange(of: isActive) { oldValue, newValue in
                 if newValue {
                     startEffect()
                 } else {
                     stopEffect()
                 }
-            })
+            }
     }
 
     private func startEffectIfNeeded() {
@@ -801,4 +846,3 @@ struct CustomScrubber: View {
         return min(max(range.lowerBound, (result / step).rounded() * step), range.upperBound)
     }
 }
-
