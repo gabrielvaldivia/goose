@@ -994,7 +994,7 @@ struct TimelineScrubber: View {
             .onAppear {
                 updateIndicatorPosition(in: geometry)
             }
-            .onChange(of: scrollPosition) { _ in
+            .onChange(of: scrollPosition) { oldValue, newValue in
                 updateIndicatorPosition(in: geometry)
             }
         }

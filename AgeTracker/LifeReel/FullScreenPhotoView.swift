@@ -5,9 +5,9 @@
 //  Created by Gabriel Valdivia on 8/2/24.
 //
 
+import AVKit
 import Foundation
 import SwiftUI
-import AVKit
 import UIKit
 
 struct FullScreenPhotoView: View {
@@ -38,39 +38,45 @@ struct FullScreenPhotoView: View {
     @State private var selectedAge: ExactAge
     @State private var showDatePicker = false
     @State private var selectedDate: Date
-    
+
     enum ActiveSheet: Identifiable {
         case shareView
         case activityView
-        
+
         var id: Int {
             hashValue
         }
     }
-    
-    init(photo: Photo, currentIndex: Int, photos: Binding<[Photo]>, onDelete: @escaping (Photo) -> Void, person: Binding<Person>, viewModel: PersonViewModel) {
+
+    init(
+        photo: Photo, currentIndex: Int, photos: Binding<[Photo]>,
+        onDelete: @escaping (Photo) -> Void, person: Binding<Person>, viewModel: PersonViewModel
+    ) {
         self._photo = Binding(get: { photo }, set: { _ in })
         self._currentIndex = State(initialValue: currentIndex)
         self._photos = photos
         self.onDelete = onDelete
         self._person = person
-        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person.wrappedValue, at: photo.dateTaken))
+        self._selectedAge = State(
+            initialValue: AgeCalculator.calculate(for: person.wrappedValue, at: photo.dateTaken))
         self.viewModel = viewModel
         self._selectedDate = State(initialValue: photo.dateTaken)
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
-                
+
                 // Photo Display
                 if let image = photos[currentIndex].image {
                     GeometryReader { imageGeometry in
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: imageGeometry.size.width, height: imageGeometry.size.height)
+                            .frame(
+                                width: imageGeometry.size.width, height: imageGeometry.size.height
+                            )
                             .scaleEffect(scale)
                             .offset(dragOffset)
                             .gesture(
@@ -81,13 +87,15 @@ struct FullScreenPhotoView: View {
                                     .onChanged { value in
                                         if scale <= 1.0 {
                                             dragOffset = value.translation
-                                            dismissProgress = min(1, abs(value.translation.height) / 200)
+                                            dismissProgress = min(
+                                                1, abs(value.translation.height) / 200)
                                         } else {
                                             let newOffset = CGSize(
                                                 width: offset.width + value.translation.width,
                                                 height: offset.height + value.translation.height
                                             )
-                                            dragOffset = limitOffset(newOffset, geometry: imageGeometry)
+                                            dragOffset = limitOffset(
+                                                newOffset, geometry: imageGeometry)
                                         }
                                     }
                                     .onEnded { value in
@@ -96,10 +104,15 @@ struct FullScreenPhotoView: View {
                                             if abs(value.translation.height) > threshold {
                                                 isDismissing = true
                                                 withAnimation(.easeOut(duration: 0.2)) {
-                                                    dragOffset.height = value.translation.height > 0 ? geometry.size.height : -geometry.size.height
+                                                    dragOffset.height =
+                                                        value.translation.height > 0
+                                                        ? geometry.size.height
+                                                        : -geometry.size.height
                                                     dismissProgress = 1
                                                 }
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                                DispatchQueue.main.asyncAfter(
+                                                    deadline: .now() + 0.2
+                                                ) {
                                                     presentationMode.wrappedValue.dismiss()
                                                 }
                                             } else {
@@ -118,17 +131,18 @@ struct FullScreenPhotoView: View {
                                     .onChanged { value in
                                         let delta = value / self.lastScale
                                         self.lastScale = value
-                                        
+
                                         // Adjust scale with new minimum
                                         let newScale = min(max(self.scale * delta, minScale), 4)
-                                        
+
                                         // Adjust offset to keep the zoom centered
                                         let newOffset = CGSize(
                                             width: self.offset.width * delta,
                                             height: self.offset.height * delta
                                         )
                                         self.scale = newScale
-                                        self.offset = limitOffset(newOffset, geometry: imageGeometry)
+                                        self.offset = limitOffset(
+                                            newOffset, geometry: imageGeometry)
                                         self.dragOffset = self.offset
                                     }
                                     .onEnded { _ in
@@ -155,7 +169,7 @@ struct FullScreenPhotoView: View {
                     Color.gray
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                
+
                 // Controls Overlay
                 ControlsOverlay(
                     showControls: showControls,
@@ -226,32 +240,32 @@ struct FullScreenPhotoView: View {
             )
         }
     }
-    
+
     // Helper Functions
     private func calculateAge(for person: Person, at date: Date) -> String {
         return AgeCalculator.calculate(for: person, at: date).toString()
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
-    
+
     private func limitOffset(_ offset: CGSize, geometry: GeometryProxy) -> CGSize {
         guard let image = photos[currentIndex].image else { return .zero }
-        
+
         let imageSize = image.size
         let viewSize = geometry.size
-        
+
         let widthRatio = viewSize.width / imageSize.width
         let heightRatio = viewSize.height / imageSize.height
         let aspectRatio = min(widthRatio, heightRatio)
-        
+
         let scaledWidth = imageSize.width * aspectRatio * scale
         let scaledHeight = imageSize.height * aspectRatio * scale
-        
+
         let horizontalLimit = max(0, (scaledWidth - viewSize.width) / 2)
         let verticalLimit = max(0, (scaledHeight - viewSize.height) / 2)
 
@@ -302,9 +316,10 @@ struct FullScreenPhotoView: View {
     }
 
     private func updatePhotoDate(_ newDate: Date) {
-        let updatedPerson = viewModel.updatePhotoDate(person: person, photo: photos[currentIndex], newDate: newDate)
+        let updatedPerson = viewModel.updatePhotoDate(
+            person: person, photo: photos[currentIndex], newDate: newDate)
         person = updatedPerson
-        photos = person.photos // Update the photos array to reflect the new order
+        photos = person.photos  // Update the photos array to reflect the new order
         if let newIndex = photos.firstIndex(where: { $0.id == photos[currentIndex].id }) {
             currentIndex = newIndex
         }
@@ -328,8 +343,14 @@ private struct ControlsOverlay: View {
     @State private var showDatePicker = false
     @State private var selectedAge: ExactAge
     @State private var selectedDate: Date
-    
-    init(showControls: Bool, person: Person, photo: Photo, photos: [Photo], onClose: @escaping () -> Void, onShare: @escaping () -> Void, onDelete: @escaping () -> Void, currentIndex: Binding<Int>, totalPhotos: Int, onScrub: @escaping (Int) -> Void, onUpdateAge: @escaping (ExactAge) -> Void, onUpdateDate: @escaping (Date) -> Void) {
+
+    init(
+        showControls: Bool, person: Person, photo: Photo, photos: [Photo],
+        onClose: @escaping () -> Void, onShare: @escaping () -> Void,
+        onDelete: @escaping () -> Void, currentIndex: Binding<Int>, totalPhotos: Int,
+        onScrub: @escaping (Int) -> Void, onUpdateAge: @escaping (ExactAge) -> Void,
+        onUpdateDate: @escaping (Date) -> Void
+    ) {
         self.showControls = showControls
         self.person = person
         self.photo = photo
@@ -342,21 +363,22 @@ private struct ControlsOverlay: View {
         self.onScrub = onScrub
         self.onUpdateAge = onUpdateAge
         self.onUpdateDate = onUpdateDate
-        self._selectedAge = State(initialValue: AgeCalculator.calculate(for: person, at: photo.dateTaken))
+        self._selectedAge = State(
+            initialValue: AgeCalculator.calculate(for: person, at: photo.dateTaken))
         self._selectedDate = State(initialValue: photo.dateTaken)
     }
-    
+
     var body: some View {
-        VStack { 
+        VStack {
             // Top Bar with Close Button
             HStack {
                 CircularIconButton(icon: "xmark", action: onClose)
                 Spacer()
             }
             .padding(.horizontal)
-            
+
             Spacer()
-            
+
             // Bottom Bar with Share, Age, Delete, and Scrubber
             VStack(spacing: 16) {
                 // Only show scrubber if there are at least 2 photos
@@ -370,15 +392,21 @@ private struct ControlsOverlay: View {
                     .frame(height: 60)
                     .mask(
                         HStack(spacing: 0) {
-                            LinearGradient(gradient: Gradient(colors: [.clear, .white]), startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 40)
+                            LinearGradient(
+                                gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 40)
                             Rectangle().fill(Color.white)
-                            LinearGradient(gradient: Gradient(colors: [.white, .clear]), startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 40)
+                            LinearGradient(
+                                gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 40)
                         }
                     )
                 }
-                
+
                 HStack {
                     CircularIconButton(icon: "square.and.arrow.up", action: onShare)
                     Spacer()
@@ -422,13 +450,13 @@ private struct ControlsOverlay: View {
             updateSelectedAgeAndDate(for: newIndex)
         }
     }
-    
+
     private func updateSelectedAgeAndDate(for index: Int) {
         let photo = photos[index]
         selectedAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
         selectedDate = photo.dateTaken
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -441,16 +469,16 @@ struct ThumbnailScrubber: View {
     let photos: [Photo]
     @Binding var currentIndex: Int
     let onScrub: (Int) -> Void
-    
+
     private let thumbnailSize: CGFloat = 50
     private let spacing: CGFloat = 4
-    
+
     @State private var scrollOffset: CGFloat = 0
     @State private var isDragging = false
     @State private var viewWidth: CGFloat = 0
     @State private var initialDragOffset: CGFloat = 0
     @State private var lastFeedbackIndex: Int = -1
-    
+
     var body: some View {
         GeometryReader { geometry in
             ScrollViewReader { scrollProxy in
@@ -492,7 +520,7 @@ struct ThumbnailScrubber: View {
                             let targetOffset = scrollOffset + additionalScroll
                             let targetIndex = round(-targetOffset / itemWidth)
                             let finalIndex = max(0, min(Int(targetIndex), photos.count - 1))
-                            
+
                             currentIndex = finalIndex
                             scrollToCurrentIndex(proxy: scrollProxy)
                         }
@@ -510,12 +538,12 @@ struct ThumbnailScrubber: View {
         }
         .frame(height: thumbnailSize + 10)
     }
-    
+
     private func calculateCurrentOffset(geometry: GeometryProxy) -> CGFloat {
         let itemWidth = thumbnailSize + spacing
         return -CGFloat(currentIndex) * itemWidth
     }
-    
+
     private func updateCurrentIndex(currentOffset: CGFloat, geometry: GeometryProxy) {
         let itemWidth = thumbnailSize + spacing
         let estimatedIndex = round(-currentOffset / itemWidth)
@@ -526,13 +554,13 @@ struct ThumbnailScrubber: View {
             generateHapticFeedback()
         }
     }
-    
+
     private func scrollToCurrentIndex(proxy: ScrollViewProxy) {
         let itemWidth = thumbnailSize + spacing
         scrollOffset = -CGFloat(currentIndex) * itemWidth
         proxy.scrollTo(currentIndex, anchor: .center)
     }
-    
+
     private func generateHapticFeedback() {
         if currentIndex != lastFeedbackIndex {
             let impact = UIImpactFeedbackGenerator(style: .light)
@@ -545,7 +573,7 @@ struct ThumbnailScrubber: View {
 struct ThumbnailView: View {
     let photo: Photo
     let isSelected: Bool
-    
+
     var body: some View {
         ZStack {
             if let image = photo.image {
@@ -570,11 +598,11 @@ struct ThumbnailView: View {
 struct CircularIconButton: View {
     let icon: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold)) 
+                .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .frame(width: 28, height: 28)
         }
@@ -585,7 +613,7 @@ struct CircularIconButton: View {
         )
         .padding(8)
     }
-    
+
     private struct BlurEffectView: UIViewRepresentable {
         func makeUIView(context: Context) -> UIVisualEffectView {
             return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
@@ -599,7 +627,7 @@ struct PillButton: View {
     let icon: String
     let label: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -618,7 +646,7 @@ struct PillButton: View {
                 .padding(.vertical, -4)
         )
     }
-    
+
     private struct BlurEffectView: UIViewRepresentable {
         func makeUIView(context: Context) -> UIVisualEffectView {
             return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
@@ -634,7 +662,7 @@ struct AgePickerSheet: View {
     @State private var days: Int
     @Binding var isPresented: Bool
     var onSave: (ExactAge) -> Void
-    
+
     init(age: ExactAge, isPresented: Binding<Bool>, onSave: @escaping (ExactAge) -> Void) {
         let (y, m, d) = Self.convertToYearsMonthsDays(age: age)
         self._years = State(initialValue: y)
@@ -643,7 +671,7 @@ struct AgePickerSheet: View {
         self._isPresented = isPresented
         self.onSave = onSave
     }
-    
+
     var body: some View {
         NavigationView {
             VStack {
@@ -662,7 +690,7 @@ struct AgePickerSheet: View {
                         .frame(width: 100, height: 150)
                         .clipped()
                     }
-                    
+
                     VStack {
                         Text("Months")
                             .font(.subheadline)
@@ -677,7 +705,7 @@ struct AgePickerSheet: View {
                         .frame(width: 100, height: 150)
                         .clipped()
                     }
-                    
+
                     VStack {
                         Text("Days")
                             .font(.subheadline)
@@ -697,7 +725,9 @@ struct AgePickerSheet: View {
             .navigationBarItems(
                 leading: Button("Cancel") { isPresented = false },
                 trailing: Button("Save") {
-                    let newAge = ExactAge(years: years, months: months, days: days, isPregnancy: false, pregnancyWeeks: 0, isNewborn: false)
+                    let newAge = ExactAge(
+                        years: years, months: months, days: days, isPregnancy: false,
+                        pregnancyWeeks: 0, isNewborn: false)
                     onSave(newAge)
                     isPresented = false
                 }
@@ -705,16 +735,16 @@ struct AgePickerSheet: View {
             .navigationBarTitle("Change Age", displayMode: .inline)
         }
     }
-    
+
     private static func convertToYearsMonthsDays(age: ExactAge) -> (Int, Int, Int) {
         if age.isPregnancy {
-            return (0, 0, 0) // Handle pregnancy case if needed
+            return (0, 0, 0)  // Handle pregnancy case if needed
         }
-        
+
         let totalMonths = age.years * 12 + age.months
         let years = totalMonths / 12
         let remainingMonths = totalMonths % 12
-        
+
         return (years, remainingMonths, age.days)
     }
 }
@@ -723,7 +753,7 @@ struct DatePickerSheet: View {
     @Binding var date: Date
     @Binding var isPresented: Bool
     var onSave: (Date) -> Void
-    
+
     var body: some View {
         NavigationView {
             VStack {

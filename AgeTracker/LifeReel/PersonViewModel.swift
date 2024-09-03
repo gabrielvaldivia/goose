@@ -451,7 +451,7 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhotoToSelectedPerson(asset: PHAsset) {
-        guard var person = selectedPerson else { return }
+        guard let person = selectedPerson else { return }
         
         if let newPhoto = Photo(asset: asset) {
             if let index = self.people.firstIndex(where: { $0.id == person.id }) {

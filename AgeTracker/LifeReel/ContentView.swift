@@ -290,10 +290,8 @@ struct ContentView: View {
                 .foregroundColor(.blue)
         }
         .sheet(isPresented: $showingPersonSettings) {
-            if let index = viewModel.people.firstIndex(where: { $0.id == person.id }) {
-                NavigationView {
-                    PersonSettingsView(viewModel: viewModel, person: $viewModel.people[index])
-                }
+            NavigationView {
+                PersonSettingsView(viewModel: viewModel, person: viewModel.bindingForPerson(person))
             }
         }
     }
@@ -306,12 +304,7 @@ struct ContentView: View {
             return
         }
         
-        if viewModel.selectedPerson == nil {
-            print("No person selected. Selecting the first person in the list.")
-            viewModel.selectedPerson = viewModel.people.first
-        }
-        
-        guard let person = viewModel.selectedPerson else {
+        guard viewModel.selectedPerson != nil else {
             print("No person available to add photos to")
             return
         }

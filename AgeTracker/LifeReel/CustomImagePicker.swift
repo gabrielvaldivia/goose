@@ -367,7 +367,7 @@ class CustomImagePickerViewController: UIViewController, UICollectionViewDelegat
         var assetsWithFaces: [PHAsset] = []
         
         for asset in assets {
-            autoreleasepool {
+            _ = autoreleasepool {
                 PHImageManager.default().requestImage(for: asset, targetSize: CGSize(width: 500, height: 500), contentMode: .aspectFit, options: options) { image, _ in
                     if let cgImage = image?.cgImage {
                         let ciImage = CIImage(cgImage: cgImage)

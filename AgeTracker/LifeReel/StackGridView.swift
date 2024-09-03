@@ -82,10 +82,10 @@ struct StackGridView: View {
             )
             .background(Color.clear)
         }
-        .onChange(of: UIDevice.current.orientation) { _ in
-            orientation = UIDevice.current.orientation
+        .onChange(of: UIDevice.current.orientation) { oldValue, newValue in
+            orientation = newValue
         }
-        .id(orientation) // Force view update on orientation change
+        .id(orientation)
         .id(forceUpdate)
     }
 
