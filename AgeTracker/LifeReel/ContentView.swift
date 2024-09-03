@@ -1,6 +1,6 @@
+import PhotosUI
 import SwiftUI
 import UIKit
-import PhotosUI
 
 // Main ContentView struct
 struct ContentView: View {
@@ -30,7 +30,7 @@ struct ContentView: View {
         case addPerson
         case addPersonSheet
         case peopleGrid
-        
+
         var id: Int { hashValue }
     }
 
@@ -38,9 +38,9 @@ struct ContentView: View {
     let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
-        GridItem(.flexible())
+        GridItem(.flexible()),
     ]
-    
+
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
@@ -71,7 +71,7 @@ struct ContentView: View {
             }
         }
     }
-    
+
     // Main view component
     private var mainView: some View {
         NavigationView {
@@ -89,16 +89,19 @@ struct ContentView: View {
                         showingPeopleGrid = true
                     }) {
                         HStack {
-                            Text(viewModel.selectedPerson?.name ?? viewModel.people.first?.name ?? "Select Person")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                            
+                            Text(
+                                viewModel.selectedPerson?.name ?? viewModel.people.first?.name
+                                    ?? "Select Person"
+                            )
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+
                             ZStack {
                                 Circle()
                                     .fill(Color.gray.opacity(0.2))
                                     .frame(width: 20, height: 20)
-                                
+
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 8, weight: .bold))
                                     .foregroundColor(.primary)
@@ -125,38 +128,43 @@ struct ContentView: View {
                 case .settings:
                     if let selectedPerson = viewModel.selectedPerson {
                         NavigationView {
-                            PersonSettingsView(viewModel: viewModel, person: Binding(
-                                get: { selectedPerson },
-                                set: { newValue in
-                                    viewModel.updatePerson(newValue)
-                                }
-                            ))
+                            PersonSettingsView(
+                                viewModel: viewModel,
+                                person: Binding(
+                                    get: { selectedPerson },
+                                    set: { newValue in
+                                        viewModel.updatePerson(newValue)
+                                    }
+                                ))
                         }
                     }
                 case .shareView:
                     if let person = viewModel.selectedPerson {
-                        ShareSlideshowView(photos: person.photos, person: person, sectionTitle: "All Photos")
+                        ShareSlideshowView(
+                            photos: person.photos, person: person, sectionTitle: "All Photos")
                     }
                 }
             }
         }
         .id(viewModel.selectedPerson?.id ?? viewModel.people.first?.id ?? UUID())
-        .id(orientation) // Force view update on orientation change
+        .id(orientation)  // Force view update on orientation change
     }
-    
+
     // People grid view component
     private var peopleGridView: some View {
         VStack {
             Text("Life Reels")
                 .font(.headline)
                 .padding()
-            
+
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
                     ForEach(viewModel.people) { person in
-                        PersonGridItem(person: person, viewModel: viewModel, showingPeopleGrid: $showingPeopleGrid)
+                        PersonGridItem(
+                            person: person, viewModel: viewModel,
+                            showingPeopleGrid: $showingPeopleGrid)
                     }
-                    
+
                     AddPersonGridItem()
                         .onTapGesture {
                             showingAddPersonSheet = true
@@ -173,14 +181,22 @@ struct ContentView: View {
             )
         }
     }
-    
+
     // Person detail view component
     private func personDetailView(for person: Person) -> some View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(SharedTimelineView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: $selectedPhoto, forceUpdate: false, sectionTitle: "All Photos", showScrubber: true)),
-                    AnyView(StackGridView(viewModel: viewModel, person: viewModel.bindingForPerson(person), selectedPhoto: $selectedPhoto, openImagePickerForMoment: { _, _ in }, forceUpdate: false))
+                    AnyView(
+                        SharedTimelineView(
+                            viewModel: viewModel, person: viewModel.bindingForPerson(person),
+                            selectedPhoto: $selectedPhoto, forceUpdate: false,
+                            sectionTitle: "All Photos", showScrubber: true)),
+                    AnyView(
+                        MilestonesView(
+                            viewModel: viewModel, person: viewModel.bindingForPerson(person),
+                            selectedPhoto: $selectedPhoto, openImagePickerForMoment: { _, _ in },
+                            forceUpdate: false)),
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -205,22 +221,27 @@ struct ContentView: View {
             ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
         }
         .onChange(of: selectedAssets) { oldValue, newValue in
-            print("selectedAssets changed. Old count: \(oldValue.count), New count: \(newValue.count)")
+            print(
+                "selectedAssets changed. Old count: \(oldValue.count), New count: \(newValue.count)"
+            )
             handleSelectedAssetsChange()
         }
         .sheet(item: $activeSheet) { item in
             switch item {
             case .shareView:
-                ShareSlideshowView(photos: person.photos, person: person, sectionTitle: "All Photos")
+                ShareSlideshowView(
+                    photos: person.photos, person: person, sectionTitle: "All Photos")
             case .settings:
                 if let selectedPerson = viewModel.selectedPerson {
                     NavigationView {
-                        PersonSettingsView(viewModel: viewModel, person: Binding(
-                            get: { selectedPerson },
-                            set: { newValue in
-                                viewModel.updatePerson(newValue)
-                            }
-                        ))
+                        PersonSettingsView(
+                            viewModel: viewModel,
+                            person: Binding(
+                                get: { selectedPerson },
+                                set: { newValue in
+                                    viewModel.updatePerson(newValue)
+                                }
+                            ))
                     }
                 }
             case .addPerson, .addPersonSheet, .peopleGrid:
@@ -250,7 +271,7 @@ struct ContentView: View {
             viewModel.objectWillChange.send()
         }
     }
-    
+
     private func getCurrentIndex(for photo: Photo, in person: Person) -> Int {
         let currentPhotos = getCurrentPhotos(for: person)
         return currentPhotos.firstIndex(of: photo) ?? 0
@@ -262,10 +283,12 @@ struct ContentView: View {
             return person.photos
         } else {
             // Grid view (filtered photos)
-            return person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == "All Photos" }
+            return person.photos.filter {
+                PhotoUtils.sectionForPhoto($0, person: person) == "All Photos"
+            }
         }
     }
-    
+
     // Bottom controls component
     private func bottomControls(for person: Person) -> some View {
         BottomControls(
@@ -280,7 +303,7 @@ struct ContentView: View {
             options: ["person.crop.rectangle.stack", "square.grid.2x2"]
         )
     }
-    
+
     // Settings button component
     private func settingsButton(for person: Person) -> some View {
         Button(action: {
@@ -303,17 +326,17 @@ struct ContentView: View {
             print("No assets selected")
             return
         }
-        
+
         guard viewModel.selectedPerson != nil else {
             print("No person available to add photos to")
             return
         }
-        
+
         for asset in selectedAssets {
             print("Adding asset: \(asset.localIdentifier)")
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
-        
+
         selectedAssets.removeAll()
         viewModel.objectWillChange.send()
         print("handleSelectedAssetsChange completed")
@@ -325,11 +348,12 @@ struct PersonGridItem: View {
     let person: Person
     @ObservedObject var viewModel: PersonViewModel
     @Binding var showingPeopleGrid: Bool
-    
+
     var body: some View {
         VStack {
             if let latestPhoto = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first,
-               let uiImage = latestPhoto.image {
+                let uiImage = latestPhoto.image
+            {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
@@ -342,7 +366,7 @@ struct PersonGridItem: View {
                     .frame(width: 80, height: 80)
                     .foregroundColor(.gray)
             }
-            
+
             Text(person.name)
                 .font(.caption)
                 .lineLimit(1)
@@ -377,7 +401,7 @@ struct PageViewController: UIViewControllerRepresentable {
 
     func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
         pageViewController.setViewControllers(
-            [context.coordinator.controllers[currentPage]], 
+            [context.coordinator.controllers[currentPage]],
             direction: animationDirection,
             animated: true)
     }
@@ -391,26 +415,36 @@ struct PageViewController: UIViewControllerRepresentable {
             controllers = parent.pages.map { UIHostingController(rootView: $0) }
         }
 
-        func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerBefore viewController: UIViewController
+        ) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
             if index == 0 {
-                return nil // Return nil instead of the last controller
+                return nil  // Return nil instead of the last controller
             }
             return controllers[index - 1]
         }
 
-        func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerAfter viewController: UIViewController
+        ) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
             if index + 1 == controllers.count {
-                return nil // Return nil instead of the first controller
+                return nil  // Return nil instead of the first controller
             }
             return controllers[index + 1]
         }
 
-        func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+        func pageViewController(
+            _ pageViewController: UIPageViewController, didFinishAnimating finished: Bool,
+            previousViewControllers: [UIViewController], transitionCompleted completed: Bool
+        ) {
             if completed,
-               let visibleViewController = pageViewController.viewControllers?.first,
-               let index = controllers.firstIndex(of: visibleViewController) {
+                let visibleViewController = pageViewController.viewControllers?.first,
+                let index = controllers.firstIndex(of: visibleViewController)
+            {
                 parent.currentPage = index
             }
         }
@@ -425,14 +459,14 @@ struct AddPersonGridItem: View {
                 Circle()
                     .fill(Color.blue.opacity(0.1))
                     .frame(width: 80, height: 80)
-                
+
                 Image(systemName: "plus")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 28, height: 28)
                     .foregroundColor(.blue)
             }
-            
+
             Text("New Life Reel")
                 .font(.caption)
                 .lineLimit(1)

@@ -1,5 +1,5 @@
 //
-//  StackDetailView.swift
+//  MilestoneDetailView.swift
 //  AgeTracker
 //
 //  Created by Gabriel Valdivia on 8/2/24.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 import PhotosUI
 
-struct StackDetailView: View {
+struct MilestoneDetailView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
     let sectionTitle: String
