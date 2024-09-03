@@ -60,7 +60,7 @@ struct PersonSettingsView: View {
                 }
             }
 
-            Section(header: Text("Display Options")) {
+            Section(header: Text("Milestones")) {
                 Picker("Group by Month", selection: $birthMonthsDisplay) {
                     Text("None").tag(Person.BirthMonthsDisplay.none)
                     Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
@@ -79,7 +79,7 @@ struct PersonSettingsView: View {
                     updatePerson { $0.pregnancyTracking = person.pregnancyTracking }
                 }
                 
-                Toggle("Show Empty Stacks", isOn: $person.showEmptyStacks)
+                Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
                     .onChange(of: person.showEmptyStacks) {
                         updatePerson { $0.showEmptyStacks = person.showEmptyStacks }
                     }
