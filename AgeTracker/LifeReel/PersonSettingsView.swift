@@ -15,7 +15,6 @@ struct PersonSettingsView: View {
     @State private var editedName: String
     @State private var editedDateOfBirth: Date
     @State private var albums: [PHAssetCollection] = []
-    @Environment(\.presentationMode) var presentationMode
     @State private var showingBirthDaySheet = false
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     
@@ -46,6 +45,9 @@ struct PersonSettingsView: View {
                     TextField("", text: $editedName)
                         .multilineTextAlignment(.trailing)
                         .foregroundColor(.secondary)
+                        .onChange(of: editedName) { newValue in
+                            updatePerson { $0.name = newValue }
+                        }
                 }
                 Button(action: {
                     showingBirthDaySheet = true
@@ -105,14 +107,6 @@ struct PersonSettingsView: View {
         }
         .navigationTitle("\(person.name)'s Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(
-            leading: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            },
-            trailing: Button("Save") {
-                saveChanges()
-            }
-        )
         .alert(isPresented: $showingAlert) {
             switch activeAlert {
             case .deletePhotos:
@@ -152,20 +146,6 @@ struct PersonSettingsView: View {
         viewModel.savePeople()
     }
 
-    private func saveChanges() {
-        updatePerson { person in
-            person.name = editedName
-            person.dateOfBirth = editedDateOfBirth
-            person.birthMonthsDisplay = birthMonthsDisplay
-            person.showEmptyStacks = person.showEmptyStacks
-            // Keep the user's choice for pregnancyTracking
-            person.pregnancyTracking = person.pregnancyTracking
-        }
-        
-        viewModel.savePeople()
-        presentationMode.wrappedValue.dismiss()
-    }
-
     private func fetchAlbums() {
         viewModel.fetchAlbums { result in
             switch result {
@@ -193,7 +173,6 @@ struct PersonSettingsView: View {
 
     private func deletePerson() {
         viewModel.deletePerson(person)
-        presentationMode.wrappedValue.dismiss()
     }
 
     private func formatDate(_ date: Date) -> String {

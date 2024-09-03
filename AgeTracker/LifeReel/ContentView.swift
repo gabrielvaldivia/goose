@@ -125,24 +125,14 @@ struct ContentView: View {
                     NavigationView {
                         peopleGridView
                     }
-                case .settings:
-                    if let selectedPerson = viewModel.selectedPerson {
-                        NavigationView {
-                            PersonSettingsView(
-                                viewModel: viewModel,
-                                person: Binding(
-                                    get: { selectedPerson },
-                                    set: { newValue in
-                                        viewModel.updatePerson(newValue)
-                                    }
-                                ))
-                        }
-                    }
                 case .shareView:
                     if let person = viewModel.selectedPerson {
                         ShareSlideshowView(
                             photos: person.photos, person: person, sectionTitle: "All Photos")
                     }
+                case .settings:
+                    // We'll keep this case to avoid compilation errors, but it won't be used
+                    EmptyView()
                 }
             }
         }
@@ -226,28 +216,6 @@ struct ContentView: View {
             )
             handleSelectedAssetsChange()
         }
-        .sheet(item: $activeSheet) { item in
-            switch item {
-            case .shareView:
-                ShareSlideshowView(
-                    photos: person.photos, person: person, sectionTitle: "All Photos")
-            case .settings:
-                if let selectedPerson = viewModel.selectedPerson {
-                    NavigationView {
-                        PersonSettingsView(
-                            viewModel: viewModel,
-                            person: Binding(
-                                get: { selectedPerson },
-                                set: { newValue in
-                                    viewModel.updatePerson(newValue)
-                                }
-                            ))
-                    }
-                }
-            case .addPerson, .addPersonSheet, .peopleGrid:
-                EmptyView()
-            }
-        }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
@@ -306,16 +274,9 @@ struct ContentView: View {
 
     // Settings button component
     private func settingsButton(for person: Person) -> some View {
-        Button(action: {
-            showingPersonSettings = true
-        }) {
+        NavigationLink(destination: PersonSettingsView(viewModel: viewModel, person: viewModel.bindingForPerson(person))) {
             Image(systemName: "gearshape.fill")
                 .foregroundColor(.blue)
-        }
-        .sheet(isPresented: $showingPersonSettings) {
-            NavigationView {
-                PersonSettingsView(viewModel: viewModel, person: viewModel.bindingForPerson(person))
-            }
         }
     }
 
