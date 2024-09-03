@@ -5,10 +5,10 @@
 //  Created by Gabriel Valdivia on 8/1/24.
 //
 
-import Foundation
-import UIKit
 import AVFoundation
+import Foundation
 import Photos
+import UIKit
 
 struct Person: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
@@ -20,6 +20,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var showEmptyStacks: Bool
     var pregnancyTracking: PregnancyTracking
     var isNewlyAdded: Bool = false
+    var reminderFrequency: ReminderFrequency = .none
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"
@@ -36,17 +37,24 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         case none, trimesters, weeks
     }
 
+    enum ReminderFrequency: String, Codable, CaseIterable {
+        case none = "None"
+        case daily = "Daily"
+        case monthly = "Monthly"
+        case yearly = "Yearly"
+    }
+
     static func defaultPregnancyTracking(for dateOfBirth: Date) -> PregnancyTracking {
         let calendar = Calendar.current
         let currentDate = Date()
-        
+
         if dateOfBirth <= currentDate {
             return .none
         }
-        
+
         let components = calendar.dateComponents([.month], from: currentDate, to: dateOfBirth)
         let monthsUntilBirth = components.month ?? 0
-        
+
         if monthsUntilBirth > 2 {
             return .weeks
         } else {
@@ -60,20 +68,25 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         self.dateOfBirth = dateOfBirth
         self.photos = []
         self.syncedAlbumIdentifier = nil
-        
+
         if let birthMonthsDisplay = birthMonthsDisplay {
             self.birthMonthsDisplay = birthMonthsDisplay
         } else {
-            let ageInMonths = Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
+            let ageInMonths =
+                Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
             self.birthMonthsDisplay = ageInMonths < 24 ? .twelveMonths : .none
         }
-        
+
         self.showEmptyStacks = true
         self.pregnancyTracking = Person.defaultPregnancyTracking(for: dateOfBirth)
     }
 
     // Add a new initializer for migration
-    init(id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?, birthMonthsDisplay: BirthMonthsDisplay, showEmptyStacks: Bool, pregnancyTracking: PregnancyTracking) {
+    init(
+        id: UUID, name: String, dateOfBirth: Date, photos: [Photo], syncedAlbumIdentifier: String?,
+        birthMonthsDisplay: BirthMonthsDisplay, showEmptyStacks: Bool,
+        pregnancyTracking: PregnancyTracking, reminderFrequency: ReminderFrequency
+    ) {
         self.id = id
         self.name = name
         self.dateOfBirth = dateOfBirth
@@ -82,39 +95,47 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         self.birthMonthsDisplay = birthMonthsDisplay
         self.showEmptyStacks = showEmptyStacks
         self.pregnancyTracking = pregnancyTracking
+        self.reminderFrequency = reminderFrequency
     }
 
     static func == (lhs: Person, rhs: Person) -> Bool {
-        return lhs.id == rhs.id &&
-               lhs.name == rhs.name &&
-               lhs.dateOfBirth == rhs.dateOfBirth &&
-               lhs.photos == rhs.photos &&
-               lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier &&
-               lhs.birthMonthsDisplay == rhs.birthMonthsDisplay &&
-               lhs.showEmptyStacks == rhs.showEmptyStacks &&
-               lhs.pregnancyTracking == rhs.pregnancyTracking
+        return lhs.id == rhs.id && lhs.name == rhs.name && lhs.dateOfBirth == rhs.dateOfBirth
+            && lhs.photos == rhs.photos && lhs.syncedAlbumIdentifier == rhs.syncedAlbumIdentifier
+            && lhs.birthMonthsDisplay == rhs.birthMonthsDisplay
+            && lhs.showEmptyStacks == rhs.showEmptyStacks
+            && lhs.pregnancyTracking == rhs.pregnancyTracking
+            && lhs.reminderFrequency == rhs.reminderFrequency
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     enum CodingKeys: String, CodingKey {
-        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay, showEmptyStacks, pregnancyTracking
+        case id, name, dateOfBirth, photos, syncedAlbumIdentifier, birthMonthsDisplay,
+            showEmptyStacks, pregnancyTracking, reminderFrequency
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         dateOfBirth = try container.decode(Date.self, forKey: .dateOfBirth)
         photos = try container.decode([Photo].self, forKey: .photos)
-        syncedAlbumIdentifier = try container.decodeIfPresent(String.self, forKey: .syncedAlbumIdentifier)
-        birthMonthsDisplay = try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay) ?? .none
+        syncedAlbumIdentifier = try container.decodeIfPresent(
+            String.self, forKey: .syncedAlbumIdentifier)
+        birthMonthsDisplay =
+            try container.decodeIfPresent(BirthMonthsDisplay.self, forKey: .birthMonthsDisplay)
+            ?? .none
         showEmptyStacks = try container.decodeIfPresent(Bool.self, forKey: .showEmptyStacks) ?? true
-        pregnancyTracking = try container.decodeIfPresent(PregnancyTracking.self, forKey: .pregnancyTracking) ?? .none
+        pregnancyTracking =
+            try container.decodeIfPresent(PregnancyTracking.self, forKey: .pregnancyTracking)
+            ?? .none
+        reminderFrequency =
+            try container.decodeIfPresent(ReminderFrequency.self, forKey: .reminderFrequency)
+            ?? .none
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -125,6 +146,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
         try container.encode(birthMonthsDisplay, forKey: .birthMonthsDisplay)
         try container.encode(showEmptyStacks, forKey: .showEmptyStacks)
         try container.encode(pregnancyTracking, forKey: .pregnancyTracking)
+        try container.encode(reminderFrequency, forKey: .reminderFrequency)
     }
 }
 
@@ -137,51 +159,52 @@ struct Photo: Identifiable, Codable, Equatable {
     static let imageCache = NSCache<NSString, UIImage>()
 
     var image: UIImage? {
-        get {
-            if let cachedImage = Photo.imageCache.object(forKey: assetIdentifier as NSString) {
-                return cachedImage
-            }
-            
-            guard !isVideo else { return nil }
-            let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
-            guard let asset = result.firstObject else { return nil }
-            
-            let manager = PHImageManager.default()
-            var image: UIImage?
-            let options = PHImageRequestOptions()
-            options.isSynchronous = true
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
-            options.resizeMode = .exact
-            
-            let targetSize = CGSize(width: 1024, height: 1024) // Increased target size
-            
-            manager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFit, options: options) { result, _ in
-                if let loadedImage = result {
-                    Photo.imageCache.setObject(loadedImage, forKey: self.assetIdentifier as NSString)
-                    image = loadedImage
-                }
-            }
-            
-            return image
+        if let cachedImage = Photo.imageCache.object(forKey: assetIdentifier as NSString) {
+            return cachedImage
         }
+
+        guard !isVideo else { return nil }
+        let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
+        guard let asset = result.firstObject else { return nil }
+
+        let manager = PHImageManager.default()
+        var image: UIImage?
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+        options.resizeMode = .exact
+
+        let targetSize = CGSize(width: 1024, height: 1024)  // Increased target size
+
+        manager.requestImage(
+            for: asset, targetSize: targetSize, contentMode: .aspectFit, options: options
+        ) { result, _ in
+            if let loadedImage = result {
+                Photo.imageCache.setObject(loadedImage, forKey: self.assetIdentifier as NSString)
+                image = loadedImage
+            }
+        }
+
+        return image
     }
 
     var videoURL: URL? {
         guard isVideo else { return nil }
         let result = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
         guard let asset = result.firstObject else { return nil }
-        
+
         var videoURL: URL?
         let options = PHVideoRequestOptions()
         options.version = .original
-        
-        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
+
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) {
+            avAsset, _, _ in
             if let urlAsset = avAsset as? AVURLAsset {
                 videoURL = urlAsset.url
             }
         }
-        
+
         return videoURL
     }
 

@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import SwiftUI
-import PhotosUI
 import Photos
+import PhotosUI
+import SwiftUI
 
 // PhotoView: Displays a single photo in the timeline or grid view
 struct PhotoView: View {
@@ -58,20 +58,24 @@ public struct PhotoUtils {
         return groupedPhotos.sorted { $0.key < $1.key }
     }
 
-    static func sortedGroupedPhotosForAll(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
+    static func sortedGroupedPhotosForAll(person: Person, viewModel: PersonViewModel) -> [(
+        String, [Photo]
+    )] {
         return groupAndSortPhotos(for: person)
     }
 
-    static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel) -> [(String, [Photo])] {
+    static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel)
+        -> [(String, [Photo])]
+    {
         let allStacks = getAllExpectedStacks(for: person)
         let groupedPhotos = Dictionary(grouping: person.photos) { photo in
             PhotoUtils.sectionForPhoto(photo, person: person)
         }
-        
+
         let completeGroupedPhotos = allStacks.map { stack in
             (stack, groupedPhotos[stack] ?? [])
         }
-        
+
         return completeGroupedPhotos.sorted { $0.0 < $1.0 }
     }
 
@@ -79,23 +83,26 @@ public struct PhotoUtils {
         var stacks: [String] = []
         let calendar = Calendar.current
         let currentDate = Date()
-        
+
         let endDate = min(person.dateOfBirth, currentDate)
-        let pregnancyStartDate = calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
-        
+        let pregnancyStartDate =
+            calendar.date(byAdding: .month, value: -9, to: person.dateOfBirth) ?? person.dateOfBirth
+
         // Include pregnancy stacks only if tracking is set to trimesters or weeks
         switch person.pregnancyTracking {
         case .trimesters:
-            let trimesterDuration = TimeInterval(91 * 24 * 60 * 60) // 91 days in seconds
+            let trimesterDuration = TimeInterval(91 * 24 * 60 * 60)  // 91 days in seconds
             for i in 0..<3 {
-                let trimesterStart = pregnancyStartDate.addingTimeInterval(Double(i) * trimesterDuration)
+                let trimesterStart = pregnancyStartDate.addingTimeInterval(
+                    Double(i) * trimesterDuration)
                 if trimesterStart < endDate {
                     stacks.append(["First Trimester", "Second Trimester", "Third Trimester"][i])
                 }
             }
         case .weeks:
             for week in 1...40 {
-                let weekStart = pregnancyStartDate.addingTimeInterval(Double(week - 1) * 7 * 24 * 60 * 60)
+                let weekStart = pregnancyStartDate.addingTimeInterval(
+                    Double(week - 1) * 7 * 24 * 60 * 60)
                 if weekStart < endDate {
                     stacks.append("Week \(week)")
                 }
@@ -104,36 +111,44 @@ public struct PhotoUtils {
             // Don't add any pregnancy stacks
             break
         }
-        
+
         // Handle past or current birth dates
         if person.dateOfBirth <= currentDate {
-            let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
-            let currentAgeInMonths = max(0, (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0))
+            let ageComponents = calendar.dateComponents(
+                [.year, .month], from: person.dateOfBirth, to: currentDate)
+            let currentAgeInMonths = max(
+                0, (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0))
             let currentAgeInYears = ageComponents.year ?? 0
 
             switch person.birthMonthsDisplay {
             case .none:
                 stacks.append("Birth Year")
-                stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
+                stacks.append(
+                    contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
             case .twelveMonths:
                 stacks.append("Birth Month")
                 let monthsToShow = min(11, currentAgeInMonths)
-                stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
-                stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
+                stacks.append(
+                    contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+                stacks.append(
+                    contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
             case .twentyFourMonths:
                 stacks.append("Birth Month")
                 let monthsToShow = min(23, currentAgeInMonths)
-                stacks.append(contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
+                stacks.append(
+                    contentsOf: (1...monthsToShow).map { "\($0) Month\($0 == 1 ? "" : "s")" })
                 if currentAgeInYears >= 2 {
                     stacks.append(contentsOf: (2...currentAgeInYears).map { "\($0) Years" })
                 }
             }
         }
-        
+
         return stacks
     }
-    
-    static func getDateRangeForSection(_ section: String, person: Person) throws -> (start: Date, end: Date) {
+
+    static func getDateRangeForSection(_ section: String, person: Person) throws -> (
+        start: Date, end: Date
+    ) {
         let calendar = Calendar.current
         let birthDate = person.dateOfBirth
 
@@ -142,16 +157,19 @@ public struct PhotoUtils {
             let start = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             return (start: start, end: birthDate)
         case "First Trimester":
-            let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+            let pregnancyStart =
+                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             let end = calendar.date(byAdding: .month, value: 3, to: pregnancyStart) ?? birthDate
             return (start: pregnancyStart, end: end)
         case "Second Trimester":
-            let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+            let pregnancyStart =
+                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             let start = calendar.date(byAdding: .month, value: 3, to: pregnancyStart) ?? birthDate
             let end = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
             return (start: start, end: end)
         case "Third Trimester":
-            let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+            let pregnancyStart =
+                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
             let start = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
             return (start: start, end: birthDate)
         case "Birth Month":
@@ -167,21 +185,29 @@ public struct PhotoUtils {
         default:
             if section.contains("Month") {
                 if let months = Int(section.components(separatedBy: " ").first ?? "") {
-                    let start = calendar.date(byAdding: .month, value: months - 1, to: birthDate) ?? birthDate
-                    let end = calendar.date(byAdding: .month, value: months, to: birthDate) ?? birthDate
+                    let start =
+                        calendar.date(byAdding: .month, value: months - 1, to: birthDate)
+                        ?? birthDate
+                    let end =
+                        calendar.date(byAdding: .month, value: months, to: birthDate) ?? birthDate
                     return (start: start, end: end)
                 }
             } else if section.contains("Year") {
                 if let years = Int(section.components(separatedBy: " ").first ?? "") {
-                    let start = calendar.date(byAdding: .year, value: years - 1, to: birthDate) ?? birthDate
-                    let end = calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
+                    let start =
+                        calendar.date(byAdding: .year, value: years - 1, to: birthDate) ?? birthDate
+                    let end =
+                        calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
                     let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end) ?? end
                     return (start: start, end: adjustedEnd)
                 }
             } else if section.starts(with: "Week") {
                 if let week = Int(section.components(separatedBy: " ").last ?? "") {
-                    let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-                    let start = calendar.date(byAdding: .day, value: (week - 1) * 7, to: pregnancyStart) ?? pregnancyStart
+                    let pregnancyStart =
+                        calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+                    let start =
+                        calendar.date(byAdding: .day, value: (week - 1) * 7, to: pregnancyStart)
+                        ?? pregnancyStart
                     let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
                     return (start: start, end: end)
                 }
@@ -193,11 +219,11 @@ public struct PhotoUtils {
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
         let calendar = Calendar.current
-        
+
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
-                return "" // Return an empty string for photos before birth when tracking is off
+                return ""  // Return an empty string for photos before birth when tracking is off
             case .trimesters:
                 let trimester = (exactAge.pregnancyWeeks - 1) / 13 + 1
                 return "\(["First", "Second", "Third"][trimester - 1]) Trimester"
@@ -205,17 +231,18 @@ public struct PhotoUtils {
                 return "Week \(exactAge.pregnancyWeeks)"
             }
         }
-        
+
         // Check if the photo is within the birth month
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
         let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
         if photo.dateTaken >= person.dateOfBirth && photo.dateTaken <= endOfBirthMonth {
             return "Birth Month"
         }
-        
+
         switch person.birthMonthsDisplay {
         case .none:
-            return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+            return exactAge.years == 0
+                ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
             if exactAge.years == 0 {
                 return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
@@ -237,14 +264,16 @@ public struct PhotoUtils {
         var stacks: [String] = ["Pregnancy"]
         let calendar = Calendar.current
         let currentDate = Date()
-        let ageComponents = calendar.dateComponents([.year, .month], from: person.dateOfBirth, to: currentDate)
+        let ageComponents = calendar.dateComponents(
+            [.year, .month], from: person.dateOfBirth, to: currentDate)
         let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
         let currentAgeInYears = ageComponents.year ?? 0
 
         switch person.birthMonthsDisplay {
         case .none:
             stacks.append("Birth Year")
-            stacks.append(contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
+            stacks.append(
+                contentsOf: (1...currentAgeInYears).map { "\($0) Year\($0 == 1 ? "" : "s")" })
         case .twelveMonths:
             stacks.append("Birth Month")
             let monthsToShow = min(11, currentAgeInMonths)
@@ -263,7 +292,7 @@ public struct PhotoUtils {
                 stacks.append(contentsOf: (2...max(2, currentAgeInYears)).map { "\($0) Years" })
             }
         }
-        
+
         return stacks
     }
 
@@ -272,7 +301,6 @@ public struct PhotoUtils {
         case invalidSection(String)
     }
 }
-
 
 // EmptyStateView: Displays a message when there are no photos
 struct EmptyStateView: View {
@@ -309,9 +337,10 @@ struct BirthDaySheet: View {
                 .padding()
                 .navigationTitle("Select Date of Birth")
                 .navigationBarTitleDisplayMode(.inline)
-                .navigationBarItems(trailing: Button("Done") {
-                    isPresented = false
-                })
+                .navigationBarItems(
+                    trailing: Button("Done") {
+                        isPresented = false
+                    })
         }
     }
 }
@@ -356,7 +385,7 @@ struct SharedTimelineView: View {
     @Binding var selectedPhoto: Photo?
     let forceUpdate: Bool
     let sectionTitle: String?
-    let showScrubber: Bool  // Add this line
+    let showScrubber: Bool
     @State private var photoUpdateTrigger = UUID()
     @State private var photosUpdateTrigger = UUID()
     @State private var currentAge: String = ""
@@ -369,7 +398,7 @@ struct SharedTimelineView: View {
     @State private var isScrolling: Bool = false
     @State private var controlsOpacity: Double = 0
     @State private var controlsTimer: Timer?
-    private let pillOffsetConstant: CGFloat = 10 
+    private let pillOffsetConstant: CGFloat = 10
     private let handleHeight: CGFloat = 60
     @State private var isDraggingPill: Bool = false
     @State private var pillHeight: CGFloat = 0
@@ -389,59 +418,70 @@ struct SharedTimelineView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
-                CustomScrollView(content: {
-                    LazyVStack(spacing: 8) {
-                        ForEach(filteredPhotos()) { photo in
-                            FilmReelItemView(photo: photo,
-                                             person: person,
-                                             selectedPhoto: $selectedPhoto,
-                                             geometry: geometry,
-                                             horizontalPadding: horizontalPadding,
-                                             timelineWidth: timelineWidth,
-                                             timelinePadding: timelinePadding,
-                                             onDelete: {
-                                                 photoToDelete = photo
-                                                 showDeleteAlert = true
-                                             })
+                CustomScrollView(
+                    content: {
+                        LazyVStack(spacing: 8) {
+                            ForEach(filteredPhotos()) { photo in
+                                FilmReelItemView(
+                                    photo: photo,
+                                    person: person,
+                                    selectedPhoto: $selectedPhoto,
+                                    geometry: geometry,
+                                    horizontalPadding: horizontalPadding,
+                                    timelineWidth: timelineWidth,
+                                    timelinePadding: timelinePadding,
+                                    onDelete: {
+                                        photoToDelete = photo
+                                        showDeleteAlert = true
+                                    }
+                                )
                                 .id(photo.id)
+                            }
                         }
-                    }
-                    .id(photosUpdateTrigger)
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, verticalPadding)
-                    .padding(.bottom, bottomPadding)
-                    .background(GeometryReader { contentGeometry in
-                        Color.clear.onAppear {
-                            timelineContentHeight = contentGeometry.size.height
+                        .id(photosUpdateTrigger)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, verticalPadding)
+                        .padding(.bottom, bottomPadding)
+                        .background(
+                            GeometryReader { contentGeometry in
+                                Color.clear.onAppear {
+                                    timelineContentHeight = contentGeometry.size.height
+                                }
+                            }
+                        )
+                        .onChange(of: person.photos) { _, _ in
+                            photosUpdateTrigger = UUID()
                         }
-                    })
-                    .onChange(of: person.photos) { _, _ in
-                        photosUpdateTrigger = UUID()
-                    }
-                }, scrollPosition: $scrollPosition, isDraggingTimeline: $isDraggingTimeline)
+                    }, scrollPosition: $scrollPosition, isDraggingTimeline: $isDraggingTimeline
+                )
                 .id(photoUpdateTrigger)
-                .background(GeometryReader { scrollViewGeometry in
-                    Color.clear.onAppear {
-                        scrollViewHeight = scrollViewGeometry.size.height
+                .background(
+                    GeometryReader { scrollViewGeometry in
+                        Color.clear.onAppear {
+                            scrollViewHeight = scrollViewGeometry.size.height
+                        }
                     }
-                })
+                )
                 .onChange(of: scrollPosition) { oldValue, newValue in
                     updateCurrentAge()
                     isScrolling = true
-                    controlsOpacity = 1 // Show controls when scrolling starts
+                    controlsOpacity = 1  // Show controls when scrolling starts
                     startControlsTimer()
                 }
 
-                if showScrubber {  // Add this condition
+                if showScrubber {
                     ZStack(alignment: .topTrailing) {
-                        TimelineScrubber(photos: filteredPhotos(),
-                                         scrollPosition: $scrollPosition,
-                                         contentHeight: timelineContentHeight,
-                                         isDraggingTimeline: $isDraggingTimeline,
-                                         indicatorPosition: $indicatorPosition)
-                            .frame(width: timelineWidth)
-                            .padding(.top, verticalPadding)
-                            .background(GeometryReader { scrubberGeometry in
+                        TimelineScrubber(
+                            photos: filteredPhotos(),
+                            scrollPosition: $scrollPosition,
+                            contentHeight: timelineContentHeight,
+                            isDraggingTimeline: $isDraggingTimeline,
+                            indicatorPosition: $indicatorPosition
+                        )
+                        .frame(width: timelineWidth)
+                        .padding(.top, verticalPadding)
+                        .background(
+                            GeometryReader { scrubberGeometry in
                                 Color.clear.onAppear {
                                     scrubberHeight = scrubberGeometry.size.height
                                 }
@@ -451,11 +491,13 @@ struct SharedTimelineView: View {
                             AgePillView(age: currentAge)
                                 .padding(.trailing, timelineWidth + agePillPadding)
                                 .offset(y: pillOffset)
-                                .background(GeometryReader { pillGeometry in
-                                    Color.clear.onAppear {
-                                        pillHeight = pillGeometry.size.height
+                                .background(
+                                    GeometryReader { pillGeometry in
+                                        Color.clear.onAppear {
+                                            pillHeight = pillGeometry.size.height
+                                        }
                                     }
-                                })
+                                )
                                 .gesture(
                                     DragGesture()
                                         .onChanged { value in
@@ -499,16 +541,25 @@ struct SharedTimelineView: View {
                 secondaryButton: .cancel()
             )
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(person.name)
+                    .font(.headline)
+                    .fontWeight(.bold)
+            }
+        }
     }
 
     private var pillOffset: CGFloat {
-        let availableHeight = scrubberHeight - verticalPadding - bottomPadding - pillHeight
+        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
         let progress = min(1, max(0, scrollPosition / (timelineContentHeight - scrollViewHeight)))
         return verticalPadding + (availableHeight * progress) - pillOffsetConstant
     }
 
     private func updateCurrentAge() {
-        let visiblePhotoIndex = Int(scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))
+        let visiblePhotoIndex = Int(
+            scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))
         let photos = filteredPhotos()
         if visiblePhotoIndex < photos.count {
             let visiblePhoto = photos[visiblePhotoIndex]
@@ -545,15 +596,17 @@ struct SharedTimelineView: View {
 
     private func updateScrollPositionFromPill(_ dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+        let progress = max(
+            0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
         scrollPosition = progress * (timelineContentHeight - scrollViewHeight)
     }
 
     private func checkForHapticFeedback(dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+        let progress = max(
+            0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
         let currentIndex = Int(round(progress * CGFloat(filteredPhotos().count - 1)))
-        
+
         if currentIndex != lastHapticIndex {
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             lastHapticIndex = currentIndex
@@ -567,7 +620,10 @@ struct CustomScrollView<Content: View>: UIViewRepresentable {
     @Binding var scrollPosition: CGFloat
     @Binding var isDraggingTimeline: Bool
 
-    init(@ViewBuilder content: () -> Content, scrollPosition: Binding<CGFloat>, isDraggingTimeline: Binding<Bool>) {
+    init(
+        @ViewBuilder content: () -> Content, scrollPosition: Binding<CGFloat>,
+        isDraggingTimeline: Binding<Bool>
+    ) {
         self.content = content()
         self._scrollPosition = scrollPosition
         self._isDraggingTimeline = isDraggingTimeline
@@ -581,15 +637,15 @@ struct CustomScrollView<Content: View>: UIViewRepresentable {
         let hostView = UIHostingController(rootView: content)
         hostView.view.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(hostView.view)
-        
+
         NSLayoutConstraint.activate([
             hostView.view.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             hostView.view.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             hostView.view.topAnchor.constraint(equalTo: scrollView.topAnchor),
             hostView.view.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            hostView.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+            hostView.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
-        
+
         return scrollView
     }
 
@@ -622,7 +678,7 @@ struct CustomScrollView<Content: View>: UIViewRepresentable {
 // AgePillView: Displays the current age as a pill-shaped overlay
 struct AgePillView: View {
     let age: String
-    
+
     var body: some View {
         if !age.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(age)
@@ -713,11 +769,11 @@ struct FilmReelItemView: View {
         )
         .background(colorScheme == .dark ? Color.black : Color.white)
     }
-    
+
     private var itemWidth: CGFloat {
         geometry.size.width - (2 * horizontalPadding) - timelinePadding
     }
-    
+
     private var exactAge: String {
         AgeCalculator.calculate(for: person, at: photo.dateTaken).toString()
     }
@@ -738,7 +794,7 @@ struct FilmReelItemView: View {
                     }
                 }
             }
-        } 
+        }
     }
 }
 
@@ -749,7 +805,6 @@ enum ImageLoadingState {
     case loaded(Image)
     case failed
 }
-
 // SharedGridView: Displays photos in a grid layout
 struct SharedGridView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -757,7 +812,7 @@ struct SharedGridView: View {
     @Binding var selectedPhoto: Photo?
     let sectionTitle: String?
     @State private var photoUpdateTrigger = UUID()
-    
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -766,8 +821,10 @@ struct SharedGridView: View {
                         Image(uiImage: photo.displayImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: GridLayoutHelper.gridItemWidth(for: geometry.size), 
-                                   height: GridLayoutHelper.gridItemWidth(for: geometry.size))
+                            .frame(
+                                width: GridLayoutHelper.gridItemWidth(for: geometry.size),
+                                height: GridLayoutHelper.gridItemWidth(for: geometry.size)
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .onTapGesture {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -784,7 +841,7 @@ struct SharedGridView: View {
             photoUpdateTrigger = UUID()
         }
     }
-    
+
     private func filteredPhotos() -> [Photo] {
         let filteredPhotos = person.photos.filter { photo in
             if let title = sectionTitle, title != "All Photos" {
@@ -794,7 +851,7 @@ struct SharedGridView: View {
         }
         return sortPhotos(filteredPhotos)
     }
-    
+
     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
         photos.sorted { $0.dateTaken > $1.dateTaken }
     }
@@ -823,7 +880,8 @@ struct CircularButton: View {
                 if let backgroundColor = backgroundColor {
                     backgroundColor
                 } else {
-                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                    VisualEffectView(
+                        effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
                     if colorScheme == .light {
                         Color.black.opacity(0.4)
                     }
@@ -843,9 +901,9 @@ struct SegmentedControlView: View {
     @Binding var animationDirection: UIPageViewController.NavigationDirection
     @Namespace private var animation
     @Environment(\.colorScheme) var colorScheme
-    
+
     let options = ["person.crop.rectangle.stack", "square.grid.2x2"]
-    
+
     var body: some View {
         HStack(spacing: 8) {
             ForEach(options.indices, id: \.self) { index in
@@ -868,7 +926,10 @@ struct SegmentedControlView: View {
                                 }
                             }
                         )
-                        .foregroundColor(colorScheme == .dark ? (selectedTab == index ? .white : .white.opacity(0.5)) : (selectedTab == index ? .white : .black.opacity(0.5)))
+                        .foregroundColor(
+                            colorScheme == .dark
+                                ? (selectedTab == index ? .white : .white.opacity(0.5))
+                                : (selectedTab == index ? .white : .black.opacity(0.5)))
                 }
             }
         }
@@ -895,20 +956,24 @@ struct BottomControls: View {
 
     var body: some View {
         HStack {
-            CircularButton(systemName: "square.and.arrow.up", action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                shareAction()
-            })
+            CircularButton(
+                systemName: "square.and.arrow.up",
+                action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    shareAction()
+                })
             Spacer()
 
             SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
 
             Spacer()
 
-            CircularButton(systemName: "plus", action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                addPhotoAction()
-            }, size: 50, backgroundColor: .blue)
+            CircularButton(
+                systemName: "plus",
+                action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    addPhotoAction()
+                }, size: 50, backgroundColor: .blue)
         }
         .padding(.horizontal)
     }
@@ -928,17 +993,17 @@ struct ScrubberHandle: View {
             Rectangle()
                 .fill(Color.clear)
                 .frame(width: tapAreaSize, height: tapAreaHeight)
-            
+
             HStack(spacing: 0) {
-                Spacer() // This pushes the blue line to the right
-                
+                Spacer()  // This pushes the blue line to the right
+
                 // Blue line
                 Rectangle()
                     .fill(Color.blue)
                     .frame(width: blueLineWidth, height: lineHeight)
             }
             .frame(width: tapAreaSize)
-            
+
             // Transparent overlay for larger tap area
             Color.clear
                 .frame(width: tapAreaSize, height: tapAreaHeight)
@@ -955,12 +1020,12 @@ struct TimelineScrubber: View {
     @Binding var isDraggingTimeline: Bool
     @Binding var indicatorPosition: CGFloat
     @State private var lastHapticIndex: Int = -1
-    
+
     private let tapAreaSize: CGFloat = 20
     private let lineWidth: CGFloat = 8
     private let lineHeight: CGFloat = 1
-    private let bottomPadding: CGFloat = 100 
-    private let topPadding: CGFloat = 0 
+    private let bottomPadding: CGFloat = 100
+    private let topPadding: CGFloat = 0
     private let handleHeight: CGFloat = 60
 
     var body: some View {
@@ -969,7 +1034,7 @@ struct TimelineScrubber: View {
                 Rectangle()
                     .fill(Color.clear)
                     .frame(width: tapAreaSize)
-                
+
                 ForEach(photos.indices, id: \.self) { index in
                     Rectangle()
                         .fill(Color.gray.opacity(0.3))
@@ -1006,7 +1071,8 @@ struct TimelineScrubber: View {
     }
 
     private func updateIndicatorPosition(in geometry: GeometryProxy) {
-        let scrollPercentage = min(1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
+        let scrollPercentage = min(
+            1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
         let availableHeight = geometry.size.height - bottomPadding - topPadding
         indicatorPosition = scrollPercentage * availableHeight + topPadding
     }
@@ -1018,7 +1084,7 @@ struct TimelineScrubber: View {
         let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
         let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
         scrollPosition = newScrollPercentage * max(1, contentHeight - geometry.size.height)
-        
+
         checkForHapticFeedback(in: geometry)
     }
 
@@ -1046,7 +1112,11 @@ struct TimelineScrubber: View {
 // UIViewRepresentable for visual effects
 struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
-    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
-    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
+    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView {
+        UIVisualEffectView()
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) {
+        uiView.effect = effect
+    }
 }
 

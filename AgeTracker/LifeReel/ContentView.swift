@@ -44,12 +44,15 @@ struct ContentView: View {
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                if viewModel.people.isEmpty {
-                    OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
-                } else {
-                    mainView
+            NavigationView {
+                ZStack {
+                    if viewModel.people.isEmpty {
+                        OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
+                    } else {
+                        mainView
+                    }
                 }
+                .navigationBarTitleDisplayMode(.inline)
             }
             .sheet(isPresented: $showingPeopleGrid) {
                 peopleGridView
@@ -70,74 +73,73 @@ struct ContentView: View {
                 }
             }
         }
+        .onAppear {
+            configureNavigationBarAppearance()
+        }
     }
 
     // Main view component
     private var mainView: some View {
-        NavigationView {
-            ZStack {
-                if let person = viewModel.selectedPerson ?? viewModel.people.first {
-                    personDetailView(for: person)
-                } else {
-                    Text("No person selected")
-                }
+        ZStack {
+            if let person = viewModel.selectedPerson ?? viewModel.people.first {
+                personDetailView(for: person)
+            } else {
+                Text("No person selected")
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Button(action: {
-                        showingPeopleGrid = true
-                    }) {
-                        HStack {
-                            Text(
-                                viewModel.selectedPerson?.name ?? viewModel.people.first?.name
-                                    ?? "Select Person"
-                            )
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button(action: {
+                    showingPeopleGrid = true
+                }) {
+                    HStack {
+                        Text(
+                            viewModel.selectedPerson?.name ?? viewModel.people.first?.name
+                                ?? "Select Person"
+                        )
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
 
-                            ZStack {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 20, height: 20)
+                        ZStack {
+                            Circle()
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 20, height: 20)
 
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.primary)
-                            }
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.primary)
                         }
                     }
                 }
             }
-            .sheet(item: $activeSheet) { sheetType in
-                switch sheetType {
-                case .addPerson, .addPersonSheet:
-                    AddPersonView(
-                        viewModel: viewModel,
-                        isPresented: Binding(
-                            get: { activeSheet != nil },
-                            set: { if !$0 { activeSheet = nil } }
-                        ),
-                        onboardingMode: false
-                    )
-                case .peopleGrid:
-                    NavigationView {
-                        peopleGridView
-                    }
-                case .shareView:
-                    if let person = viewModel.selectedPerson {
-                        ShareSlideshowView(
-                            photos: person.photos, person: person, sectionTitle: "All Photos")
-                    }
-                case .settings:
-                    // We'll keep this case to avoid compilation errors, but it won't be used
-                    EmptyView()
+        }
+        .sheet(item: $activeSheet) { sheetType in
+            switch sheetType {
+            case .addPerson, .addPersonSheet:
+                AddPersonView(
+                    viewModel: viewModel,
+                    isPresented: Binding(
+                        get: { activeSheet != nil },
+                        set: { if !$0 { activeSheet = nil } }
+                    ),
+                    onboardingMode: false
+                )
+            case .peopleGrid:
+                NavigationView {
+                    peopleGridView
                 }
+            case .shareView:
+                if let person = viewModel.selectedPerson {
+                    ShareSlideshowView(
+                        photos: person.photos, person: person, sectionTitle: "All Photos")
+                }
+            case .settings:
+                // We'll keep this case to avoid compilation errors, but it won't be used
+                EmptyView()
             }
         }
-        .id(viewModel.selectedPerson?.id ?? viewModel.people.first?.id ?? UUID())
-        .id(orientation)  // Force view update on orientation change
     }
 
     // People grid view component
@@ -181,12 +183,14 @@ struct ContentView: View {
                         SharedTimelineView(
                             viewModel: viewModel, person: viewModel.bindingForPerson(person),
                             selectedPhoto: $selectedPhoto, forceUpdate: false,
-                            sectionTitle: "All Photos", showScrubber: true)),
+                            sectionTitle: "All Photos", showScrubber: true)
+                    ),
                     AnyView(
                         MilestonesView(
                             viewModel: viewModel, person: viewModel.bindingForPerson(person),
                             selectedPhoto: $selectedPhoto, openImagePickerForMoment: { _, _ in },
-                            forceUpdate: false)),
+                            forceUpdate: false)
+                    )
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -274,7 +278,10 @@ struct ContentView: View {
 
     // Settings button component
     private func settingsButton(for person: Person) -> some View {
-        NavigationLink(destination: PersonSettingsView(viewModel: viewModel, person: viewModel.bindingForPerson(person))) {
+        NavigationLink(
+            destination: PersonSettingsView(
+                viewModel: viewModel, person: viewModel.bindingForPerson(person))
+        ) {
             Image(systemName: "gearshape.fill")
                 .foregroundColor(.blue)
         }
@@ -301,6 +308,16 @@ struct ContentView: View {
         selectedAssets.removeAll()
         viewModel.objectWillChange.send()
         print("handleSelectedAssetsChange completed")
+    }
+
+    private func configureNavigationBarAppearance() {
+        if #available(iOS 15.0, *) {
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithDefaultBackground()
+            UINavigationBar.appearance().standardAppearance = appearance
+            UINavigationBar.appearance().compactAppearance = appearance
+            UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        }
     }
 }
 
