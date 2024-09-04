@@ -404,7 +404,12 @@ private struct ControlsOverlay: View {
         VStack {
             // Top Bar with Close Button
             HStack {
-                CircularIconButton(icon: "xmark", action: onClose)
+                CircularButton(
+                    systemName: "xmark",
+                    action: onClose,
+                    size: 40,
+                    blurEffect: true
+                )
                 Spacer()
             }
             .padding(.horizontal)
@@ -440,7 +445,12 @@ private struct ControlsOverlay: View {
                 }
 
                 HStack {
-                    CircularIconButton(icon: "square.and.arrow.up", action: onShare)
+                    CircularButton(
+                        systemName: "square.and.arrow.up",
+                        action: onShare,
+                        size: 40,
+                        blurEffect: true
+                    )
                     Spacer()
                     VStack(spacing: 4) {
                         Text(selectedAge.toString())
@@ -457,7 +467,12 @@ private struct ControlsOverlay: View {
                             }
                     }
                     Spacer()
-                    CircularIconButton(icon: "trash", action: onDelete)
+                    CircularButton(
+                        systemName: "trash",
+                        action: onDelete,
+                        size: 40,
+                        blurEffect: true
+                    )
                 }
             }
             .padding(.horizontal, 20)
@@ -626,67 +641,6 @@ struct ThumbnailView: View {
         )
     }
 }
-
-struct CircularIconButton: View {
-    let icon: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 28, height: 28)
-        }
-        .background(
-            BlurEffectView()
-                .frame(width: 40, height: 40)
-                .clipShape(Circle())
-        )
-        .padding(8)
-    }
-
-    private struct BlurEffectView: UIViewRepresentable {
-        func makeUIView(context: Context) -> UIVisualEffectView {
-            return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
-        }
-
-        func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
-    }
-}
-
-// struct PillButton: View {
-//     let icon: String
-//     let label: String
-//     let action: () -> Void
-
-//     var body: some View {
-//         Button(action: action) {
-//             HStack(spacing: 8) {
-//                 Image(systemName: icon)
-//                 Text(label)
-//             }
-//             .foregroundColor(.white)
-//             .padding(.horizontal, 16)
-//             .padding(.vertical, 8)
-
-//         }
-//         .background(
-//             BlurEffectView()
-//                 .clipShape(Capsule())
-//                 .padding(.horizontal, -8)
-//                 .padding(.vertical, -4)
-//         )
-//     }
-
-//     // private struct BlurEffectView: UIViewRepresentable {
-//     //     func makeUIView(context: Context) -> UIVisualEffectView {
-//     //         return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
-//     //     }
-
-//     //     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
-//     // }
-// }
 
 enum DragState {
     case inactive

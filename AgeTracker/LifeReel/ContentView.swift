@@ -124,13 +124,11 @@ struct ContentView: View {
                 EmptyView()
             }
         }
-        .onChange(of: viewModel.selectedPerson) { _, newPerson in
-            if let newPerson = newPerson {
-                // Force view update when selected person changes
-                viewModel.objectWillChange.send()
-                // Reset the selected tab to the timeline view
-                selectedTab = 0
-            }
+        .onChange(of: viewModel.selectedPerson) { _, _ in
+            // Force view update when selected person changes
+            viewModel.objectWillChange.send()
+            // Reset the selected tab to the timeline view
+            selectedTab = 0
         }
     }
 

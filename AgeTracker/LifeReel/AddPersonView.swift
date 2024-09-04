@@ -173,22 +173,7 @@ struct AddPersonView: View {
                     showDatePickerSheet = true
                 }
             }
-            
-            if let dateOfBirth = dateOfBirth {
-                let now = Date()
-                if dateOfBirth > now {
-                    let pregnancyAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: now)
-                    Text("\(name)'s mom is \(pregnancyAge.toString()) today")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                } else {
-                    Text("\(name) is \(AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dateOfBirth), at: Date()).toString()) today")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                }
-            }
+        
         }
     }
     
@@ -245,10 +230,6 @@ struct AddPersonView: View {
         return nil
     }
     
-    private func calculateAge(for dob: Date, at photoDate: Date, name: String) -> String {
-        let exactAge = AgeCalculator.calculate(for: Person(name: name, dateOfBirth: dob), at: photoDate)
-        return "\(name) is \(exactAge.toString())"
-    }
     
     private func loadImages(from assets: [PHAsset]) {
         for asset in assets {

@@ -292,6 +292,47 @@ struct EmptyStateView: View {
     }
 }
 
+// Circular button component
+struct CircularButton: View {
+    let systemName: String
+    let action: () -> Void
+    var size: CGFloat = 40
+    var backgroundColor: Color?
+    var iconColor: Color = .white
+    var iconSize: CGFloat?
+    var blurEffect: Bool = true
+    
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        }) {
+            Image(systemName: systemName)
+                .foregroundColor(iconColor)
+                .font(.system(size: iconSize ?? (size * 0.35), weight: .bold))
+                .frame(width: size, height: size)
+        }
+        .background(
+            ZStack {
+                if let backgroundColor = backgroundColor {
+                    backgroundColor
+                } else if blurEffect {
+                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
+                    if colorScheme == .light {
+                        Color.black.opacity(blurEffect ? 0.4 : 0.1)
+                    }
+                    if colorScheme == .dark {
+                        Color.white.opacity(0.2)
+                    }
+                }
+            }
+        )
+        .clipShape(Circle())
+    }
+}
+
 // Segmented control for switching between grid and timeline views
 struct SegmentedControlView: View {
     @Binding var selectedTab: Int
