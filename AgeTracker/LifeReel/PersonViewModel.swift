@@ -484,7 +484,7 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhotoToSelectedPerson(asset: PHAsset) {
-        guard let selectedPerson = selectedPerson else {
+        guard var selectedPerson = selectedPerson else {
             print("No person selected to add photo to")
             return
         }
@@ -521,6 +521,7 @@ class PersonViewModel: ObservableObject {
                     if let index = self.people.firstIndex(where: { $0.id == selectedPerson.id }) {
                         self.people[index].photos.append(newPhoto)
                         self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
+                        self.selectedPerson = self.people[index]
                         self.savePeople()
                         self.objectWillChange.send()
                         NotificationCenter.default.post(name: .photosUpdated, object: nil)

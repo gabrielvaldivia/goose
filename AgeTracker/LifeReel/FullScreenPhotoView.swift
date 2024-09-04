@@ -38,6 +38,7 @@ struct FullScreenPhotoView: View {
     @State private var selectedAge: ExactAge
     @State private var showDatePicker = false
     @State private var selectedDate: Date
+    @State private var photosUpdateTrigger = UUID()
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -198,6 +199,10 @@ struct FullScreenPhotoView: View {
             }
             .background(Color.black.opacity(1 - dismissProgress))
         }
+        .id(photosUpdateTrigger)
+        .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+            photosUpdateTrigger = UUID()
+        }
         // Animation on Appear
         .onAppear {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -238,6 +243,11 @@ struct FullScreenPhotoView: View {
                 },
                 secondaryButton: .cancel()
             )
+        }
+        .onChange(of: photos) { oldValue, newValue in
+            if currentIndex >= newValue.count {
+                currentIndex = newValue.count - 1
+            }
         }
     }
 

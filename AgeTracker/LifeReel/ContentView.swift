@@ -233,14 +233,32 @@ struct ContentView: View {
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
-                currentIndex: person.photos.firstIndex(where: { $0.id == photo.id }) ?? 0,
-                photos: .constant(person.photos),
+                currentIndex: viewModel.selectedPerson?.photos.firstIndex(where: { $0.id == photo.id }) ?? 0,
+                photos: Binding(
+                    get: { viewModel.selectedPerson?.photos ?? [] },
+                    set: { newValue in
+                        if let index = viewModel.people.firstIndex(where: { $0.id == viewModel.selectedPerson?.id }) {
+                            viewModel.people[index].photos = newValue
+                            viewModel.objectWillChange.send()
+                        }
+                    }
+                ),
                 onDelete: { deletedPhoto in
-                    viewModel.deletePhoto(deletedPhoto, from: viewModel.bindingForPerson(person))
-                    selectedPhoto = nil
-                    viewModel.objectWillChange.send()
+                    if let person = viewModel.selectedPerson {
+                        viewModel.deletePhoto(deletedPhoto, from: person)
+                        selectedPhoto = nil
+                        viewModel.objectWillChange.send()
+                    }
                 },
-                person: viewModel.bindingForPerson(person),
+                person: Binding(
+                    get: { viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date()) },
+                    set: { newValue in
+                        if let index = viewModel.people.firstIndex(where: { $0.id == newValue.id }) {
+                            viewModel.people[index] = newValue
+                            viewModel.objectWillChange.send()
+                        }
+                    }
+                ),
                 viewModel: viewModel
             )
             .background(Color.clear)
@@ -304,7 +322,7 @@ struct ContentView: View {
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
 
-        viewModel.objectWillChange.send()
+
         print("handleSelectedAssetsChange completed")
     }
 }
