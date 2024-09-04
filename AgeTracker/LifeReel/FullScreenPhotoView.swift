@@ -69,133 +69,140 @@ struct FullScreenPhotoView: View {
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
 
-                // Photo Display
-                if let image = photos[currentIndex].image {
+                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                    // Photo Display
                     GeometryReader { imageGeometry in
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(
-                                width: imageGeometry.size.width, height: imageGeometry.size.height
-                            )
-                            .scaleEffect(scale)
-                            .offset(dragOffset)
-                            .gesture(
-                                DragGesture()
-                                    .updating($dragState) { value, state, _ in
-                                        state = value.translation
-                                    }
-                                    .onChanged { value in
-                                        if scale <= 1.0 {
-                                            dragOffset = value.translation
-                                            dismissProgress = min(
-                                                1, abs(value.translation.height) / 200)
-                                        } else {
-                                            let newOffset = CGSize(
-                                                width: offset.width + value.translation.width,
-                                                height: offset.height + value.translation.height
-                                            )
-                                            dragOffset = limitOffset(
-                                                newOffset, geometry: imageGeometry)
+                        if let image = currentPhoto.image {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(
+                                    width: imageGeometry.size.width, height: imageGeometry.size.height
+                                )
+                                .scaleEffect(scale)
+                                .offset(dragOffset)
+                                .gesture(
+                                    DragGesture()
+                                        .updating($dragState) { value, state, _ in
+                                            state = value.translation
                                         }
-                                    }
-                                    .onEnded { value in
-                                        if scale <= 1.0 {
-                                            let threshold = geometry.size.height * 0.25
-                                            if abs(value.translation.height) > threshold {
-                                                isDismissing = true
-                                                withAnimation(.easeOut(duration: 0.2)) {
-                                                    dragOffset.height =
-                                                        value.translation.height > 0
-                                                        ? geometry.size.height
-                                                        : -geometry.size.height
-                                                    dismissProgress = 1
-                                                }
-                                                DispatchQueue.main.asyncAfter(
-                                                    deadline: .now() + 0.2
-                                                ) {
-                                                    presentationMode.wrappedValue.dismiss()
+                                        .onChanged { value in
+                                            if scale <= 1.0 {
+                                                dragOffset = value.translation
+                                                dismissProgress = min(
+                                                    1, abs(value.translation.height) / 200)
+                                            } else {
+                                                let newOffset = CGSize(
+                                                    width: offset.width + value.translation.width,
+                                                    height: offset.height + value.translation.height
+                                                )
+                                                dragOffset = limitOffset(
+                                                    newOffset, geometry: imageGeometry)
+                                            }
+                                        }
+                                        .onEnded { value in
+                                            if scale <= 1.0 {
+                                                let threshold = geometry.size.height * 0.25
+                                                if abs(value.translation.height) > threshold {
+                                                    isDismissing = true
+                                                    withAnimation(.easeOut(duration: 0.2)) {
+                                                        dragOffset.height =
+                                                            value.translation.height > 0
+                                                            ? geometry.size.height
+                                                            : -geometry.size.height
+                                                        dismissProgress = 1
+                                                    }
+                                                    DispatchQueue.main.asyncAfter(
+                                                        deadline: .now() + 0.2
+                                                    ) {
+                                                        presentationMode.wrappedValue.dismiss()
+                                                    }
+                                                } else {
+                                                    withAnimation(.spring()) {
+                                                        dragOffset = .zero
+                                                        dismissProgress = 0
+                                                    }
                                                 }
                                             } else {
-                                                withAnimation(.spring()) {
-                                                    dragOffset = .zero
-                                                    dismissProgress = 0
-                                                }
+                                                offset = dragOffset
                                             }
+                                        }
+                                )
+                                .gesture(
+                                    MagnificationGesture()
+                                        .onChanged { value in
+                                            let delta = value / self.lastScale
+                                            self.lastScale = value
+
+                                            // Adjust scale with new minimum
+                                            let newScale = min(max(self.scale * delta, minScale), 4)
+
+                                            // Adjust offset to keep the zoom centered
+                                            let newOffset = CGSize(
+                                                width: self.offset.width * delta,
+                                                height: self.offset.height * delta
+                                            )
+                                            self.scale = newScale
+                                            self.offset = limitOffset(
+                                                newOffset, geometry: imageGeometry)
+                                            self.dragOffset = self.offset
+                                        }
+                                        .onEnded { _ in
+                                            self.lastScale = 1.0
+                                            resetZoomIfNeeded()
+                                        }
+                                )
+                                .onTapGesture(count: 2) {
+                                    withAnimation(.spring()) {
+                                        if scale > 1 {
+                                            scale = 1
+                                            offset = .zero
                                         } else {
-                                            offset = dragOffset
+                                            scale = min(scale * 2, 4)
                                         }
                                     }
-                            )
-                            .gesture(
-                                MagnificationGesture()
-                                    .onChanged { value in
-                                        let delta = value / self.lastScale
-                                        self.lastScale = value
-
-                                        // Adjust scale with new minimum
-                                        let newScale = min(max(self.scale * delta, minScale), 4)
-
-                                        // Adjust offset to keep the zoom centered
-                                        let newOffset = CGSize(
-                                            width: self.offset.width * delta,
-                                            height: self.offset.height * delta
-                                        )
-                                        self.scale = newScale
-                                        self.offset = limitOffset(
-                                            newOffset, geometry: imageGeometry)
-                                        self.dragOffset = self.offset
-                                    }
-                                    .onEnded { _ in
-                                        self.lastScale = 1.0
-                                        resetZoomIfNeeded()
-                                    }
-                            )
-                            .onTapGesture(count: 2) {
-                                withAnimation(.spring()) {
-                                    if scale > 1 {
-                                        scale = 1
-                                        offset = .zero
-                                    } else {
-                                        scale = min(scale * 2, 4)
-                                    }
                                 }
-                            }
-                            .onTapGesture {
-                                showControls.toggle()
-                            }
+                                .onTapGesture {
+                                    showControls.toggle()
+                                }
+                        } else {
+                            Text("No image available")
+                                .foregroundColor(.white)
+                        }
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
-                    Color.gray
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    Text("No photos available")
+                        .foregroundColor(.white)
                 }
 
                 // Controls Overlay
-                ControlsOverlay(
-                    showControls: showControls,
-                    person: person,
-                    photo: photos[currentIndex],
-                    photos: photos,
-                    onClose: {
-                        presentationMode.wrappedValue.dismiss()
-                    },
-                    onShare: {
-                        activeSheet = .shareView
-                    },
-                    onDelete: {
-                        showDeleteConfirmation = true
-                    },
-                    currentIndex: $currentIndex,
-                    totalPhotos: photos.count,
-                    onScrub: { newIndex in
-                        currentIndex = newIndex
-                        resetZoomAndPan()
-                    },
-                    onUpdateAge: updatePhotoAge,
-                    onUpdateDate: updatePhotoDate
-                )
-                .opacity(1 - dismissProgress)
+                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                    ControlsOverlay(
+                        showControls: showControls,
+                        person: person,
+                        photo: currentPhoto,
+                        photos: photos,
+                        onClose: {
+                            presentationMode.wrappedValue.dismiss()
+                        },
+                        onShare: {
+                            activeSheet = .shareView
+                        },
+                        onDelete: {
+                            showDeleteConfirmation = true
+                        },
+                        currentIndex: $currentIndex,
+                        totalPhotos: photos.count,
+                        onScrub: { newIndex in
+                            currentIndex = newIndex
+                            resetZoomAndPan()
+                        },
+                        onUpdateAge: updatePhotoAge,
+                        onUpdateDate: updatePhotoDate
+                    )
+                    .opacity(1 - dismissProgress)
+                }
             }
             .background(Color.black.opacity(1 - dismissProgress))
         }

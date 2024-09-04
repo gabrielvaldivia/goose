@@ -19,6 +19,8 @@ struct ContentView: View {
     @State private var selectedPhoto: Photo?
     @State private var showingPeopleGrid = false
     @State private var orientation = UIDeviceOrientation.unknown
+    @State private var selectedPhotoIndex: Int?
+    @State private var showFullScreenPhoto = false
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -71,6 +73,40 @@ struct ContentView: View {
                 if newOrientation != orientation {
                     orientation = newOrientation
                 }
+            }
+        }
+        .sheet(isPresented: $showFullScreenPhoto) {
+            if let index = selectedPhotoIndex, 
+               let person = viewModel.selectedPerson, 
+               person.photos.indices.contains(index) {
+                FullScreenPhotoView(
+                    photo: person.photos[index],
+                    currentIndex: index,
+                    photos: Binding(
+                        get: { person.photos },
+                        set: { newPhotos in
+                            if let index = viewModel.people.firstIndex(where: { $0.id == person.id }) {
+                                viewModel.people[index].photos = newPhotos
+                                viewModel.objectWillChange.send()
+                            }
+                        }
+                    ),
+                    onDelete: { photo in
+                        viewModel.deletePhoto(photo, from: person)
+                    },
+                    person: Binding(
+                        get: { person },
+                        set: { newValue in
+                            if let index = viewModel.people.firstIndex(where: { $0.id == newValue.id }) {
+                                viewModel.people[index] = newValue
+                                viewModel.objectWillChange.send()
+                            }
+                        }
+                    ),
+                    viewModel: viewModel
+                )
+            } else {
+                Text("No photo selected or invalid index")
             }
         }
     }
@@ -230,39 +266,6 @@ struct ContentView: View {
         .onChange(of: selectedAssets) { _, newValue in
             print("selectedAssets changed. New count: \(newValue.count)")
         }
-        .fullScreenCover(item: $selectedPhoto) { photo in
-            FullScreenPhotoView(
-                photo: photo,
-                currentIndex: viewModel.selectedPerson?.photos.firstIndex(where: { $0.id == photo.id }) ?? 0,
-                photos: Binding(
-                    get: { viewModel.selectedPerson?.photos ?? [] },
-                    set: { newValue in
-                        if let index = viewModel.people.firstIndex(where: { $0.id == viewModel.selectedPerson?.id }) {
-                            viewModel.people[index].photos = newValue
-                            viewModel.objectWillChange.send()
-                        }
-                    }
-                ),
-                onDelete: { deletedPhoto in
-                    if let person = viewModel.selectedPerson {
-                        viewModel.deletePhoto(deletedPhoto, from: person)
-                        selectedPhoto = nil
-                        viewModel.objectWillChange.send()
-                    }
-                },
-                person: Binding(
-                    get: { viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date()) },
-                    set: { newValue in
-                        if let index = viewModel.people.firstIndex(where: { $0.id == newValue.id }) {
-                            viewModel.people[index] = newValue
-                            viewModel.objectWillChange.send()
-                        }
-                    }
-                ),
-                viewModel: viewModel
-            )
-            .background(Color.clear)
-        }
         .onChange(of: viewModel.selectedPerson) { _, _ in
             viewModel.objectWillChange.send()
         }
@@ -324,6 +327,15 @@ struct ContentView: View {
 
 
         print("handleSelectedAssetsChange completed")
+    }
+
+    func presentFullScreenPhoto(at index: Int) {
+        print("Presenting full screen photo")
+        print("Total photos: \(viewModel.selectedPerson?.photos.count ?? 0)")
+        print("Selected index: \(index)")
+        
+        selectedPhotoIndex = index
+        showFullScreenPhoto = true
     }
 }
 
