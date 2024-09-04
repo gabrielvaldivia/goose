@@ -29,16 +29,26 @@ struct MilestoneDetailView: View {
                 ZStack(alignment: .bottom) {
                     PageViewController(
                         pages: [
-                            AnyView(
-                                TimelineView(
-                                    viewModel: viewModel, person: $person,
-                                    selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate,
-                                    sectionTitle: sectionTitle, showScrubber: false)),
-                            AnyView(
-                                SharedGridView(
-                                    viewModel: viewModel, person: $person,
-                                    selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle)),
-                        ], currentPage: $selectedTab, animationDirection: $animationDirection
+                            AnyView(TimelineView(
+                                viewModel: viewModel,
+                                person: $person,
+                                selectedPhoto: $selectedPhoto,
+                                forceUpdate: forceUpdate,
+                                sectionTitle: sectionTitle,
+                                showScrubber: false  // Changed this to false
+                            )),
+                            AnyView(GridView(
+                                viewModel: viewModel,
+                                person: $person,
+                                selectedPhoto: $selectedPhoto,
+                                mode: .sectionPhotos,
+                                sectionTitle: sectionTitle,
+                                forceUpdate: forceUpdate,
+                                showAge: false 
+                            ))
+                        ],
+                        currentPage: $selectedTab,
+                        animationDirection: $animationDirection
                     )
                     .edgesIgnoringSafeArea(.bottom)
 
@@ -59,7 +69,14 @@ struct MilestoneDetailView: View {
                 }
             }
         }
-        .navigationTitle(sectionTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(sectionTitle)
+                    .font(.headline)
+                    .fontWeight(.bold)
+            }
+        }
         .sheet(isPresented: $showingImagePicker) {
             CustomImagePicker(
                 viewModel: viewModel,

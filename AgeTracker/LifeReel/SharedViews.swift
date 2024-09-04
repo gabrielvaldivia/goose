@@ -293,65 +293,65 @@ struct EmptyStateView: View {
 }
 
 
-// SharedGridView: Displays photos in a grid layout
-struct SharedGridView: View {
-    @ObservedObject var viewModel: PersonViewModel
-    @Binding var person: Person
-    @Binding var selectedPhoto: Photo?
-    let sectionTitle: String?
-    @State private var photoUpdateTrigger = UUID()
+// // SharedGridView: Displays photos in a grid layout
+// struct SharedGridView: View {
+//     @ObservedObject var viewModel: PersonViewModel
+//     @Binding var person: Person
+//     @Binding var selectedPhoto: Photo?
+//     let sectionTitle: String?
+//     @State private var photoUpdateTrigger = UUID()
 
-    var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
-                    ForEach(filteredPhotos()) { photo in
-                        Image(uiImage: photo.displayImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(
-                                width: GridLayoutHelper.gridItemWidth(for: geometry.size),
-                                height: GridLayoutHelper.gridItemWidth(for: geometry.size)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .onTapGesture {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                selectedPhoto = photo
-                            }
-                    }
-                }
-                .padding()
-                .padding(.bottom, 80)
-            }
-        }
-        .id(photoUpdateTrigger)
-        .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
-            photoUpdateTrigger = UUID()
-        }
-    }
+//     var body: some View {
+//         GeometryReader { geometry in
+//             ScrollView {
+//                 LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
+//                     ForEach(filteredPhotos()) { photo in
+//                         Image(uiImage: photo.displayImage)
+//                             .resizable()
+//                             .aspectRatio(contentMode: .fill)
+//                             .frame(
+//                                 width: GridLayoutHelper.gridItemWidth(for: geometry.size),
+//                                 height: GridLayoutHelper.gridItemWidth(for: geometry.size)
+//                             )
+//                             .clipShape(RoundedRectangle(cornerRadius: 10))
+//                             .onTapGesture {
+//                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+//                                 selectedPhoto = photo
+//                             }
+//                     }
+//                 }
+//                 .padding()
+//                 .padding(.bottom, 80)
+//             }
+//         }
+//         .id(photoUpdateTrigger)
+//         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+//             photoUpdateTrigger = UUID()
+//         }
+//     }
 
-    private func filteredPhotos() -> [Photo] {
-        let filteredPhotos = person.photos.filter { photo in
-            // Exclude pregnancy photos if pregnancy tracking is set to none
-            if person.pregnancyTracking == .none {
-                let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                if exactAge.isPregnancy {
-                    return false
-                }
-            }
+//     private func filteredPhotos() -> [Photo] {
+//         let filteredPhotos = person.photos.filter { photo in
+//             // Exclude pregnancy photos if pregnancy tracking is set to none
+//             if person.pregnancyTracking == .none {
+//                 let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+//                 if exactAge.isPregnancy {
+//                     return false
+//                 }
+//             }
             
-            if let title = sectionTitle, title != "All Photos" {
-                return PhotoUtils.sectionForPhoto(photo, person: person) == title
-            }
-            return true
-        }
-        return sortPhotos(filteredPhotos)
-    }
+//             if let title = sectionTitle, title != "All Photos" {
+//                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
+//             }
+//             return true
+//         }
+//         return sortPhotos(filteredPhotos)
+//     }
 
-    private func sortPhotos(_ photos: [Photo]) -> [Photo] {
-        photos.sorted { $0.dateTaken > $1.dateTaken }
-    }
-}
+//     private func sortPhotos(_ photos: [Photo]) -> [Photo] {
+//         photos.sorted { $0.dateTaken > $1.dateTaken }
+//     }
+// }
 
 // Circular button component
 struct CircularButton: View {

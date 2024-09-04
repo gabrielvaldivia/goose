@@ -272,7 +272,7 @@ struct ContentView: View {
     }
 
     private func milestonesView(for person: Person) -> some View {
-        MilestonesView(
+        GridView(
             viewModel: viewModel,
             person: viewModel.bindingForPerson(person),
             selectedPhoto: Binding(
@@ -283,8 +283,11 @@ struct ContentView: View {
                     self.fullScreenPhoto = $0
                 }
             ),
+            mode: .milestones,
+            sectionTitle: nil,
             openImagePickerForMoment: { _, _ in },
-            forceUpdate: false
+            forceUpdate: false,
+            showAge: true
         )
     }
 

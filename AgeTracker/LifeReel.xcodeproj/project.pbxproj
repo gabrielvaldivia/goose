@@ -31,6 +31,7 @@
 		40CE60862C88A9AE007FACAD /* AgePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */; };
 		40CE60882C88AA30007FACAD /* DatePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60872C88AA30007FACAD /* DatePickerSheet.swift */; };
 		40CE608A2C88AC63007FACAD /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60892C88AC63007FACAD /* TimelineView.swift */; };
+		40CE608C2C88DAE2007FACAD /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE608B2C88DAE2007FACAD /* GridView.swift */; };
 		40F651542C6B0402003B9830 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
 /* End PBXBuildFile section */
 
@@ -81,6 +82,7 @@
 		40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgePickerSheet.swift; sourceTree = "<group>"; };
 		40CE60872C88AA30007FACAD /* DatePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatePickerSheet.swift; sourceTree = "<group>"; };
 		40CE60892C88AC63007FACAD /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
+		40CE608B2C88DAE2007FACAD /* GridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -166,6 +168,7 @@
 				40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
+				40CE608B2C88DAE2007FACAD /* GridView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
 				4015B7322C5C5628001FA4E4 /* Preview Content */,
 				403C94732C665D1B003373A2 /* SharedViews.swift */,
@@ -341,6 +344,7 @@
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
 				40CE60882C88AA30007FACAD /* DatePickerSheet.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
+				40CE608C2C88DAE2007FACAD /* GridView.swift in Sources */,
 				402EF17D2C6EC8D100156F55 /* AgeCalculator.swift in Sources */,
 				40CE60862C88A9AE007FACAD /* AgePickerSheet.swift in Sources */,
 				40F651542C6B0402003B9830 /* SharedViews.swift in Sources */,
