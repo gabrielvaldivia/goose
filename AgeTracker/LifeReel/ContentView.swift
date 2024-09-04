@@ -124,6 +124,14 @@ struct ContentView: View {
                 EmptyView()
             }
         }
+        .onChange(of: viewModel.selectedPerson) { _, newPerson in
+            if let newPerson = newPerson {
+                // Force view update when selected person changes
+                viewModel.objectWillChange.send()
+                // Reset the selected tab to the timeline view
+                selectedTab = 0
+            }
+        }
     }
 
     // Main view component
@@ -131,6 +139,7 @@ struct ContentView: View {
         ZStack {
             if let person = viewModel.selectedPerson ?? viewModel.people.first {
                 personDetailView(for: person)
+                    .id(person.id) // Add this line to force view refresh
             } else {
                 Text("No person selected")
             }
