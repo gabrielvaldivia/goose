@@ -109,6 +109,36 @@ struct ContentView: View {
                 Text("No photo selected or invalid index")
             }
         }
+        .sheet(item: $activeSheet) { sheetType in
+            switch sheetType {
+            case .addPerson, .addPersonSheet:
+                AddPersonView(
+                    viewModel: viewModel,
+                    isPresented: Binding(
+                        get: { activeSheet != nil },
+                        set: { if !$0 { activeSheet = nil } }
+                    ),
+                    onboardingMode: false
+                )
+            case .peopleGrid:
+                NavigationView {
+                    peopleGridView
+                }
+            case .shareView:
+                if let person = viewModel.selectedPerson {
+                    ShareSlideshowView(
+                        photos: person.photos,
+                        person: person,
+                        sectionTitle: "All Photos"
+                    )
+                } else {
+                    Text("No person selected")
+                }
+            case .settings:
+                // We'll keep this case to avoid compilation errors, but it won't be used
+                EmptyView()
+            }
+        }
     }
 
     // Main view component
@@ -146,31 +176,6 @@ struct ContentView: View {
                         }
                     }
                 }
-            }
-        }
-        .sheet(item: $activeSheet) { sheetType in
-            switch sheetType {
-            case .addPerson, .addPersonSheet:
-                AddPersonView(
-                    viewModel: viewModel,
-                    isPresented: Binding(
-                        get: { activeSheet != nil },
-                        set: { if !$0 { activeSheet = nil } }
-                    ),
-                    onboardingMode: false
-                )
-            case .peopleGrid:
-                NavigationView {
-                    peopleGridView
-                }
-            case .shareView:
-                if let person = viewModel.selectedPerson {
-                    ShareSlideshowView(
-                        photos: person.photos, person: person, sectionTitle: "All Photos")
-                }
-            case .settings:
-                // We'll keep this case to avoid compilation errors, but it won't be used
-                EmptyView()
             }
         }
     }
@@ -284,6 +289,7 @@ struct ContentView: View {
     private func bottomControls(for person: Person) -> some View {
         BottomControls(
             shareAction: {
+                viewModel.selectedPerson = person
                 activeSheet = .shareView
             },
             addPhotoAction: {
