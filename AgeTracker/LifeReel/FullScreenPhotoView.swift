@@ -39,17 +39,6 @@ struct FullScreenPhotoView: View {
     @State private var showDatePicker = false
     @State private var selectedDate: Date
     @State private var photosUpdateTrigger = UUID()
-    @State private var currentSortedIndex: Int = 0
-
-    // Add a computed property for sorted photos
-    private var sortedPhotos: [Photo] {
-        photos.sorted { $0.dateTaken < $1.dateTaken }
-    }
-
-    // Add a computed property to find the correct index in sorted photos
-    private var sortedCurrentIndex: Int {
-        sortedPhotos.firstIndex(where: { $0.id == photo.id }) ?? 0
-    }
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -80,114 +69,192 @@ struct FullScreenPhotoView: View {
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
 
-                if !sortedPhotos.isEmpty {
-                    photoContent(geometry: geometry)
+                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                    // Photo Display
+                    GeometryReader { imageGeometry in
+                        if let image = currentPhoto.image {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(
+                                    width: imageGeometry.size.width, height: imageGeometry.size.height
+                                )
+                                .scaleEffect(scale)
+                                .offset(dragOffset)
+                                .gesture(
+                                    DragGesture()
+                                        .updating($dragState) { value, state, _ in
+                                            state = value.translation
+                                        }
+                                        .onChanged { value in
+                                            if scale <= 1.0 {
+                                                dragOffset = value.translation
+                                                dismissProgress = min(
+                                                    1, abs(value.translation.height) / 200)
+                                            } else {
+                                                let newOffset = CGSize(
+                                                    width: offset.width + value.translation.width,
+                                                    height: offset.height + value.translation.height
+                                                )
+                                                dragOffset = limitOffset(
+                                                    newOffset, geometry: imageGeometry)
+                                            }
+                                        }
+                                        .onEnded { value in
+                                            if scale <= 1.0 {
+                                                let threshold = geometry.size.height * 0.25
+                                                if abs(value.translation.height) > threshold {
+                                                    isDismissing = true
+                                                    withAnimation(.easeOut(duration: 0.2)) {
+                                                        dragOffset.height =
+                                                            value.translation.height > 0
+                                                            ? geometry.size.height
+                                                            : -geometry.size.height
+                                                        dismissProgress = 1
+                                                    }
+                                                    DispatchQueue.main.asyncAfter(
+                                                        deadline: .now() + 0.2
+                                                    ) {
+                                                        presentationMode.wrappedValue.dismiss()
+                                                    }
+                                                } else {
+                                                    withAnimation(.spring()) {
+                                                        dragOffset = .zero
+                                                        dismissProgress = 0
+                                                    }
+                                                }
+                                            } else {
+                                                offset = dragOffset
+                                            }
+                                        }
+                                )
+                                .gesture(
+                                    MagnificationGesture()
+                                        .onChanged { value in
+                                            let delta = value / self.lastScale
+                                            self.lastScale = value
+
+                                            // Adjust scale with new minimum
+                                            let newScale = min(max(self.scale * delta, minScale), 4)
+
+                                            // Adjust offset to keep the zoom centered
+                                            let newOffset = CGSize(
+                                                width: self.offset.width * delta,
+                                                height: self.offset.height * delta
+                                            )
+                                            self.scale = newScale
+                                            self.offset = limitOffset(
+                                                newOffset, geometry: imageGeometry)
+                                            self.dragOffset = self.offset
+                                        }
+                                        .onEnded { _ in
+                                            self.lastScale = 1.0
+                                            resetZoomIfNeeded()
+                                        }
+                                )
+                                .onTapGesture(count: 2) {
+                                    withAnimation(.spring()) {
+                                        if scale > 1 {
+                                            scale = 1
+                                            offset = .zero
+                                        } else {
+                                            scale = min(scale * 2, 4)
+                                        }
+                                    }
+                                }
+                                .onTapGesture {
+                                    showControls.toggle()
+                                }
+                        } else {
+                            Text("No image available")
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
                     Text("No photos available")
                         .foregroundColor(.white)
                 }
-            }
-            .id(photosUpdateTrigger)
-            .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
-                photosUpdateTrigger = UUID()
-            }
-            .onAppear(perform: onAppear)
-            .sheet(item: $activeSheet, content: presentActiveSheet)
-            .alert(isPresented: $showDeleteConfirmation, content: deleteConfirmationAlert)
-            .onChange(of: photos) { newValue in
-                handlePhotosChange(newValue: newValue)
-            }
-        }
-    }
 
-    @ViewBuilder
-    private func photoContent(geometry: GeometryProxy) -> some View {
-        if let currentPhoto = sortedPhotos.indices.contains(currentSortedIndex) ? sortedPhotos[currentSortedIndex] : nil {
-            photoDisplay(geometry: geometry, currentPhoto: currentPhoto)
-            controlsOverlay(geometry: geometry, currentPhoto: currentPhoto)
-        }
-    }
-
-    private func photoDisplay(geometry: GeometryProxy, currentPhoto: Photo) -> some View {
-        GeometryReader { imageGeometry in
-            if let image = currentPhoto.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: imageGeometry.size.width, height: imageGeometry.size.height)
-                    .scaleEffect(scale)
-                    .offset(dragOffset)
-                    .gesture(dragGesture(geometry: geometry, imageGeometry: imageGeometry))
-                    .gesture(magnificationGesture(imageGeometry: imageGeometry))
-                    .onTapGesture(count: 2, perform: handleDoubleTap)
-                    .onTapGesture(perform: toggleControls)
-            } else {
-                Text("No image available")
-                    .foregroundColor(.white)
-            }
-        }
-        .frame(width: geometry.size.width, height: geometry.size.height)
-    }
-
-    private func controlsOverlay(geometry: GeometryProxy, currentPhoto: Photo) -> some View {
-        ControlsOverlay(
-            showControls: showControls,
-            person: person,
-            photo: currentPhoto,
-            photos: sortedPhotos,
-            onClose: { presentationMode.wrappedValue.dismiss() },
-            onShare: { activeSheet = .shareView },
-            onDelete: { showDeleteConfirmation = true },
-            currentIndex: $currentSortedIndex,
-            totalPhotos: sortedPhotos.count,
-            onScrub: handleScrub,
-            onUpdateAge: updatePhotoAge,
-            onUpdateDate: updatePhotoDate
-        )
-        .opacity(1 - dismissProgress)
-    }
-
-    private func onAppear() {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            scale = 1.0
-        }
-    }
-
-    @ViewBuilder
-    private func presentActiveSheet(_ item: ActiveSheet) -> some View {
-        switch item {
-        case .shareView:
-            NavigationView {
-                SharePhotoView(
-                    image: sortedPhotos[currentSortedIndex].image ?? UIImage(),
-                    name: person.name,
-                    age: calculateAge(for: person, at: sortedPhotos[currentSortedIndex].dateTaken),
-                    isShareSheetPresented: $isShareSheetPresented,
-                    activityItems: $activityItems
-                )
-            }
-        case .activityView:
-            ActivityViewController(activityItems: activityItems)
-                .onDisappear {
-                    self.activeSheet = nil
+                // Controls Overlay
+                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                    ControlsOverlay(
+                        showControls: showControls,
+                        person: person,
+                        photo: currentPhoto,
+                        photos: photos,
+                        onClose: {
+                            presentationMode.wrappedValue.dismiss()
+                        },
+                        onShare: {
+                            activeSheet = .shareView
+                        },
+                        onDelete: {
+                            showDeleteConfirmation = true
+                        },
+                        currentIndex: $currentIndex,
+                        totalPhotos: photos.count,
+                        onScrub: { newIndex in
+                            currentIndex = newIndex
+                            resetZoomAndPan()
+                        },
+                        onUpdateAge: updatePhotoAge,
+                        onUpdateDate: updatePhotoDate
+                    )
+                    .opacity(1 - dismissProgress)
                 }
+            }
+            .background(Color.black.opacity(1 - dismissProgress))
         }
-    }
-
-    private func deleteConfirmationAlert() -> Alert {
-        Alert(
-            title: Text("Remove Photo"),
-            message: Text("Are you sure you want to remove this photo?"),
-            primaryButton: .destructive(Text("Remove")) {
-                handlePhotoDelete()
-            },
-            secondaryButton: .cancel()
-        )
-    }
-
-    private func handlePhotosChange(newValue: [Photo]) {
-        if currentIndex >= newValue.count {
-            currentIndex = newValue.count - 1
+        .id(photosUpdateTrigger)
+        .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+            photosUpdateTrigger = UUID()
+        }
+        // Animation on Appear
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                scale = 1.0
+            }
+        }
+        // Share Sheet Presentation
+        .sheet(item: $activeSheet) { item in
+            switch item {
+            case .shareView:
+                NavigationView {
+                    SharePhotoView(
+                        image: photos[currentIndex].image ?? UIImage(),
+                        name: person.name,
+                        age: calculateAge(for: person, at: photos[currentIndex].dateTaken),
+                        isShareSheetPresented: $isShareSheetPresented,
+                        activityItems: $activityItems
+                    )
+                }
+            case .activityView:
+                ActivityViewController(activityItems: activityItems)
+                    .onDisappear {
+                        self.activeSheet = nil
+                    }
+            }
+        }
+        .alert(isPresented: $showDeleteConfirmation) {
+            Alert(
+                title: Text("Remove Photo"),
+                message: Text("Are you sure you want to remove this photo?"),
+                primaryButton: .destructive(Text("Remove")) {
+                    viewModel.deletePhoto(photos[currentIndex], from: $person)
+                    if currentIndex > 0 {
+                        currentIndex -= 1
+                    } else {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .onChange(of: photos) { oldValue, newValue in
+            if currentIndex >= newValue.count {
+                currentIndex = newValue.count - 1
+            }
         }
     }
 
@@ -204,7 +271,7 @@ struct FullScreenPhotoView: View {
     }
 
     private func limitOffset(_ offset: CGSize, geometry: GeometryProxy) -> CGSize {
-        guard let image = sortedPhotos[currentSortedIndex].image else { return .zero }
+        guard let image = photos[currentIndex].image else { return .zero }
 
         let imageSize = image.size
         let viewSize = geometry.size
@@ -267,117 +334,11 @@ struct FullScreenPhotoView: View {
 
     private func updatePhotoDate(_ newDate: Date) {
         let updatedPerson = viewModel.updatePhotoDate(
-            person: person, photo: sortedPhotos[currentSortedIndex], newDate: newDate)
+            person: person, photo: photos[currentIndex], newDate: newDate)
         person = updatedPerson
         photos = person.photos  // Update the photos array to reflect the new order
-        if let newIndex = photos.firstIndex(where: { $0.id == sortedPhotos[currentSortedIndex].id }) {
+        if let newIndex = photos.firstIndex(where: { $0.id == photos[currentIndex].id }) {
             currentIndex = newIndex
-        }
-    }
-
-    // Gesture Handlers
-    private func dragGesture(geometry: GeometryProxy, imageGeometry: GeometryProxy) -> some Gesture {
-        DragGesture()
-            .updating($dragState) { value, state, _ in
-                state = value.translation
-            }
-            .onChanged { value in
-                if scale <= 1.0 {
-                    dragOffset = value.translation
-                    dismissProgress = min(
-                        1, abs(value.translation.height) / 200)
-                } else {
-                    let newOffset = CGSize(
-                        width: offset.width + value.translation.width,
-                        height: offset.height + value.translation.height
-                    )
-                    dragOffset = limitOffset(
-                        newOffset, geometry: imageGeometry)
-                }
-            }
-            .onEnded { value in
-                if scale <= 1.0 {
-                    let threshold = geometry.size.height * 0.25
-                    if abs(value.translation.height) > threshold {
-                        isDismissing = true
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            dragOffset.height =
-                                value.translation.height > 0
-                                ? geometry.size.height
-                                : -geometry.size.height
-                            dismissProgress = 1
-                        }
-                        DispatchQueue.main.asyncAfter(
-                            deadline: .now() + 0.2
-                        ) {
-                            presentationMode.wrappedValue.dismiss()
-                        }
-                    } else {
-                        withAnimation(.spring()) {
-                            dragOffset = .zero
-                            dismissProgress = 0
-                        }
-                    }
-                } else {
-                    offset = dragOffset
-                }
-            }
-    }
-
-    private func magnificationGesture(imageGeometry: GeometryProxy) -> some Gesture {
-        MagnificationGesture()
-            .onChanged { value in
-                let delta = value / self.lastScale
-                self.lastScale = value
-
-                // Adjust scale with new minimum
-                let newScale = min(max(self.scale * delta, minScale), 4)
-
-                // Adjust offset to keep the zoom centered
-                let newOffset = CGSize(
-                    width: self.offset.width * delta,
-                    height: self.offset.height * delta
-                )
-                self.scale = newScale
-                self.offset = limitOffset(
-                    newOffset, geometry: imageGeometry)
-                self.dragOffset = self.offset
-            }
-            .onEnded { _ in
-                self.lastScale = 1.0
-                resetZoomIfNeeded()
-            }
-    }
-
-    private func handleDoubleTap() {
-        withAnimation(.spring()) {
-            if scale > 1 {
-                scale = 1
-                offset = .zero
-            } else {
-                scale = min(scale * 2, 4)
-            }
-        }
-    }
-
-    private func toggleControls() {
-        showControls.toggle()
-    }
-
-    private func handleScrub(_ newIndex: Int) {
-        currentSortedIndex = newIndex
-        if let originalIndex = photos.firstIndex(where: { $0.id == sortedPhotos[newIndex].id }) {
-            currentIndex = originalIndex
-            resetZoomAndPan()
-        }
-    }
-
-    private func handlePhotoDelete() {
-        viewModel.deletePhoto(sortedPhotos[currentSortedIndex], from: $person)
-        if currentSortedIndex > 0 {
-            currentIndex = photos.firstIndex(where: { $0.id == sortedPhotos[currentSortedIndex - 1].id }) ?? 0
-        } else {
-            presentationMode.wrappedValue.dismiss()
         }
     }
 }

@@ -76,11 +76,11 @@ struct ContentView: View {
             .fullScreenCover(item: $fullScreenPhoto) { photo in
                 FullScreenPhotoView(
                     photo: photo,
-                    currentIndex: getCurrentIndex(for: photo),
+                    currentIndex: getCurrentPhotos().firstIndex(of: photo) ?? 0,
                     photos: Binding(
-                        get: { getCurrentPhotos() },
+                        get: { self.getCurrentPhotos() },
                         set: { newPhotos in
-                            updatePhotos(newPhotos)
+                            self.updatePhotos(newPhotos)
                         }
                     ),
                     onDelete: { photoToDelete in
@@ -279,13 +279,8 @@ struct ContentView: View {
         )
     }
 
-    private func getCurrentIndex(for photo: Photo) -> Int {
-        let currentPhotos = getCurrentPhotos()
-        return currentPhotos.firstIndex(where: { $0.id == photo.id }) ?? 0
-    }
-
     private func getCurrentPhotos() -> [Photo] {
-        return viewModel.selectedPerson?.photos.sorted(by: { $0.dateTaken > $1.dateTaken }) ?? []
+        return viewModel.selectedPerson?.photos.sorted(by: { $0.dateTaken < $1.dateTaken }) ?? []
     }
 
     private func updatePhotos(_ newPhotos: [Photo]) {
