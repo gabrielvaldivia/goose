@@ -19,8 +19,7 @@ struct ContentView: View {
     @State private var selectedPhoto: Photo?
     @State private var showingPeopleGrid = false
     @State private var orientation = UIDeviceOrientation.unknown
-    @State private var selectedPhotoIndex: Int?
-    @State private var showFullScreenPhoto = false
+    @State private var fullScreenPhoto: Photo?
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -74,39 +73,25 @@ struct ContentView: View {
                     orientation = newOrientation
                 }
             }
-        }
-        .sheet(isPresented: $showFullScreenPhoto) {
-            if let index = selectedPhotoIndex, 
-               let person = viewModel.selectedPerson, 
-               person.photos.indices.contains(index) {
+            .fullScreenCover(item: $fullScreenPhoto) { photo in
                 FullScreenPhotoView(
-                    photo: person.photos[index],
-                    currentIndex: index,
+                    photo: photo,
+                    currentIndex: getCurrentIndex(for: photo),
                     photos: Binding(
-                        get: { person.photos },
+                        get: { getCurrentPhotos() },
                         set: { newPhotos in
-                            if let index = viewModel.people.firstIndex(where: { $0.id == person.id }) {
-                                viewModel.people[index].photos = newPhotos
-                                viewModel.objectWillChange.send()
-                            }
+                            updatePhotos(newPhotos)
                         }
                     ),
-                    onDelete: { photo in
-                        viewModel.deletePhoto(photo, from: person)
+                    onDelete: { photoToDelete in
+                        deletePhoto(photoToDelete)
                     },
-                    person: Binding(
-                        get: { person },
-                        set: { newValue in
-                            if let index = viewModel.people.firstIndex(where: { $0.id == newValue.id }) {
-                                viewModel.people[index] = newValue
-                                viewModel.objectWillChange.send()
-                            }
-                        }
-                    ),
+                    person: getCurrentPersonBinding(),
                     viewModel: viewModel
                 )
-            } else {
-                Text("No photo selected or invalid index")
+            }
+            .onChange(of: fullScreenPhoto) { _, newValue in
+                print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
             }
         }
         .sheet(item: $activeSheet) { sheetType in
@@ -217,25 +202,8 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(
-                        SharedTimelineView(
-                            viewModel: viewModel,
-                            person: viewModel.bindingForPerson(person),
-                            selectedPhoto: $selectedPhoto,
-                            forceUpdate: false,
-                            sectionTitle: "All Photos",
-                            showScrubber: true
-                        )
-                    ),
-                    AnyView(
-                        MilestonesView(
-                            viewModel: viewModel,
-                            person: viewModel.bindingForPerson(person),
-                            selectedPhoto: $selectedPhoto,
-                            openImagePickerForMoment: { _, _ in },
-                            forceUpdate: false
-                        )
-                    ),
+                    AnyView(sharedTimelineView(for: person)),
+                    AnyView(milestonesView(for: person))
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -276,13 +244,75 @@ struct ContentView: View {
         }
     }
 
-    private func getCurrentIndex(for photo: Photo, in person: Person) -> Int {
-        let currentPhotos = getCurrentPhotos(for: person)
+    private func sharedTimelineView(for person: Person) -> some View {
+        SharedTimelineView(
+            viewModel: viewModel,
+            person: viewModel.bindingForPerson(person),
+            selectedPhoto: Binding(
+                get: { self.fullScreenPhoto },
+                set: { 
+                    print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
+                    self.viewModel.selectedPerson = person
+                    self.fullScreenPhoto = $0 
+                }
+            ),
+            forceUpdate: false,
+            sectionTitle: "All Photos",
+            showScrubber: true
+        )
+    }
+
+    private func milestonesView(for person: Person) -> some View {
+        MilestonesView(
+            viewModel: viewModel,
+            person: viewModel.bindingForPerson(person),
+            selectedPhoto: Binding(
+                get: { self.fullScreenPhoto },
+                set: { 
+                    print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
+                    self.viewModel.selectedPerson = person
+                    self.fullScreenPhoto = $0 
+                }
+            ),
+            openImagePickerForMoment: { _, _ in },
+            forceUpdate: false
+        )
+    }
+
+    private func getCurrentIndex(for photo: Photo) -> Int {
+        let currentPhotos = getCurrentPhotos()
         return currentPhotos.firstIndex(where: { $0.id == photo.id }) ?? 0
     }
 
-    private func getCurrentPhotos(for person: Person) -> [Photo] {
-        return person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+    private func getCurrentPhotos() -> [Photo] {
+        return viewModel.selectedPerson?.photos.sorted(by: { $0.dateTaken > $1.dateTaken }) ?? []
+    }
+
+    private func updatePhotos(_ newPhotos: [Photo]) {
+        if let person = viewModel.selectedPerson,
+           let personIndex = viewModel.people.firstIndex(where: { $0.id == person.id }) {
+            viewModel.people[personIndex].photos = newPhotos
+            viewModel.objectWillChange.send()
+        }
+    }
+
+    private func deletePhoto(_ photo: Photo) {
+        if let person = viewModel.selectedPerson {
+            viewModel.deletePhoto(photo, from: person)
+        }
+    }
+
+    private func getCurrentPersonBinding() -> Binding<Person> {
+        Binding(
+            get: { 
+                self.viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())
+            },
+            set: { newValue in
+                if let index = self.viewModel.people.firstIndex(where: { $0.id == newValue.id }) {
+                    self.viewModel.people[index] = newValue
+                }
+            }
+        )
     }
 
     // Bottom controls component
@@ -333,15 +363,6 @@ struct ContentView: View {
 
 
         print("handleSelectedAssetsChange completed")
-    }
-
-    func presentFullScreenPhoto(at index: Int) {
-        print("Presenting full screen photo")
-        print("Total photos: \(viewModel.selectedPerson?.photos.count ?? 0)")
-        print("Selected index: \(index)")
-        
-        selectedPhotoIndex = index
-        showFullScreenPhoto = true
     }
 }
 
