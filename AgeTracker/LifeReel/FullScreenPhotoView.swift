@@ -655,38 +655,38 @@ struct CircularIconButton: View {
     }
 }
 
-struct PillButton: View {
-    let icon: String
-    let label: String
-    let action: () -> Void
+// struct PillButton: View {
+//     let icon: String
+//     let label: String
+//     let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(label)
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+//     var body: some View {
+//         Button(action: action) {
+//             HStack(spacing: 8) {
+//                 Image(systemName: icon)
+//                 Text(label)
+//             }
+//             .foregroundColor(.white)
+//             .padding(.horizontal, 16)
+//             .padding(.vertical, 8)
 
-        }
-        .background(
-            BlurEffectView()
-                .clipShape(Capsule())
-                .padding(.horizontal, -8)
-                .padding(.vertical, -4)
-        )
-    }
+//         }
+//         .background(
+//             BlurEffectView()
+//                 .clipShape(Capsule())
+//                 .padding(.horizontal, -8)
+//                 .padding(.vertical, -4)
+//         )
+//     }
 
-    private struct BlurEffectView: UIViewRepresentable {
-        func makeUIView(context: Context) -> UIVisualEffectView {
-            return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
-        }
+//     // private struct BlurEffectView: UIViewRepresentable {
+//     //     func makeUIView(context: Context) -> UIVisualEffectView {
+//     //         return UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+//     //     }
 
-        func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
-    }
-}
+//     //     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+//     // }
+// }
 
 enum DragState {
     case inactive

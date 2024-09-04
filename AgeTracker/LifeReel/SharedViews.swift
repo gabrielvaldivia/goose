@@ -10,39 +10,6 @@ import Photos
 import PhotosUI
 import SwiftUI
 
-// PhotoView: Displays a single photo in the timeline or grid view
-struct PhotoView: View {
-    let photo: Photo
-    let containerWidth: CGFloat
-    let isGridView: Bool
-    @Binding var selectedPhoto: Photo?
-    let person: Person
-
-    var body: some View {
-        Image(uiImage: photo.image ?? UIImage())
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: containerWidth)
-            .onTapGesture {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                selectedPhoto = photo
-            }
-    }
-}
-
-// ShareButton: A reusable button component for sharing functionality
-struct ShareButton: View {
-    var body: some View {
-        Button(action: {
-            // Share logic
-        }) {
-            Image(systemName: "square.and.arrow.up")
-                .foregroundColor(.blue)
-                .font(.system(size: 24, weight: .bold))
-        }
-    }
-}
-
 // PhotoUtils: Utility struct containing helper functions for photo management and organization
 public struct PhotoUtils {
 
@@ -324,59 +291,6 @@ struct EmptyStateView: View {
         .onTapGesture(perform: action)
     }
 }
-
-// BirthDaySheet: View for selecting the date of birth
-// struct BirthDaySheet: View {
-//     @Binding var dateOfBirth: Date
-//     @Binding var isPresented: Bool
-
-//     var body: some View {
-//         NavigationView {
-//             DatePicker("", selection: $dateOfBirth, displayedComponents: .date)
-//                 .datePickerStyle(.wheel)
-//                 .padding()
-//                 .navigationTitle("Select Date of Birth")
-//                 .navigationBarTitleDisplayMode(.inline)
-//                 .navigationBarItems(
-//                     trailing: Button("Done") {
-//                         isPresented = false
-//                     })
-//         }
-//     }
-// }
-
-// PhotoDatePickerSheet: View for editing the date of a photo
-// struct PhotoDatePickerSheet: View {
-//     @Binding var date: Date
-//     @Binding var isPresented: Bool
-//     var onSave: () -> Void
-
-//     var body: some View {
-//         VStack {
-//             HStack {
-//                 Button("Cancel") {
-//                     isPresented = false
-//                 }
-//                 Spacer()
-//                 Text("Edit Date")
-//                     .font(.headline)
-//                 Spacer()
-//                 Button("Save") {
-//                     onSave()
-//                     isPresented = false
-//                 }
-//             }
-//             .padding()
-
-//             DatePicker("", selection: $date, displayedComponents: .date)
-//                 .datePickerStyle(.wheel)
-//                 .labelsHidden()
-
-//             Spacer()
-//         }
-//         .background(Color(UIColor.systemBackground))
-//     }
-// }
 
 
 // SharedGridView: Displays photos in a grid layout
