@@ -98,7 +98,7 @@ struct PersonSettingsView: View {
             }
 
             Section {
-                Picker("Photo Upload Reminder", selection: $localReminderFrequency) {
+                Picker("Upload Reminder", selection: $localReminderFrequency) {
                     ForEach(Person.ReminderFrequency.allCases, id: \.self) { frequency in
                         Text(frequency.rawValue).tag(frequency)
                     }
