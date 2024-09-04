@@ -73,9 +73,6 @@ struct ContentView: View {
                 }
             }
         }
-        .onAppear {
-            configureNavigationBarAppearance()
-        }
     }
 
     // Main view component
@@ -181,16 +178,23 @@ struct ContentView: View {
                 pages: [
                     AnyView(
                         SharedTimelineView(
-                            viewModel: viewModel, person: viewModel.bindingForPerson(person),
-                            selectedPhoto: $selectedPhoto, forceUpdate: false,
-                            sectionTitle: "All Photos", showScrubber: true)
+                            viewModel: viewModel,
+                            person: viewModel.bindingForPerson(person),
+                            selectedPhoto: $selectedPhoto,
+                            forceUpdate: false,
+                            sectionTitle: "All Photos",
+                            showScrubber: true
+                        )
                     ),
                     AnyView(
                         MilestonesView(
-                            viewModel: viewModel, person: viewModel.bindingForPerson(person),
-                            selectedPhoto: $selectedPhoto, openImagePickerForMoment: { _, _ in },
-                            forceUpdate: false)
-                    )
+                            viewModel: viewModel,
+                            person: viewModel.bindingForPerson(person),
+                            selectedPhoto: $selectedPhoto,
+                            openImagePickerForMoment: { _, _ in },
+                            forceUpdate: false
+                        )
+                    ),
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -212,32 +216,34 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showingImagePicker)
-        }
-        .onChange(of: selectedAssets) { oldValue, newValue in
-            print(
-                "selectedAssets changed. Old count: \(oldValue.count), New count: \(newValue.count)"
+            ImagePicker(
+                selectedAssets: $selectedAssets,
+                isPresented: $showingImagePicker,
+                onSelect: { assets in
+                    print("ImagePicker onSelect called with \(assets.count) assets")
+                    DispatchQueue.main.async {
+                        self.handleSelectedAssetsChange(assets)
+                    }
+                }
             )
-            handleSelectedAssetsChange()
+        }
+        .onChange(of: selectedAssets) { _, newValue in
+            print("selectedAssets changed. New count: \(newValue.count)")
         }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 photo: photo,
-                currentIndex: getCurrentIndex(for: photo, in: person),
-                photos: Binding(
-                    get: { getCurrentPhotos(for: person) },
-                    set: { newPhotos in
-                        viewModel.updatePersonPhotos(person, newPhotos: newPhotos)
-                    }
-                ),
+                currentIndex: person.photos.firstIndex(where: { $0.id == photo.id }) ?? 0,
+                photos: .constant(person.photos),
                 onDelete: { deletedPhoto in
-                    viewModel.deletePhoto(deletedPhoto, from: person)
+                    viewModel.deletePhoto(deletedPhoto, from: viewModel.bindingForPerson(person))
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
                 person: viewModel.bindingForPerson(person),
                 viewModel: viewModel
             )
+            .background(Color.clear)
         }
         .onChange(of: viewModel.selectedPerson) { _, _ in
             viewModel.objectWillChange.send()
@@ -246,19 +252,11 @@ struct ContentView: View {
 
     private func getCurrentIndex(for photo: Photo, in person: Person) -> Int {
         let currentPhotos = getCurrentPhotos(for: person)
-        return currentPhotos.firstIndex(of: photo) ?? 0
+        return currentPhotos.firstIndex(where: { $0.id == photo.id }) ?? 0
     }
 
     private func getCurrentPhotos(for person: Person) -> [Photo] {
-        if selectedTab == 0 {
-            // Timeline view (all photos)
-            return person.photos
-        } else {
-            // Grid view (filtered photos)
-            return person.photos.filter {
-                PhotoUtils.sectionForPhoto($0, person: person) == "All Photos"
-            }
-        }
+        return person.photos.sorted(by: { $0.dateTaken > $1.dateTaken })
     }
 
     // Bottom controls component
@@ -268,6 +266,7 @@ struct ContentView: View {
                 activeSheet = .shareView
             },
             addPhotoAction: {
+                viewModel.selectedPerson = person
                 showingImagePicker = true
             },
             selectedTab: $selectedTab,
@@ -288,37 +287,25 @@ struct ContentView: View {
     }
 
     // Handle selected assets change
-    private func handleSelectedAssetsChange() {
-        print("handleSelectedAssetsChange called. Selected assets count: \(selectedAssets.count)")
-        guard !selectedAssets.isEmpty else {
+    private func handleSelectedAssetsChange(_ assets: [PHAsset]) {
+        print("handleSelectedAssetsChange called. Assets count: \(assets.count)")
+        guard !assets.isEmpty else {
             print("No assets selected")
             return
         }
 
-        guard viewModel.selectedPerson != nil else {
+        guard let selectedPerson = viewModel.selectedPerson else {
             print("No person available to add photos to")
             return
         }
 
-        for asset in selectedAssets {
+        for asset in assets {
             print("Adding asset: \(asset.localIdentifier)")
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
 
-        selectedAssets.removeAll()
         viewModel.objectWillChange.send()
         print("handleSelectedAssetsChange completed")
-    }
-
-    private func configureNavigationBarAppearance() {
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithDefaultBackground()
-        appearance.backgroundColor = .systemBackground
-        appearance.shadowColor = .clear
-        
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().compactAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
 }
 

@@ -89,9 +89,16 @@ struct AddPersonView: View {
             }
         }
         .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedAssets: $selectedAssets, isPresented: $showImagePicker)
-                .edgesIgnoringSafeArea(.all)
-                .presentationDetents([.large])
+            ImagePicker(
+                selectedAssets: $selectedAssets,
+                isPresented: $showImagePicker,
+                onSelect: { assets in
+                    self.selectedAssets = assets
+                    loadImages(from: assets)
+                }
+            )
+            .edgesIgnoringSafeArea(.all)
+            .presentationDetents([.large])
         }
         .sheet(isPresented: $showDatePickerSheet) {
             BirthDaySheet(dateOfBirth: Binding(

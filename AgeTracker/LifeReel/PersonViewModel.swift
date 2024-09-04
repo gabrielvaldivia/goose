@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import UIKit
 import Photos
 import SwiftUI
+import UIKit
 
 extension Notification.Name {
     static let photosUpdated = Notification.Name("photosUpdated")
@@ -25,7 +25,7 @@ class PersonViewModel: ObservableObject {
     init() {
         loadPeople()
         loadLastOpenedPersonId()
-        
+
         // Check if photo migration is needed
         if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
             migratePhotos()
@@ -33,14 +33,14 @@ class PersonViewModel: ObservableObject {
             UserDefaults.standard.set(true, forKey: "photoMigrationCompleted")
         }
     }
-    
+
     func addPerson(name: String, dateOfBirth: Date, asset: PHAsset) {
         var newPerson = Person(name: name, dateOfBirth: dateOfBirth)
         addPhoto(to: &newPerson, asset: asset)
         people.append(newPerson)
         savePeople()
     }
-    
+
     func addPhoto(to person: inout Person, asset: PHAsset) {
         print("Adding photo to \(person.name) with date: \(asset.creationDate ?? Date())")
         if let newPhoto = Photo(asset: asset) {
@@ -52,18 +52,22 @@ class PersonViewModel: ObservableObject {
                     savePeople()
                     objectWillChange.send()
                     NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                    print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+                    print(
+                        "Photo added successfully. Total photos for \(person.name): \(person.photos.count)"
+                    )
                 } else {
                     print("Failed to find person \(person.name) in people array")
                 }
             } else {
-                print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
+                print(
+                    "Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)"
+                )
             }
         } else {
             print("Failed to create Photo object from asset")
         }
     }
-    
+
     func addPhoto(to person: inout Person, photo: Photo) {
         print("Adding photo to \(person.name) with date: \(photo.dateTaken)")
         if !person.photos.contains(where: { $0.assetIdentifier == photo.assetIdentifier }) {
@@ -74,31 +78,35 @@ class PersonViewModel: ObservableObject {
                 savePeople()
                 objectWillChange.send()
                 NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                print("Photo added successfully. Total photos for \(person.name): \(person.photos.count)")
+                print(
+                    "Photo added successfully. Total photos for \(person.name): \(person.photos.count)"
+                )
             } else {
                 print("Failed to find person \(person.name) in people array")
             }
         } else {
-            print("Photo with asset identifier \(photo.assetIdentifier) already exists for \(person.name)")
+            print(
+                "Photo with asset identifier \(photo.assetIdentifier) already exists for \(person.name)"
+            )
         }
     }
-    
+
     func deletePerson(at offsets: IndexSet) {
         people.remove(atOffsets: offsets)
         savePeople()
     }
-    
+
     func deletePerson(_ person: Person) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
             people.remove(at: index)
             savePeople()
         }
     }
-    
+
     func calculateAge(for person: Person, at date: Date) -> String {
         return AgeCalculator.calculate(for: person, at: date).toString()
     }
-    
+
     func updatePerson(_ person: Person) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
             people[index] = person
@@ -108,14 +116,14 @@ class PersonViewModel: ObservableObject {
         savePeople()
         objectWillChange.send()
     }
-    
+
     func updatePersonProperties(_ person: Person) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
             people[index] = person
             savePeople()
         }
     }
-    
+
     public func savePeople() {
         do {
             let encoder = JSONEncoder()
@@ -125,7 +133,7 @@ class PersonViewModel: ObservableObject {
             print("Failed to save people: \(error.localizedDescription)")
         }
     }
-    
+
     private func loadPeople() {
         if let savedPeople = UserDefaults.standard.data(forKey: "SavedPeople") {
             do {
@@ -136,11 +144,13 @@ class PersonViewModel: ObservableObject {
             }
         }
     }
-    
+
     // New function to fetch photos for a person
-    func fetchPhotosForPerson(_ person: Person, completion: @escaping (Result<[PHAsset], Error>) -> Void) {
+    func fetchPhotosForPerson(
+        _ person: Person, completion: @escaping (Result<[PHAsset], Error>) -> Void
+    ) {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        
+
         switch status {
         case .notDetermined:
             PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
@@ -158,38 +168,43 @@ class PersonViewModel: ObservableObject {
             completion(.failure(PhotoAccessError.unknown))
         }
     }
-    
-    private func performFetch(for person: Person, completion: @escaping (Result<[PHAsset], Error>) -> Void) {
+
+    private func performFetch(
+        for person: Person, completion: @escaping (Result<[PHAsset], Error>) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             let fetchOptions = PHFetchOptions()
             fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
             let allPhotos = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-            
+
             var personPhotos: [PHAsset] = []
-            
+
             allPhotos.enumerateObjects { (asset, _, stop) in
                 let personNamePredicate = NSPredicate(format: "localizedTitle = %@", person.name)
-                let personFetchResult = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumRegular, options: nil)
-                let personAlbums = personFetchResult.objects(at: IndexSet(integersIn: 0..<personFetchResult.count)).filter { personNamePredicate.evaluate(with: $0) }
-                
+                let personFetchResult = PHAssetCollection.fetchAssetCollections(
+                    with: .album, subtype: .albumRegular, options: nil)
+                let personAlbums = personFetchResult.objects(
+                    at: IndexSet(integersIn: 0..<personFetchResult.count)
+                ).filter { personNamePredicate.evaluate(with: $0) }
+
                 if !personAlbums.isEmpty {
                     personPhotos.append(asset)
                 }
-                
+
                 if personPhotos.count >= 100 {  // Limit to 100 photos for performance
                     stop.pointee = true
                 }
             }
-            
+
             DispatchQueue.main.async {
                 completion(.success(personPhotos))
             }
         }
     }
-    
+
     func fetchAlbums(completion: @escaping (Result<[PHAssetCollection], Error>) -> Void) {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        
+
         switch status {
         case .notDetermined:
             PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
@@ -207,12 +222,16 @@ class PersonViewModel: ObservableObject {
             completion(.failure(PhotoAccessError.unknown))
         }
     }
-    
-    private func performAlbumsFetch(completion: @escaping (Result<[PHAssetCollection], Error>) -> Void) {
+
+    private func performAlbumsFetch(
+        completion: @escaping (Result<[PHAssetCollection], Error>) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
-            let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
-            
+            let userAlbums = PHAssetCollection.fetchAssetCollections(
+                with: .album, subtype: .any, options: nil)
+            let smartAlbums = PHAssetCollection.fetchAssetCollections(
+                with: .smartAlbum, subtype: .any, options: nil)
+
             var albums: [PHAssetCollection] = []
             userAlbums.enumerateObjects { (collection, _, _) in
                 albums.append(collection)
@@ -220,66 +239,70 @@ class PersonViewModel: ObservableObject {
             smartAlbums.enumerateObjects { (collection, _, _) in
                 albums.append(collection)
             }
-            
+
             DispatchQueue.main.async {
                 completion(.success(albums))
             }
         }
     }
-    
-    func fetchPhotosFromAlbum(_ album: PHAssetCollection, completion: @escaping (Result<[PHAsset], Error>) -> Void) {
+
+    func fetchPhotosFromAlbum(
+        _ album: PHAssetCollection, completion: @escaping (Result<[PHAsset], Error>) -> Void
+    ) {
         DispatchQueue.global(qos: .userInitiated).async {
             let fetchOptions = PHFetchOptions()
             fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
             let assetsFetchResult = PHAsset.fetchAssets(in: album, options: fetchOptions)
-            
+
             var assets: [PHAsset] = []
             assetsFetchResult.enumerateObjects { (asset, _, _) in
                 assets.append(asset)
             }
-            
+
             DispatchQueue.main.async {
                 completion(.success(assets))
             }
         }
     }
-    
+
     func movePerson(from source: IndexSet, to destination: Int) {
         people.move(fromOffsets: source, toOffset: destination)
     }
-    
+
     func deleteAllPhotos(for person: Person, completion: @escaping (Result<Void, Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             // Find the person in the people array
             guard var updatedPerson = self.people.first(where: { $0.id == person.id }) else {
                 DispatchQueue.main.async {
-                    completion(.failure(NSError(domain: "PersonNotFound", code: 404, userInfo: nil)))
+                    completion(
+                        .failure(NSError(domain: "PersonNotFound", code: 404, userInfo: nil)))
                 }
                 return
             }
-            
+
             // Remove all photos
             updatedPerson.photos.removeAll()
-            
+
             // Update the person in the people array
             if let index = self.people.firstIndex(where: { $0.id == person.id }) {
                 self.people[index] = updatedPerson
             }
-            
+
             // Save the updated people array
             self.savePeople()
-            
+
             DispatchQueue.main.async {
                 self.objectWillChange.send()
                 completion(.success(()))
             }
         }
     }
-    
+
     func deletePhoto(_ photo: Photo, from personBinding: Binding<Person>) {
         if let index = personBinding.wrappedValue.photos.firstIndex(where: { $0.id == photo.id }) {
             personBinding.photos.wrappedValue.remove(at: index)
-            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }) {
+            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }
+            ) {
                 people[personIndex] = personBinding.wrappedValue
                 savePeople()
                 objectWillChange.send()
@@ -287,40 +310,44 @@ class PersonViewModel: ObservableObject {
             }
         }
     }
-    
+
     func migratePhotos() {
         print("Starting photo migration...")
         for personIndex in 0..<people.count {
             var person = people[personIndex]
             var newPhotos: [Photo] = []
-            
+
             for oldPhoto in person.photos {
-                let assets = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+                let assets = PHAsset.fetchAssets(
+                    withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
                 if let asset = assets.firstObject,
-                   let newPhoto = Photo(asset: asset) {
+                    let newPhoto = Photo(asset: asset)
+                {
                     newPhotos.append(newPhoto)
                     print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
                 } else {
                     print("Failed to migrate photo for \(person.name): \(oldPhoto.assetIdentifier)")
                 }
             }
-            
+
             person.photos = newPhotos
             people[personIndex] = person
         }
-        
+
         savePeople()
         print("Photo migration completed.")
     }
-    
+
     private func migratePhotoStructure() {
         for personIndex in 0..<people.count {
             var person = people[personIndex]
             person.photos = person.photos.compactMap { oldPhoto in
                 // Fetch the asset using the assetIdentifier
-                let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+                let fetchResult = PHAsset.fetchAssets(
+                    withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
                 if let asset = fetchResult.firstObject,
-                   let newPhoto = Photo(asset: asset) {
+                    let newPhoto = Photo(asset: asset)
+                {
                     return newPhoto
                 } else {
                     // If the asset can't be found or the Photo can't be created, return nil to remove this photo
@@ -332,19 +359,20 @@ class PersonViewModel: ObservableObject {
         }
         savePeople()
     }
-    
+
     func setLastOpenedPerson(_ person: Person) {
         lastOpenedPersonId = person.id
         UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
     }
-    
+
     private func loadLastOpenedPersonId() {
         if let savedId = UserDefaults.standard.string(forKey: "lastOpenedPersonId"),
-           let uuid = UUID(uuidString: savedId) {
+            let uuid = UUID(uuidString: savedId)
+        {
             lastOpenedPersonId = uuid
         }
     }
-    
+
     func deleteAllData() {
         people.removeAll()
         UserDefaults.standard.removeObject(forKey: "SavedPeople")
@@ -352,13 +380,13 @@ class PersonViewModel: ObservableObject {
         UserDefaults.standard.synchronize()
         objectWillChange.send()
     }
-    
+
     func resetLoadingState(for section: String) {
         DispatchQueue.main.async {
             self.loadingStacks.remove(section)
         }
     }
-    
+
     func bindingForPerson(_ person: Person) -> Binding<Person> {
         Binding<Person>(
             get: { self.people.first(where: { $0.id == person.id }) ?? person },
@@ -377,7 +405,10 @@ class PersonViewModel: ObservableObject {
         options.isNetworkAccessAllowed = true
         options.isSynchronous = false
 
-        PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { image, info in
+        PHImageManager.default().requestImage(
+            for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit,
+            options: options
+        ) { image, info in
             if image == nil {
                 print("Failed to get image from asset: \(asset.localIdentifier)")
                 completion(nil)
@@ -389,13 +420,15 @@ class PersonViewModel: ObservableObject {
                 if let index = self.people.firstIndex(where: { $0.id == person.id }) {
                     self.people[index].photos.append(newPhoto)
                     self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
-                    
+
                     self.savePeople()
                     DispatchQueue.main.async {
                         self.objectWillChange.send()
                         NotificationCenter.default.post(name: .photosUpdated, object: nil)
                     }
-                    print("Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)")
+                    print(
+                        "Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)"
+                    )
                     completion(newPhoto)
                 } else {
                     print("Failed to find person \(person.name) in people array")
@@ -414,14 +447,14 @@ class PersonViewModel: ObservableObject {
             updatedPerson.photos[index].dateTaken = newDate
             updatedPerson.photos.sort { $0.dateTaken < $1.dateTaken }
         }
-        
+
         if let personIndex = people.firstIndex(where: { $0.id == person.id }) {
             people[personIndex] = updatedPerson
             savePeople()
             objectWillChange.send()
             NotificationCenter.default.post(name: .photosUpdated, object: nil)
         }
-        
+
         return updatedPerson
     }
 
@@ -451,27 +484,54 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhotoToSelectedPerson(asset: PHAsset) {
-        guard let person = selectedPerson else { return }
-        
-        if let newPhoto = Photo(asset: asset) {
-            if let index = self.people.firstIndex(where: { $0.id == person.id }) {
-                self.people[index].photos.append(newPhoto)
-                self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
-                
-                // Update the selectedPerson
-                self.selectedPerson = self.people[index]
-                
-                self.savePeople()
-                DispatchQueue.main.async {
-                    self.objectWillChange.send()
-                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                }
-                print("Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)")
-            } else {
-                print("Failed to find person \(person.name) in people array")
+        guard let selectedPerson = selectedPerson else {
+            print("No person selected to add photo to")
+            return
+        }
+
+        print("Attempting to add photo with asset identifier: \(asset.localIdentifier)")
+
+        // Check if the photo already exists
+        if selectedPerson.photos.contains(where: { $0.assetIdentifier == asset.localIdentifier }) {
+            print("Photo already exists for \(selectedPerson.name)")
+            return
+        }
+
+        let options = PHImageRequestOptions()
+        options.isSynchronous = false
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+
+        PHImageManager.default().requestImage(
+            for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit,
+            options: options
+        ) { image, info in
+            if let error = info?[PHImageErrorKey] as? Error {
+                print("Error fetching image: \(error.localizedDescription)")
+                return
             }
-        } else {
-            print("Failed to create Photo object from asset: \(asset.localIdentifier)")
+
+            guard let image = image else {
+                print("Failed to create image from asset. Info: \(String(describing: info))")
+                return
+            }
+
+            if let newPhoto = Photo(asset: asset) {
+                DispatchQueue.main.async {
+                    if let index = self.people.firstIndex(where: { $0.id == selectedPerson.id }) {
+                        self.people[index].photos.append(newPhoto)
+                        self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
+                        self.savePeople()
+                        self.objectWillChange.send()
+                        NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                        print("Photo added successfully to \(selectedPerson.name). Total photos: \(self.people[index].photos.count)")
+                    } else {
+                        print("Failed to find selected person in people array")
+                    }
+                }
+            } else {
+                print("Failed to create Photo object from asset")
+            }
         }
     }
 
@@ -502,10 +562,12 @@ class PersonViewModel: ObservableObject {
     }
 
     func requestNotificationPermissions(completion: @escaping (Bool) -> Void) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) {
+            granted, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Error requesting notification permissions: \(error.localizedDescription)")
+                    print(
+                        "Error requesting notification permissions: \(error.localizedDescription)")
                 }
                 completion(granted)
             }

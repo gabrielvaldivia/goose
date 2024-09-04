@@ -14,6 +14,7 @@ import Photos
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var selectedAssets: [PHAsset]
     @Binding var isPresented: Bool
+    var onSelect: ([PHAsset]) -> Void
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
@@ -21,10 +22,6 @@ struct ImagePicker: UIViewControllerRepresentable {
         config.filter = .images
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
-        
-        // Set the preferredContentSize to use the full screen height
-        picker.preferredContentSize = CGSize(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-        
         return picker
     }
 
@@ -42,14 +39,13 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-            if status == .authorized || status == .limited {
-                let identifiers = results.compactMap(\.assetIdentifier)
-                let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
-                let newAssets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
-                parent.selectedAssets.append(contentsOf: newAssets)
-            }
+            let identifiers = results.compactMap(\.assetIdentifier)
+            let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
+            let assets = fetchResult.objects(at: IndexSet(integersIn: 0..<fetchResult.count))
+            parent.selectedAssets = assets
+            parent.onSelect(assets)
             parent.isPresented = false
+            print("ImagePicker selected \(assets.count) assets")
         }
     }
 }

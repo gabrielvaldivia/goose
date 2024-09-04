@@ -104,10 +104,26 @@ struct PersonSettingsView: View {
                     }
                 }
                 .onChange(of: localReminderFrequency) { newValue in
-                    updatePerson { $0.reminderFrequency = newValue }
-                    scheduleReminder()
-                    DispatchQueue.main.async {
-                        viewModel.objectWillChange.send()
+                    if newValue != .none {
+                        viewModel.requestNotificationPermissions { granted in
+                            if granted {
+                                updatePerson { $0.reminderFrequency = newValue }
+                                scheduleReminder()
+                                DispatchQueue.main.async {
+                                    viewModel.objectWillChange.send()
+                                }
+                            } else {
+                                // Handle the case where permission is not granted
+                                // For example, show an alert to the user
+                                localReminderFrequency = .none
+                            }
+                        }
+                    } else {
+                        updatePerson { $0.reminderFrequency = newValue }
+                        scheduleReminder()
+                        DispatchQueue.main.async {
+                            viewModel.objectWillChange.send()
+                        }
                     }
                 }
             } header: {
