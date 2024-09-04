@@ -500,6 +500,17 @@ class PersonViewModel: ObservableObject {
     func forceUpdate() {
         self.objectWillChange.send()
     }
+
+    func requestNotificationPermissions(completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Error requesting notification permissions: \(error.localizedDescription)")
+                }
+                completion(granted)
+            }
+        }
+    }
 }
 
 enum PhotoAccessError: Error {
