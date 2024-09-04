@@ -405,6 +405,8 @@ struct SharedTimelineView: View {
     @State private var lastHapticIndex: Int = -1
     @State private var showDeleteAlert = false
     @State private var photoToDelete: Photo?
+    @State private var blueLinePosition: CGFloat = 0
+    private let agePillOffset: CGFloat = 15
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -476,7 +478,8 @@ struct SharedTimelineView: View {
                             scrollPosition: $scrollPosition,
                             contentHeight: timelineContentHeight,
                             isDraggingTimeline: $isDraggingTimeline,
-                            indicatorPosition: $indicatorPosition
+                            indicatorPosition: $indicatorPosition,
+                            blueLinePosition: $blueLinePosition
                         )
                         .frame(width: timelineWidth)
                         .padding(.top, verticalPadding)
@@ -490,7 +493,7 @@ struct SharedTimelineView: View {
                         if isScrolling || isDraggingPill {
                             AgePillView(age: currentAge)
                                 .padding(.trailing, timelineWidth + agePillPadding)
-                                .offset(y: pillOffset)
+                                .offset(y: blueLinePosition - pillHeight / 2 + agePillOffset)
                                 .background(
                                     GeometryReader { pillGeometry in
                                         Color.clear.onAppear {
@@ -503,7 +506,7 @@ struct SharedTimelineView: View {
                                         .onChanged { value in
                                             isDraggingPill = true
                                             isDraggingTimeline = true
-                                            let dragPosition = value.location.y
+                                            let dragPosition = value.location.y - agePillOffset
                                             updateScrollPositionFromPill(dragPosition)
                                             checkForHapticFeedback(dragPosition: dragPosition)
                                         }
@@ -551,12 +554,6 @@ struct SharedTimelineView: View {
         }
     }
 
-    private var pillOffset: CGFloat {
-        let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = min(1, max(0, scrollPosition / (timelineContentHeight - scrollViewHeight)))
-        return verticalPadding + (availableHeight * progress) - pillOffsetConstant
-    }
-
     private func updateCurrentAge() {
         let visiblePhotoIndex = Int(
             scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))
@@ -569,6 +566,14 @@ struct SharedTimelineView: View {
 
     private func filteredPhotos() -> [Photo] {
         let filteredPhotos = person.photos.filter { photo in
+            // Exclude pregnancy photos if pregnancy tracking is set to none
+            if person.pregnancyTracking == .none {
+                let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                if exactAge.isPregnancy {
+                    return false
+                }
+            }
+            
             if let title = sectionTitle, title != "All Photos" {
                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
@@ -597,14 +602,14 @@ struct SharedTimelineView: View {
     private func updateScrollPositionFromPill(_ dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
         let progress = max(
-            0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+            0, min(1, (dragPosition - verticalPadding + agePillOffset) / availableHeight))
         scrollPosition = progress * (timelineContentHeight - scrollViewHeight)
     }
 
     private func checkForHapticFeedback(dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
         let progress = max(
-            0, min(1, (dragPosition - verticalPadding + pillOffsetConstant) / availableHeight))
+            0, min(1, (dragPosition - verticalPadding + agePillOffset) / availableHeight))
         let currentIndex = Int(round(progress * CGFloat(filteredPhotos().count - 1)))
 
         if currentIndex != lastHapticIndex {
@@ -844,6 +849,14 @@ struct SharedGridView: View {
 
     private func filteredPhotos() -> [Photo] {
         let filteredPhotos = person.photos.filter { photo in
+            // Exclude pregnancy photos if pregnancy tracking is set to none
+            if person.pregnancyTracking == .none {
+                let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                if exactAge.isPregnancy {
+                    return false
+                }
+            }
+            
             if let title = sectionTitle, title != "All Photos" {
                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
@@ -983,7 +996,6 @@ struct BottomControls: View {
 struct ScrubberHandle: View {
     let tapAreaSize: CGFloat
     let lineHeight: CGFloat = 2
-    let leftPadding: CGFloat = 4
     let tapAreaHeight: CGFloat = 60
     let blueLineWidth: CGFloat = 14
 
@@ -994,15 +1006,11 @@ struct ScrubberHandle: View {
                 .fill(Color.clear)
                 .frame(width: tapAreaSize, height: tapAreaHeight)
 
-            HStack(spacing: 0) {
-                Spacer()  // This pushes the blue line to the right
-
-                // Blue line
-                Rectangle()
-                    .fill(Color.blue)
-                    .frame(width: blueLineWidth, height: lineHeight)
-            }
-            .frame(width: tapAreaSize)
+            // Blue line
+            Rectangle()
+                .fill(Color.blue)
+                .frame(width: blueLineWidth, height: lineHeight)
+                .offset(x: (tapAreaSize - blueLineWidth) / 2)
 
             // Transparent overlay for larger tap area
             Color.clear
@@ -1019,6 +1027,7 @@ struct TimelineScrubber: View {
     let contentHeight: CGFloat
     @Binding var isDraggingTimeline: Bool
     @Binding var indicatorPosition: CGFloat
+    @Binding var blueLinePosition: CGFloat
     @State private var lastHapticIndex: Int = -1
 
     private let tapAreaSize: CGFloat = 20
@@ -1048,6 +1057,7 @@ struct TimelineScrubber: View {
                         DragGesture()
                             .onChanged { value in
                                 handleDrag(value, in: geometry)
+                                blueLinePosition = indicatorPosition
                             }
                             .onEnded { _ in
                                 endDrag()
@@ -1061,6 +1071,7 @@ struct TimelineScrubber: View {
             }
             .onChange(of: scrollPosition) { oldValue, newValue in
                 updateIndicatorPosition(in: geometry)
+                blueLinePosition = indicatorPosition
             }
         }
     }
