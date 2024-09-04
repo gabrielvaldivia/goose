@@ -209,6 +209,16 @@ struct FullScreenPhotoView: View {
         .id(photosUpdateTrigger)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
             photosUpdateTrigger = UUID()
+            print("Photos updated notification received, triggering view refresh")
+        }
+        .onChange(of: photos) { oldValue, newValue in
+            print("Photos array changed. Old count: \(oldValue.count), New count: \(newValue.count)")
+            if currentIndex >= newValue.count {
+                currentIndex = newValue.count - 1
+            } else {
+                currentIndex = findNewIndexForCurrentPhoto(oldPhotos: oldValue, newPhotos: newValue)
+            }
+            print("Current index updated to: \(currentIndex)")
         }
         // Animation on Appear
         .onAppear {
@@ -250,11 +260,6 @@ struct FullScreenPhotoView: View {
                 },
                 secondaryButton: .cancel()
             )
-        }
-        .onChange(of: photos) { oldValue, newValue in
-            if currentIndex >= newValue.count {
-                currentIndex = newValue.count - 1
-            }
         }
     }
 
@@ -340,6 +345,16 @@ struct FullScreenPhotoView: View {
         if let newIndex = photos.firstIndex(where: { $0.id == photos[currentIndex].id }) {
             currentIndex = newIndex
         }
+        print("Photo date updated. New photos count: \(photos.count), Current index: \(currentIndex)")
+    }
+
+    private func findNewIndexForCurrentPhoto(oldPhotos: [Photo], newPhotos: [Photo]) -> Int {
+        guard currentIndex < oldPhotos.count else { return 0 }
+        let currentPhotoId = oldPhotos[currentIndex].id
+        if let newIndex = newPhotos.firstIndex(where: { $0.id == currentPhotoId }) {
+            return newIndex
+        }
+        return min(currentIndex, newPhotos.count - 1)
     }
 }
 
@@ -670,123 +685,6 @@ struct PillButton: View {
         }
 
         func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
-    }
-}
-
-struct AgePickerSheet: View {
-    @State private var years: Int
-    @State private var months: Int
-    @State private var days: Int
-    @Binding var isPresented: Bool
-    var onSave: (ExactAge) -> Void
-
-    init(age: ExactAge, isPresented: Binding<Bool>, onSave: @escaping (ExactAge) -> Void) {
-        let (y, m, d) = Self.convertToYearsMonthsDays(age: age)
-        self._years = State(initialValue: y)
-        self._months = State(initialValue: m)
-        self._days = State(initialValue: d)
-        self._isPresented = isPresented
-        self.onSave = onSave
-    }
-
-    var body: some View {
-        NavigationView {
-            VStack {
-                HStack {
-                    VStack {
-                        Text("Years")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        Picker("Years", selection: $years) {
-                            ForEach(0...100, id: \.self) { year in
-                                Text("\(year)").tag(year)
-                            }
-                        }
-                        .pickerStyle(WheelPickerStyle())
-                        .frame(width: 100, height: 150)
-                        .clipped()
-                    }
-
-                    VStack {
-                        Text("Months")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        Picker("Months", selection: $months) {
-                            ForEach(0...11, id: \.self) { month in
-                                Text("\(month)").tag(month)
-                            }
-                        }
-                        .pickerStyle(WheelPickerStyle())
-                        .frame(width: 100, height: 150)
-                        .clipped()
-                    }
-
-                    VStack {
-                        Text("Days")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        Picker("Days", selection: $days) {
-                            ForEach(0...30, id: \.self) { day in
-                                Text("\(day)").tag(day)
-                            }
-                        }
-                        .pickerStyle(WheelPickerStyle())
-                        .frame(width: 100, height: 150)
-                        .clipped()
-                    }
-                }
-            }
-            .navigationBarItems(
-                leading: Button("Cancel") { isPresented = false },
-                trailing: Button("Save") {
-                    let newAge = ExactAge(
-                        years: years, months: months, days: days, isPregnancy: false,
-                        pregnancyWeeks: 0, isNewborn: false)
-                    onSave(newAge)
-                    isPresented = false
-                }
-            )
-            .navigationBarTitle("Change Age", displayMode: .inline)
-        }
-    }
-
-    private static func convertToYearsMonthsDays(age: ExactAge) -> (Int, Int, Int) {
-        if age.isPregnancy {
-            return (0, 0, 0)  // Handle pregnancy case if needed
-        }
-
-        let totalMonths = age.years * 12 + age.months
-        let years = totalMonths / 12
-        let remainingMonths = totalMonths % 12
-
-        return (years, remainingMonths, age.days)
-    }
-}
-
-struct DatePickerSheet: View {
-    @Binding var date: Date
-    @Binding var isPresented: Bool
-    var onSave: (Date) -> Void
-
-    var body: some View {
-        NavigationView {
-            VStack {
-                DatePicker("Select Date", selection: $date, displayedComponents: [.date])
-                    .datePickerStyle(WheelDatePickerStyle())
-                    .labelsHidden()
-            }
-            .navigationBarItems(
-                leading: Button("Cancel") { isPresented = false },
-                trailing: Button("Save") {
-                    onSave(date)
-                    isPresented = false
-                }
-            )
-            .navigationBarTitle("Change Date", displayMode: .inline)
-        }
     }
 }
 

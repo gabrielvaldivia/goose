@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftUI
 import PhotosUI
+import SwiftUI
 
 struct MilestoneDetailView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -16,7 +16,7 @@ struct MilestoneDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedPhoto: Photo? = nil
     @State private var isShareSlideshowPresented = false
-    @State private var selectedTab = 0 // 0 for Timeline, 1 for Grid
+    @State private var selectedTab = 0  // 0 for Timeline, 1 for Grid
     @State private var forceUpdate: Bool = false
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var isLoading = false
@@ -27,10 +27,19 @@ struct MilestoneDetailView: View {
                 emptyStateView
             } else {
                 ZStack(alignment: .bottom) {
-                    PageViewController(pages: [
-                        AnyView(SharedTimelineView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate, sectionTitle: sectionTitle, showScrubber: false)),
-                        AnyView(SharedGridView(viewModel: viewModel, person: $person, selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle))
-                    ], currentPage: $selectedTab, animationDirection: $animationDirection)
+                    PageViewController(
+                        pages: [
+                            AnyView(
+                                TimelineView(
+                                    viewModel: viewModel, person: $person,
+                                    selectedPhoto: $selectedPhoto, forceUpdate: forceUpdate,
+                                    sectionTitle: sectionTitle, showScrubber: false)),
+                            AnyView(
+                                SharedGridView(
+                                    viewModel: viewModel, person: $person,
+                                    selectedPhoto: $selectedPhoto, sectionTitle: sectionTitle)),
+                        ], currentPage: $selectedTab, animationDirection: $animationDirection
+                    )
                     .edgesIgnoringSafeArea(.bottom)
 
                     VStack(spacing: 0) {
@@ -95,7 +104,9 @@ struct MilestoneDetailView: View {
     }
 
     private func photosForCurrentSection() -> [Photo] {
-        let filteredPhotos = person.photos.filter { PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle }
+        let filteredPhotos = person.photos.filter {
+            PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle
+        }
         return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
     }
 
@@ -107,15 +118,15 @@ struct MilestoneDetailView: View {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 60))
                         .foregroundColor(.gray)
-                    
+
                     Text("No photos yet")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     Text("Add some photos to see them here")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    
+
                     Button(action: {
                         showingImagePicker = true
                     }) {
@@ -139,7 +150,9 @@ struct MilestoneDetailView: View {
 }
 
 extension UIImage {
-    static func placeholderImage(color: UIColor = .gray, size: CGSize = CGSize(width: 100, height: 100)) -> UIImage {
+    static func placeholderImage(
+        color: UIColor = .gray, size: CGSize = CGSize(width: 100, height: 100)
+    ) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
             color.setFill()
@@ -152,7 +165,7 @@ extension Photo {
     var placeholderImage: UIImage {
         UIImage.placeholderImage()
     }
-    
+
     var displayImage: UIImage {
         image ?? placeholderImage
     }

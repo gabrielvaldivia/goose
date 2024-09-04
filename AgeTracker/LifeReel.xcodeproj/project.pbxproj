@@ -28,6 +28,9 @@
 		40684AB62C7BAFDC00A1BE60 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */; };
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
+		40CE60862C88A9AE007FACAD /* AgePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */; };
+		40CE60882C88AA30007FACAD /* DatePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60872C88AA30007FACAD /* DatePickerSheet.swift */; };
+		40CE608A2C88AC63007FACAD /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60892C88AC63007FACAD /* TimelineView.swift */; };
 		40F651542C6B0402003B9830 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94732C665D1B003373A2 /* SharedViews.swift */; };
 /* End PBXBuildFile section */
 
@@ -75,6 +78,9 @@
 		40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
+		40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgePickerSheet.swift; sourceTree = "<group>"; };
+		40CE60872C88AA30007FACAD /* DatePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatePickerSheet.swift; sourceTree = "<group>"; };
+		40CE60892C88AC63007FACAD /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -142,27 +148,30 @@
 		4015B72B2C5C5628001FA4E4 /* LifeReel */ = {
 			isa = PBXGroup;
 			children = (
-				40684AB72C7C1D1D00A1BE60 /* Music */,
+				40C00B572C61691400C1B076 /* ActivityViewController.swift */,
+				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
+				402EF17C2C6EC8D100156F55 /* AgeCalculator.swift */,
+				40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */,
+				4015B7302C5C5628001FA4E4 /* Assets.xcassets */,
+				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
+				4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */,
+				40CE60872C88AA30007FACAD /* DatePickerSheet.swift */,
+				4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */,
+				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
 				4015B7642C5D69C5001FA4E4 /* Info.plist */,
 				4015B72C2C5C5628001FA4E4 /* LifeReelApp.swift */,
-				4015B72E2C5C5628001FA4E4 /* ContentView.swift */,
+				4015B7672C5D7DFB001FA4E4 /* MilestoneDetailView.swift */,
+				402EF17A2C6EAB2000156F55 /* MilestonesView.swift */,
+				40684AB72C7C1D1D00A1BE60 /* Music */,
+				40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */,
 				4015B7562C5C5644001FA4E4 /* Person.swift */,
-				40C00B552C6168A700C1B076 /* SharePhotoView.swift */,
-				40C00B572C61691400C1B076 /* ActivityViewController.swift */,
 				4015B7652C5D6C5C001FA4E4 /* PersonSettingsView.swift */,
 				4015B7582C5C5663001FA4E4 /* PersonViewModel.swift */,
-				4015B75A2C5C568A001FA4E4 /* AddPersonView.swift */,
-				4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */,
-				40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */,
-				403C94732C665D1B003373A2 /* SharedViews.swift */,
-				402EF17C2C6EC8D100156F55 /* AgeCalculator.swift */,
-				403C94752C666E26003373A2 /* ShareSlideshowView.swift */,
-				4015B75E2C5C56B7001FA4E4 /* ImagePicker.swift */,
-				4015B7692C5D7EC7001FA4E4 /* FullScreenPhotoView.swift */,
-				402EF17A2C6EAB2000156F55 /* MilestonesView.swift */,
-				4015B7672C5D7DFB001FA4E4 /* MilestoneDetailView.swift */,
-				4015B7302C5C5628001FA4E4 /* Assets.xcassets */,
 				4015B7322C5C5628001FA4E4 /* Preview Content */,
+				403C94732C665D1B003373A2 /* SharedViews.swift */,
+				40C00B552C6168A700C1B076 /* SharePhotoView.swift */,
+				403C94752C666E26003373A2 /* ShareSlideshowView.swift */,
+				40CE60892C88AC63007FACAD /* TimelineView.swift */,
 			);
 			path = LifeReel;
 			sourceTree = "<group>";
@@ -325,12 +334,15 @@
 				4015B7572C5C5644001FA4E4 /* Person.swift in Sources */,
 				4015B72F2C5C5628001FA4E4 /* ContentView.swift in Sources */,
 				4015B75B2C5C568A001FA4E4 /* AddPersonView.swift in Sources */,
+				40CE608A2C88AC63007FACAD /* TimelineView.swift in Sources */,
 				40684AB62C7BAFDC00A1BE60 /* OnboardingView.swift in Sources */,
 				40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */,
 				402EF17B2C6EAB2000156F55 /* MilestonesView.swift in Sources */,
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
+				40CE60882C88AA30007FACAD /* DatePickerSheet.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				402EF17D2C6EC8D100156F55 /* AgeCalculator.swift in Sources */,
+				40CE60862C88A9AE007FACAD /* AgePickerSheet.swift in Sources */,
 				40F651542C6B0402003B9830 /* SharedViews.swift in Sources */,
 				4015B72D2C5C5628001FA4E4 /* LifeReelApp.swift in Sources */,
 				4015B7662C5D6C5C001FA4E4 /* PersonSettingsView.swift in Sources */,

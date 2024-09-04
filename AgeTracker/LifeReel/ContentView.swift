@@ -202,8 +202,8 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             PageViewController(
                 pages: [
-                    AnyView(sharedTimelineView(for: person)),
-                    AnyView(milestonesView(for: person))
+                    AnyView(timelineViewForPerson(person)),
+                    AnyView(milestonesView(for: person)),
                 ],
                 currentPage: $selectedTab,
                 animationDirection: $animationDirection
@@ -244,16 +244,16 @@ struct ContentView: View {
         }
     }
 
-    private func sharedTimelineView(for person: Person) -> some View {
-        SharedTimelineView(
+    private func timelineViewForPerson(_ person: Person) -> some View {
+        TimelineView(
             viewModel: viewModel,
             person: viewModel.bindingForPerson(person),
             selectedPhoto: Binding(
                 get: { self.fullScreenPhoto },
-                set: { 
+                set: {
                     print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
                     self.viewModel.selectedPerson = person
-                    self.fullScreenPhoto = $0 
+                    self.fullScreenPhoto = $0
                 }
             ),
             forceUpdate: false,
@@ -268,10 +268,10 @@ struct ContentView: View {
             person: viewModel.bindingForPerson(person),
             selectedPhoto: Binding(
                 get: { self.fullScreenPhoto },
-                set: { 
+                set: {
                     print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
                     self.viewModel.selectedPerson = person
-                    self.fullScreenPhoto = $0 
+                    self.fullScreenPhoto = $0
                 }
             ),
             openImagePickerForMoment: { _, _ in },
@@ -285,7 +285,8 @@ struct ContentView: View {
 
     private func updatePhotos(_ newPhotos: [Photo]) {
         if let person = viewModel.selectedPerson,
-           let personIndex = viewModel.people.firstIndex(where: { $0.id == person.id }) {
+            let personIndex = viewModel.people.firstIndex(where: { $0.id == person.id })
+        {
             viewModel.people[personIndex].photos = newPhotos
             viewModel.objectWillChange.send()
         }
@@ -299,7 +300,7 @@ struct ContentView: View {
 
     private func getCurrentPersonBinding() -> Binding<Person> {
         Binding(
-            get: { 
+            get: {
                 self.viewModel.selectedPerson ?? Person(name: "", dateOfBirth: Date())
             },
             set: { newValue in
@@ -352,12 +353,11 @@ struct ContentView: View {
         }
 
         for asset in assets {
-            print("Adding asset: \(asset.localIdentifier)")
+            print("Adding asset: \(asset.localIdentifier) to \(selectedPerson.name)")
             viewModel.addPhotoToSelectedPerson(asset: asset)
         }
 
-
-        print("handleSelectedAssetsChange completed")
+        print("handleSelectedAssetsChange completed for \(selectedPerson.name)")
     }
 }
 

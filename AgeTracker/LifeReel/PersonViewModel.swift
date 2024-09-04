@@ -21,6 +21,8 @@ class PersonViewModel: ObservableObject {
     @Published var selectedPerson: Person?
     @Published var navigationPath = NavigationPath()
     @Published var newlyAddedPerson: Person?
+    @Published var mostRecentlyAddedPhoto: Photo?
+    @Published var photoAddedTrigger: Bool = false
 
     init() {
         loadPeople()
@@ -484,7 +486,7 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhotoToSelectedPerson(asset: PHAsset) {
-        guard var selectedPerson = selectedPerson else {
+        guard let selectedPerson = selectedPerson else {
             print("No person selected to add photo to")
             return
         }
@@ -511,7 +513,7 @@ class PersonViewModel: ObservableObject {
                 return
             }
 
-            guard let image = image else {
+            guard image != nil else {
                 print("Failed to create image from asset. Info: \(String(describing: info))")
                 return
             }

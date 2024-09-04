@@ -101,14 +101,21 @@ struct AddPersonView: View {
             .presentationDetents([.large])
         }
         .sheet(isPresented: $showDatePickerSheet) {
-            BirthDaySheet(dateOfBirth: Binding(
-                get: { self.dateOfBirth ?? Date() },
-                set: { 
-                    self.dateOfBirth = $0
-                    self.showAgeText = true
+            DatePickerSheet(
+                date: Binding(
+                    get: { self.dateOfBirth ?? Date() },
+                    set: { 
+                        self.dateOfBirth = $0
+                        self.showAgeText = true
+                    }
+                ),
+                isPresented: $showDatePickerSheet,
+                onSave: { selectedDate in
+                    // Add any additional logic you want to perform on save
+                    self.dateOfBirth = selectedDate
                 }
-            ), isPresented: $showDatePickerSheet)
-                .presentationDetents([.height(300)])
+            )
+            .presentationDetents([.height(300)])
         }
         .overlay(
             Group {

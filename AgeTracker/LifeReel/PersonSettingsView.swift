@@ -27,6 +27,8 @@ struct PersonSettingsView: View {
     @State private var showingBirthDaySheet = false
     @State private var birthMonthsDisplay: Person.BirthMonthsDisplay
     @State private var nextReminderDate: Date?
+    @State private var showingDatePicker = false
+    @State private var showOnboarding = false
 
     // Alert handling
     @State private var showingAlert = false
@@ -55,12 +57,12 @@ struct PersonSettingsView: View {
                     TextField("", text: $editedName)
                         .multilineTextAlignment(.trailing)
                         .foregroundColor(.secondary)
-                        .onChange(of: editedName) { newValue in
+                        .onChange(of: editedName) { _, newValue in
                             updatePerson { $0.name = newValue }
                         }
                 }
                 Button(action: {
-                    showingBirthDaySheet = true
+                    showingDatePicker = true
                 }) {
                     HStack {
                         Text("Date of Birth")
@@ -78,7 +80,7 @@ struct PersonSettingsView: View {
                     Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
                     Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
                 }
-                .onChange(of: birthMonthsDisplay) { newValue in
+                .onChange(of: birthMonthsDisplay) { _, newValue in
                     updatePerson { $0.birthMonthsDisplay = newValue }
                 }
 
@@ -87,12 +89,12 @@ struct PersonSettingsView: View {
                     Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
                     Text("Weeks").tag(Person.PregnancyTracking.weeks)
                 }
-                .onChange(of: person.pregnancyTracking) { newValue in
+                .onChange(of: person.pregnancyTracking) { _, newValue in
                     updatePerson { $0.pregnancyTracking = newValue }
                 }
 
                 Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
-                    .onChange(of: person.showEmptyStacks) { newValue in
+                    .onChange(of: person.showEmptyStacks) { _, newValue in
                         updatePerson { $0.showEmptyStacks = newValue }
                     }
             }
@@ -103,7 +105,7 @@ struct PersonSettingsView: View {
                         Text(frequency.rawValue).tag(frequency)
                     }
                 }
-                .onChange(of: localReminderFrequency) { newValue in
+                .onChange(of: localReminderFrequency) { _, newValue in
                     if newValue != .none {
                         viewModel.requestNotificationPermissions { granted in
                             if granted {
@@ -133,6 +135,12 @@ struct PersonSettingsView: View {
                     Text("Next reminder: \(formatDateTime(nextReminder))")
                         .font(.footnote)
                         .foregroundColor(.secondary)
+                }
+            }
+
+            Section(header: Text("Help")) {
+                Button("Replay Onboarding") {
+                    showOnboarding = true
                 }
             }
 
@@ -173,9 +181,17 @@ struct PersonSettingsView: View {
                 )
             }
         }
-        .sheet(isPresented: $showingBirthDaySheet) {
-            BirthDaySheet(dateOfBirth: $editedDateOfBirth, isPresented: $showingBirthDaySheet)
-                .presentationDetents([.height(300)])
+        .sheet(isPresented: $showingDatePicker) {
+            DatePickerSheet(
+                date: $editedDateOfBirth,
+                isPresented: $showingDatePicker,
+                onSave: { newDate in
+                    updatePerson { $0.dateOfBirth = newDate }
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
         }
         .onAppear {
             fetchAlbums()
@@ -255,8 +271,9 @@ struct PersonSettingsView: View {
 
         let calendar = Calendar.current
         let now = Date()
-        var dateComponents = calendar.dateComponents([.year, .month, .day], from: person.dateOfBirth)
-        dateComponents.hour = 10 // Set reminder time to 10 AM
+        var dateComponents = calendar.dateComponents(
+            [.year, .month, .day], from: person.dateOfBirth)
+        dateComponents.hour = 10  // Set reminder time to 10 AM
         dateComponents.minute = 0
 
         switch person.reminderFrequency {
@@ -270,12 +287,14 @@ struct PersonSettingsView: View {
             let currentYear = calendar.component(.year, from: now)
             let currentMonth = calendar.component(.month, from: now)
             let birthDay = dateComponents.day!
-            
+
             dateComponents.year = currentYear
             dateComponents.month = currentMonth
             dateComponents.day = birthDay
-            
-            if let nextDate = calendar.nextDate(after: now, matching: dateComponents, matchingPolicy: .nextTime) {
+
+            if let nextDate = calendar.nextDate(
+                after: now, matching: dateComponents, matchingPolicy: .nextTime)
+            {
                 nextReminderDate = nextDate
             } else {
                 // If we couldn't find a valid date this month, move to the next month
@@ -288,7 +307,8 @@ struct PersonSettingsView: View {
         case .yearly:
             dateComponents.year = calendar.component(.year, from: now)
             if let nextDate = calendar.date(from: dateComponents),
-               nextDate > now {
+                nextDate > now
+            {
                 nextReminderDate = nextDate
             } else {
                 dateComponents.year! += 1
