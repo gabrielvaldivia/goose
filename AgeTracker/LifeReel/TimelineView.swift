@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-// TimelineView: Main view for displaying photos in a timeline format
+// Main view struct for displaying photos in a timeline format
 struct TimelineView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var person: Person
@@ -51,6 +51,7 @@ struct TimelineView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
+                // Main scrollable content
                 CustomScrollView(
                     content: {
                         LazyVStack(spacing: 8) {
@@ -102,6 +103,7 @@ struct TimelineView: View {
                     startControlsTimer()
                 }
 
+                // Timeline scrubber and age pill
                 if showScrubber {
                     ZStack(alignment: .topTrailing) {
                         TimelineScrubber(
@@ -202,6 +204,7 @@ struct TimelineView: View {
         }
     }
 
+    // Helper methods
     private func updateCurrentAge() {
         let visiblePhotoIndex = Int(
             scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))
@@ -267,7 +270,7 @@ struct TimelineView: View {
     }
 }
 
-// CustomScrollView: A custom scroll view implementation for the timeline
+// Custom scroll view implementation for the timeline
 struct CustomScrollView<Content: View>: UIViewRepresentable {
     let content: Content
     @Binding var scrollPosition: CGFloat
@@ -328,7 +331,7 @@ struct CustomScrollView<Content: View>: UIViewRepresentable {
     }
 }
 
-// AgePillView: Displays the current age as a pill-shaped overlay
+// View for displaying the current age as a pill-shaped overlay
 struct AgePillView: View {
     let age: String
 
@@ -351,7 +354,7 @@ struct AgePillView: View {
     }
 }
 
-// FilmReelItemView: Represents a single photo item in the timeline view
+// View representing a single photo item in the timeline
 struct FilmReelItemView: View {
     let photo: Photo
     let person: Person
@@ -451,7 +454,7 @@ struct FilmReelItemView: View {
     }
 }
 
-// ImageLoadingState: Enum to manage the loading state of images
+// Enum to manage the loading state of images
 enum ImageLoadingState {
     case initial
     case loading
