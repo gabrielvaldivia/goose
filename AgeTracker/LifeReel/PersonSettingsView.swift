@@ -194,7 +194,7 @@ struct PersonSettingsView: View {
             OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
         }
         .onAppear {
-            fetchAlbums()
+            // fetchAlbums()
             scheduleReminder()
         }
     }
@@ -210,16 +210,16 @@ struct PersonSettingsView: View {
         }
     }
 
-    private func fetchAlbums() {
-        viewModel.fetchAlbums { result in
-            switch result {
-            case .success(let fetchedAlbums):
-                self.albums = fetchedAlbums
-            case .failure(let error):
-                print("Failed to fetch albums: \(error.localizedDescription)")
-            }
-        }
-    }
+    // private func fetchAlbums() {
+    //     viewModel.fetchAlbums { result in
+    //         switch result {
+    //         case .success(let fetchedAlbums):
+    //             self.albums = fetchedAlbums
+    //         case .failure(let error):
+    //             print("Failed to fetch albums: \(error.localizedDescription)")
+    //         }
+    //     }
+    // }
 
     private func deleteAllPhotos() {
         viewModel.deleteAllPhotos(for: person) { result in

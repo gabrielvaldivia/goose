@@ -75,6 +75,7 @@ struct ContentView: View {
             }
             .fullScreenCover(item: $fullScreenPhoto) { photo in
                 FullScreenPhotoView(
+                    viewModel: viewModel,
                     photo: photo,
                     currentIndex: getCurrentPhotos().firstIndex(of: photo) ?? 0,
                     photos: Binding(
@@ -86,8 +87,7 @@ struct ContentView: View {
                     onDelete: { photoToDelete in
                         deletePhoto(photoToDelete)
                     },
-                    person: getCurrentPersonBinding(),
-                    viewModel: viewModel
+                    person: getCurrentPersonBinding()
                 )
             }
             .onChange(of: fullScreenPhoto) { _, newValue in
@@ -362,12 +362,26 @@ struct ContentView: View {
             return
         }
 
+        let dispatchGroup = DispatchGroup()
+        var addedPhotos: [Photo] = []
+
         for asset in assets {
-            print("Adding asset: \(asset.localIdentifier) to \(selectedPerson.name)")
-            viewModel.addPhotoToSelectedPerson(asset: asset)
+            dispatchGroup.enter()
+            viewModel.addPhoto(to: selectedPerson, asset: asset) { photo in
+                if let photo = photo {
+                    addedPhotos.append(photo)
+                }
+                dispatchGroup.leave()
+            }
         }
 
-        print("handleSelectedAssetsChange completed for \(selectedPerson.name)")
+        dispatchGroup.notify(queue: .main) {
+            if let latestPhoto = addedPhotos.last {
+                self.fullScreenPhoto = latestPhoto
+                self.viewModel.objectWillChange.send()
+            }
+            print("Added \(addedPhotos.count) photos to \(selectedPerson.name)")
+        }
     }
 }
 

@@ -29,11 +29,11 @@ class PersonViewModel: ObservableObject {
         loadLastOpenedPersonId()
 
         // Check if photo migration is needed
-        if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
-            migratePhotos()
-            migratePhotoStructure()
-            UserDefaults.standard.set(true, forKey: "photoMigrationCompleted")
-        }
+        // if !UserDefaults.standard.bool(forKey: "photoMigrationCompleted") {
+        //     migratePhotos()
+        //     migratePhotoStructure()
+        //     UserDefaults.standard.set(true, forKey: "photoMigrationCompleted")
+        // }
     }
 
     func addPerson(name: String, dateOfBirth: Date, asset: PHAsset) {
@@ -109,14 +109,24 @@ class PersonViewModel: ObservableObject {
         return AgeCalculator.calculate(for: person, at: date).toString()
     }
 
-    func updatePerson(_ person: Person) {
-        if let index = people.firstIndex(where: { $0.id == person.id }) {
-            people[index] = person
-        } else {
-            people.append(person)
+    // func updatePerson(_ person: Person) {
+    //     if let index = people.firstIndex(where: { $0.id == person.id }) {
+    //         people[index] = person
+    //     } else {
+    //         people.append(person)
+    //     }
+    //     savePeople()
+    //     objectWillChange.send()
+    // }
+
+    func updatePerson(_ updatedPerson: Person) {
+        if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
+            people[index] = updatedPerson
+            selectedPerson = updatedPerson
+            savePeople()
+            objectWillChange.send()
+            NotificationCenter.default.post(name: .photosUpdated, object: nil)
         }
-        savePeople()
-        objectWillChange.send()
     }
 
     func updatePersonProperties(_ person: Person) {
@@ -204,68 +214,68 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-    func fetchAlbums(completion: @escaping (Result<[PHAssetCollection], Error>) -> Void) {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    // func fetchAlbums(completion: @escaping (Result<[PHAssetCollection], Error>) -> Void) {
+    //     let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
 
-        switch status {
-        case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
-                if newStatus == .authorized {
-                    self.performAlbumsFetch(completion: completion)
-                } else {
-                    completion(.failure(PhotoAccessError.denied))
-                }
-            }
-        case .restricted, .denied:
-            completion(.failure(PhotoAccessError.denied))
-        case .authorized, .limited:
-            performAlbumsFetch(completion: completion)
-        @unknown default:
-            completion(.failure(PhotoAccessError.unknown))
-        }
-    }
+    //     switch status {
+    //     case .notDetermined:
+    //         PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+    //             if newStatus == .authorized {
+    //                 self.performAlbumsFetch(completion: completion)
+    //             } else {
+    //                 completion(.failure(PhotoAccessError.denied))
+    //             }
+    //         }
+    //     case .restricted, .denied:
+    //         completion(.failure(PhotoAccessError.denied))
+    //     case .authorized, .limited:
+    //         performAlbumsFetch(completion: completion)
+    //     @unknown default:
+    //         completion(.failure(PhotoAccessError.unknown))
+    //     }
+    // }
 
-    private func performAlbumsFetch(
-        completion: @escaping (Result<[PHAssetCollection], Error>) -> Void
-    ) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let userAlbums = PHAssetCollection.fetchAssetCollections(
-                with: .album, subtype: .any, options: nil)
-            let smartAlbums = PHAssetCollection.fetchAssetCollections(
-                with: .smartAlbum, subtype: .any, options: nil)
+    // private func performAlbumsFetch(
+    //     completion: @escaping (Result<[PHAssetCollection], Error>) -> Void
+    // ) {
+    //     DispatchQueue.global(qos: .userInitiated).async {
+    //         let userAlbums = PHAssetCollection.fetchAssetCollections(
+    //             with: .album, subtype: .any, options: nil)
+    //         let smartAlbums = PHAssetCollection.fetchAssetCollections(
+    //             with: .smartAlbum, subtype: .any, options: nil)
 
-            var albums: [PHAssetCollection] = []
-            userAlbums.enumerateObjects { (collection, _, _) in
-                albums.append(collection)
-            }
-            smartAlbums.enumerateObjects { (collection, _, _) in
-                albums.append(collection)
-            }
+    //         var albums: [PHAssetCollection] = []
+    //         userAlbums.enumerateObjects { (collection, _, _) in
+    //             albums.append(collection)
+    //         }
+    //         smartAlbums.enumerateObjects { (collection, _, _) in
+    //             albums.append(collection)
+    //         }
 
-            DispatchQueue.main.async {
-                completion(.success(albums))
-            }
-        }
-    }
+    //         DispatchQueue.main.async {
+    //             completion(.success(albums))
+    //         }
+    //     }
+    // }
 
-    func fetchPhotosFromAlbum(
-        _ album: PHAssetCollection, completion: @escaping (Result<[PHAsset], Error>) -> Void
-    ) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-            let assetsFetchResult = PHAsset.fetchAssets(in: album, options: fetchOptions)
+    // func fetchPhotosFromAlbum(
+    //     _ album: PHAssetCollection, completion: @escaping (Result<[PHAsset], Error>) -> Void
+    // ) {
+    //     DispatchQueue.global(qos: .userInitiated).async {
+    //         let fetchOptions = PHFetchOptions()
+    //         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+    //         let assetsFetchResult = PHAsset.fetchAssets(in: album, options: fetchOptions)
 
-            var assets: [PHAsset] = []
-            assetsFetchResult.enumerateObjects { (asset, _, _) in
-                assets.append(asset)
-            }
+    //         var assets: [PHAsset] = []
+    //         assetsFetchResult.enumerateObjects { (asset, _, _) in
+    //             assets.append(asset)
+    //         }
 
-            DispatchQueue.main.async {
-                completion(.success(assets))
-            }
-        }
-    }
+    //         DispatchQueue.main.async {
+    //             completion(.success(assets))
+    //         }
+    //     }
+    // }
 
     func movePerson(from source: IndexSet, to destination: Int) {
         people.move(fromOffsets: source, toOffset: destination)
@@ -313,54 +323,54 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-    func migratePhotos() {
-        print("Starting photo migration...")
-        for personIndex in 0..<people.count {
-            var person = people[personIndex]
-            var newPhotos: [Photo] = []
+    // func migratePhotos() {
+    //     print("Starting photo migration...")
+    //     for personIndex in 0..<people.count {
+    //         var person = people[personIndex]
+    //         var newPhotos: [Photo] = []
 
-            for oldPhoto in person.photos {
-                let assets = PHAsset.fetchAssets(
-                    withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-                if let asset = assets.firstObject,
-                    let newPhoto = Photo(asset: asset)
-                {
-                    newPhotos.append(newPhoto)
-                    print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
-                } else {
-                    print("Failed to migrate photo for \(person.name): \(oldPhoto.assetIdentifier)")
-                }
-            }
+    //         for oldPhoto in person.photos {
+    //             let assets = PHAsset.fetchAssets(
+    //                 withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+    //             if let asset = assets.firstObject,
+    //                 let newPhoto = Photo(asset: asset)
+    //             {
+    //                 newPhotos.append(newPhoto)
+    //                 print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
+    //             } else {
+    //                 print("Failed to migrate photo for \(person.name): \(oldPhoto.assetIdentifier)")
+    //             }
+    //         }
 
-            person.photos = newPhotos
-            people[personIndex] = person
-        }
+    //         person.photos = newPhotos
+    //         people[personIndex] = person
+    //     }
 
-        savePeople()
-        print("Photo migration completed.")
-    }
+    //     savePeople()
+    //     print("Photo migration completed.")
+    // }
 
-    private func migratePhotoStructure() {
-        for personIndex in 0..<people.count {
-            var person = people[personIndex]
-            person.photos = person.photos.compactMap { oldPhoto in
-                // Fetch the asset using the assetIdentifier
-                let fetchResult = PHAsset.fetchAssets(
-                    withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-                if let asset = fetchResult.firstObject,
-                    let newPhoto = Photo(asset: asset)
-                {
-                    return newPhoto
-                } else {
-                    // If the asset can't be found or the Photo can't be created, return nil to remove this photo
-                    print("Failed to migrate photo: \(oldPhoto.assetIdentifier)")
-                    return nil
-                }
-            }
-            people[personIndex] = person
-        }
-        savePeople()
-    }
+    // private func migratePhotoStructure() {
+    //     for personIndex in 0..<people.count {
+    //         var person = people[personIndex]
+    //         person.photos = person.photos.compactMap { oldPhoto in
+    //             // Fetch the asset using the assetIdentifier
+    //             let fetchResult = PHAsset.fetchAssets(
+    //                 withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
+    //             if let asset = fetchResult.firstObject,
+    //                 let newPhoto = Photo(asset: asset)
+    //             {
+    //                 return newPhoto
+    //             } else {
+    //                 // If the asset can't be found or the Photo can't be created, return nil to remove this photo
+    //                 print("Failed to migrate photo: \(oldPhoto.assetIdentifier)")
+    //                 return nil
+    //             }
+    //         }
+    //         people[personIndex] = person
+    //     }
+    //     savePeople()
+    // }
 
     func setLastOpenedPerson(_ person: Person) {
         lastOpenedPersonId = person.id
@@ -401,45 +411,31 @@ class PersonViewModel: ObservableObject {
     }
 
     func addPhoto(to person: Person, asset: PHAsset, completion: @escaping (Photo?) -> Void) {
-        print("Starting to add photo for \(person.name) with asset ID: \(asset.localIdentifier)")
-        let options = PHImageRequestOptions()
-        options.deliveryMode = .highQualityFormat
-        options.isNetworkAccessAllowed = true
-        options.isSynchronous = false
-
-        PHImageManager.default().requestImage(
-            for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit,
-            options: options
-        ) { image, info in
-            if image == nil {
-                print("Failed to get image from asset: \(asset.localIdentifier)")
-                completion(nil)
-                return
-            }
-
-            if let newPhoto = Photo(asset: asset) {
-                print("Created new Photo object for asset: \(asset.localIdentifier)")
-                if let index = self.people.firstIndex(where: { $0.id == person.id }) {
-                    self.people[index].photos.append(newPhoto)
-                    self.people[index].photos.sort { $0.dateTaken < $1.dateTaken }
-
-                    self.savePeople()
+        print("Adding photo to \(person.name) with date: \(asset.creationDate ?? Date())")
+        if let newPhoto = Photo(asset: asset) {
+            if !person.photos.contains(where: { $0.assetIdentifier == newPhoto.assetIdentifier }) {
+                if let index = people.firstIndex(where: { $0.id == person.id }) {
+                    people[index].photos.append(newPhoto)
+                    people[index].photos.sort { $0.dateTaken < $1.dateTaken }
+                    selectedPerson = people[index]  // Update selectedPerson
+                    savePeople()
                     DispatchQueue.main.async {
                         self.objectWillChange.send()
                         NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                        print("Photo added successfully. Total photos for \(person.name): \(self.people[index].photos.count)")
+                        completion(newPhoto)
                     }
-                    print(
-                        "Photo added successfully for \(person.name). Total photos: \(self.people[index].photos.count)"
-                    )
-                    completion(newPhoto)
                 } else {
                     print("Failed to find person \(person.name) in people array")
                     completion(nil)
                 }
             } else {
-                print("Failed to create Photo object from asset: \(asset.localIdentifier)")
+                print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
                 completion(nil)
             }
+        } else {
+            print("Failed to create Photo object from asset")
+            completion(nil)
         }
     }
 

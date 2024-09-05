@@ -11,13 +11,13 @@ import SwiftUI
 import UIKit
 
 struct FullScreenPhotoView: View {
+    @ObservedObject var viewModel: PersonViewModel
     @Binding var photo: Photo
     @State var currentIndex: Int
     @Binding var photos: [Photo]
     var onDelete: (Photo) -> Void
     @Binding var person: Person
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: PersonViewModel
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var showControls = true
@@ -50,9 +50,11 @@ struct FullScreenPhotoView: View {
     }
 
     init(
+        viewModel: PersonViewModel,
         photo: Photo, currentIndex: Int, photos: Binding<[Photo]>,
-        onDelete: @escaping (Photo) -> Void, person: Binding<Person>, viewModel: PersonViewModel
+        onDelete: @escaping (Photo) -> Void, person: Binding<Person>
     ) {
+        self.viewModel = viewModel
         self._photo = Binding(get: { photo }, set: { _ in })
         self._currentIndex = State(initialValue: currentIndex)
         self._photos = photos
@@ -60,7 +62,6 @@ struct FullScreenPhotoView: View {
         self._person = person
         self._selectedAge = State(
             initialValue: AgeCalculator.calculate(for: person.wrappedValue, at: photo.dateTaken))
-        self.viewModel = viewModel
         self._selectedDate = State(initialValue: photo.dateTaken)
     }
 

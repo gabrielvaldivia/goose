@@ -92,6 +92,7 @@ struct MilestoneDetailView: View {
         }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
+                viewModel: viewModel,
                 photo: photo,
                 currentIndex: photosToDisplay().firstIndex(of: photo) ?? 0,
                 photos: Binding(
@@ -103,8 +104,7 @@ struct MilestoneDetailView: View {
                     selectedPhoto = nil
                     viewModel.objectWillChange.send()
                 },
-                person: $person,
-                viewModel: viewModel
+                person: $person
             )
         }
         .sheet(isPresented: $isShareSlideshowPresented) {
