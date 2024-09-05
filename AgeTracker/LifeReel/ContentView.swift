@@ -37,7 +37,7 @@ struct ContentView: View {
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
-            NavigationView {
+            NavigationStack {
                 ZStack {
                     if viewModel.people.isEmpty {
                         OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)

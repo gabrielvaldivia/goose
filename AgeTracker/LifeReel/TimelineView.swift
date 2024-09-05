@@ -49,120 +49,130 @@ struct TimelineView: View {
     private let timelineScrubberPadding: CGFloat = 0
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .topTrailing) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        offsetReader
-                        LazyVStack(spacing: 10) {
-                            ForEach(Array(filteredPhotos().enumerated()), id: \.element.id) { index, photo in
-                                FilmReelItemView(
-                                    photo: photo,
-                                    person: person,
-                                    selectedPhoto: $selectedPhoto,
-                                    geometry: geometry,
-                                    horizontalPadding: horizontalPadding,
-                                    timelineWidth: timelineWidth,
-                                    timelinePadding: timelinePadding,
-                                    onDelete: {
-                                        photoToDelete = photo
-                                        showDeleteAlert = true
+        NavigationStack {
+            GeometryReader { geometry in
+                ZStack(alignment: .topTrailing) {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            offsetReader
+                            LazyVStack(spacing: 10) {
+                                ForEach(Array(filteredPhotos().enumerated()), id: \.element.id) { index, photo in
+                                    FilmReelItemView(
+                                        photo: photo,
+                                        person: person,
+                                        selectedPhoto: $selectedPhoto,
+                                        geometry: geometry,
+                                        horizontalPadding: horizontalPadding,
+                                        timelineWidth: timelineWidth,
+                                        timelinePadding: timelinePadding,
+                                        onDelete: {
+                                            photoToDelete = photo
+                                            showDeleteAlert = true
+                                        }
+                                    )
+                                    .id(index)
+                                }
+                            }
+                            .id(photosUpdateTrigger)
+                            .padding(.horizontal, horizontalPadding)
+                            .padding(.top, verticalPadding)
+                            .padding(.bottom, bottomPadding)
+                            .background(
+                                GeometryReader { contentGeometry in
+                                    Color.clear.onAppear {
+                                        timelineContentHeight = contentGeometry.size.height
+                                    }
+                                }
+                            )
+                            .onChange(of: person.photos) { _, _ in
+                                photosUpdateTrigger = UUID()
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                        .coordinateSpace(name: "scroll")
+                        .onChange(of: scrollTarget) { _, newValue in
+                            if let target = newValue {
+                                isScrollingProgrammatically = true
+                                withAnimation(.linear(duration: 0.05)) {
+                                    proxy.scrollTo(target, anchor: .top)
+                                }
+                                // Reset the flag after a short delay
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isScrollingProgrammatically = false
+                                }
+                            }
+                        }
+                    }
+                    .id(photoUpdateTrigger)
+                    .background(
+                        GeometryReader { scrollViewGeometry in
+                            Color.clear.onAppear {
+                                scrollViewHeight = scrollViewGeometry.size.height
+                            }
+                        }
+                    )
+
+                    // Timeline scrubber and age pill
+                    if showScrubber {
+                        ZStack(alignment: .topTrailing) {
+                            TimelineScrubber(
+                                photos: filteredPhotos(),
+                                scrollPosition: $scrollPosition,
+                                contentHeight: timelineContentHeight,
+                                isDraggingTimeline: $isDraggingTimeline,
+                                indicatorPosition: $indicatorPosition,
+                                blueLinePosition: $blueLinePosition
+                            )
+                            .frame(width: timelineWidth)
+                            .padding(.top, verticalPadding)
+                            .background(
+                                GeometryReader { scrubberGeometry in
+                                    Color.clear.onAppear {
+                                        scrubberHeight = scrubberGeometry.size.height
+                                    }
+                                })
+
+                            AgePillView(age: currentAge)
+                                .padding(.trailing, timelineWidth + agePillPadding)
+                                .offset(y: blueLinePosition - pillHeight / 2 + agePillOffset)
+                                .background(
+                                    GeometryReader { pillGeometry in
+                                        Color.clear.onAppear {
+                                            pillHeight = pillGeometry.size.height
+                                        }
                                     }
                                 )
-                                .id(index)
-                            }
+                                .gesture(
+                                    DragGesture()
+                                        .onChanged { value in
+                                            isDragging = true
+                                            isDraggingPill = true
+                                            isDraggingTimeline = true
+                                            let dragPosition = value.location.y - agePillOffset
+                                            updateScrollPositionFromPill(dragPosition)
+                                            checkForHapticFeedback(dragPosition: dragPosition)
+                                        }
+                                        .onEnded { _ in
+                                            isDragging = false
+                                            isDraggingPill = false
+                                            isDraggingTimeline = false
+                                            lastHapticIndex = -1
+                                        }
+                                )
                         }
-                        .id(photosUpdateTrigger)
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.top, verticalPadding)
-                        .padding(.bottom, bottomPadding)
-                        .background(
-                            GeometryReader { contentGeometry in
-                                Color.clear.onAppear {
-                                    timelineContentHeight = contentGeometry.size.height
-                                }
-                            }
-                        )
-                        .onChange(of: person.photos) { _, _ in
-                            photosUpdateTrigger = UUID()
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                    .coordinateSpace(name: "scroll")
-                    .onChange(of: scrollTarget) { _, newValue in
-                        if let target = newValue {
-                            isScrollingProgrammatically = true
-                            withAnimation(.linear(duration: 0.05)) {
-                                proxy.scrollTo(target, anchor: .top)
-                            }
-                            // Reset the flag after a short delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isScrollingProgrammatically = false
-                            }
-                        }
-                    }
-                }
-                .id(photoUpdateTrigger)
-                .background(
-                    GeometryReader { scrollViewGeometry in
-                        Color.clear.onAppear {
-                            scrollViewHeight = scrollViewGeometry.size.height
-                        }
-                    }
-                )
-
-                // Timeline scrubber and age pill
-                if showScrubber {
-                    ZStack(alignment: .topTrailing) {
-                        TimelineScrubber(
-                            photos: filteredPhotos(),
-                            scrollPosition: $scrollPosition,
-                            contentHeight: timelineContentHeight,
-                            isDraggingTimeline: $isDraggingTimeline,
-                            indicatorPosition: $indicatorPosition,
-                            blueLinePosition: $blueLinePosition
-                        )
-                        .frame(width: timelineWidth)
-                        .padding(.top, verticalPadding)
-                        .background(
-                            GeometryReader { scrubberGeometry in
-                                Color.clear.onAppear {
-                                    scrubberHeight = scrubberGeometry.size.height
-                                }
-                            })
-
-                        AgePillView(age: currentAge)
-                            .padding(.trailing, timelineWidth + agePillPadding)
-                            .offset(y: blueLinePosition - pillHeight / 2 + agePillOffset)
-                            .background(
-                                GeometryReader { pillGeometry in
-                                    Color.clear.onAppear {
-                                        pillHeight = pillGeometry.size.height
-                                    }
-                                }
-                            )
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        isDragging = true
-                                        isDraggingPill = true
-                                        isDraggingTimeline = true
-                                        let dragPosition = value.location.y - agePillOffset
-                                        updateScrollPositionFromPill(dragPosition)
-                                        checkForHapticFeedback(dragPosition: dragPosition)
-                                    }
-                                    .onEnded { _ in
-                                        isDragging = false
-                                        isDraggingPill = false
-                                        isDraggingTimeline = false
-                                        lastHapticIndex = -1
-                                    }
-                            )
                     }
                 }
             }
+            .ignoresSafeArea(.all, edges: .bottom)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(sectionTitle ?? person.name)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                }
+            }
         }
-        .ignoresSafeArea(.all, edges: .bottom)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
             photoUpdateTrigger = UUID()
         }
