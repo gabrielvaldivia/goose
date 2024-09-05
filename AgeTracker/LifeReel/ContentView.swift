@@ -115,24 +115,30 @@ struct ContentView: View {
 
             // Full Screen Photo View
             .fullScreenCover(item: $fullScreenPhoto) { photo in
-                FullScreenPhotoView(
-                    viewModel: viewModel,
-                    photo: photo,
-                    currentIndex: getCurrentPhotos().firstIndex(of: photo) ?? 0,
-                    photos: Binding(
-                        get: { self.getCurrentPhotos() },
-                        set: { newPhotos in
-                            self.updatePhotos(newPhotos)
-                        }
-                    ),
-                    onDelete: { photoToDelete in
-                        deletePhoto(photoToDelete)
-                    },
-                    person: getCurrentPersonBinding()
-                )
+                if let selectedPerson = viewModel.selectedPerson {
+                    FullScreenPhotoView(
+                        viewModel: viewModel,
+                        photo: photo,
+                        currentIndex: getCurrentPhotos().firstIndex(of: photo) ?? 0,
+                        photos: Binding(
+                            get: { self.getCurrentPhotos() },
+                            set: { newPhotos in
+                                self.updatePhotos(newPhotos)
+                            }
+                        ),
+                        onDelete: { photoToDelete in
+                            deletePhoto(photoToDelete)
+                        },
+                        person: getCurrentPersonBinding()
+                    )
+                } else {
+                    Text("No person selected")
+                }
             }
             .onChange(of: fullScreenPhoto) { _, newValue in
                 print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
+                print("Selected person: \(viewModel.selectedPerson?.name ?? "None")")
+                print("Total photos for selected person: \(viewModel.selectedPerson?.photos.count ?? 0)")
             }
         }
 
@@ -175,6 +181,11 @@ struct ContentView: View {
             // Reset the selected tab to the timeline view
             selectedTab = 0
         }
+        .onAppear {
+            if viewModel.selectedPerson == nil {
+                viewModel.selectedPerson = viewModel.people.first
+            }
+        }
     }
 
     // Main view component
@@ -184,23 +195,25 @@ struct ContentView: View {
                 ZStack(alignment: .bottom) {
                     PageViewController(
                         pages: [
-                            AnyView(TimelineView(
-                                viewModel: viewModel,
-                                person: viewModel.bindingForPerson(person),
-                                selectedPhoto: $fullScreenPhoto,
-                                forceUpdate: false,
-                                sectionTitle: "All Photos",
-                                showScrubber: true
-                            )),
-                            AnyView(GridView(
-                                viewModel: viewModel,
-                                person: viewModel.bindingForPerson(person),
-                                selectedPhoto: $fullScreenPhoto,
-                                mode: .milestones,
-                                sectionTitle: nil,
-                                forceUpdate: false,
-                                showAge: true
-                            ))
+                            AnyView(
+                                TimelineView(
+                                    viewModel: viewModel,
+                                    person: viewModel.bindingForPerson(person),
+                                    selectedPhoto: $fullScreenPhoto,
+                                    forceUpdate: false,
+                                    sectionTitle: "All Photos",
+                                    showScrubber: true
+                                )),
+                            AnyView(
+                                GridView(
+                                    viewModel: viewModel,
+                                    person: viewModel.bindingForPerson(person),
+                                    selectedPhoto: $fullScreenPhoto,
+                                    mode: .milestones,
+                                    sectionTitle: nil,
+                                    forceUpdate: false,
+                                    showAge: true
+                                )),
                         ],
                         currentPage: $selectedTab,
                         animationDirection: $animationDirection
@@ -238,7 +251,7 @@ struct ContentView: View {
                 .onChange(of: viewModel.selectedPerson) { _, _ in
                     viewModel.objectWillChange.send()
                 }
-                .id(person.id) // Force view refresh when person changes
+                .id(person.id)  // Force view refresh when person changes
             )
         } else {
             return AnyView(
@@ -282,7 +295,15 @@ struct ContentView: View {
     }
 
     private func getCurrentPhotos() -> [Photo] {
-        return viewModel.selectedPerson?.photos.sorted(by: { $0.dateTaken < $1.dateTaken }) ?? []
+        guard let selectedPerson = viewModel.selectedPerson else {
+            print("No person selected")
+            return []
+        }
+        let photos = selectedPerson.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
+        print("Number of photos in getCurrentPhotos(): \(photos.count)")
+        print("Selected person: \(selectedPerson.name)")
+        print("Total people in viewModel: \(viewModel.people.count)")
+        return photos
     }
 
     private func updatePhotos(_ newPhotos: [Photo]) {

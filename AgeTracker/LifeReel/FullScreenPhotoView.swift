@@ -50,13 +50,17 @@ struct FullScreenPhotoView: View {
     }
 
     private var filteredPhotos: [Photo] {
-        return photos.filter { photo in
+        let filtered = photos.filter { photo in
             if person.pregnancyTracking == .none {
                 let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
                 return !age.isPregnancy
             }
             return true
         }
+        print("Number of filtered photos in FullScreenPhotoView: \(filtered.count)")
+        print("Person name in FullScreenPhotoView: \(person.name)")
+        print("Pregnancy tracking: \(person.pregnancyTracking)")
+        return filtered
     }
 
     init(
