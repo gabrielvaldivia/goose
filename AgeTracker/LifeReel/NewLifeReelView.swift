@@ -1,5 +1,5 @@
 //
-//  AddPersonView.swift
+//  NewLifeReelView.swift
 //  AgeTracker
 //
 //  Created by Gabriel Valdivia on 8/1/24.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 import PhotosUI
 
-struct AddPersonView: View {
+struct NewLifeReelView: View {
     @ObservedObject var viewModel: PersonViewModel
     @Binding var isPresented: Bool
     var onboardingMode: Bool
@@ -63,7 +63,7 @@ struct AddPersonView: View {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             )
-            .navigationTitle("Add Someone")
+            .navigationTitle("New Life Reel")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(onboardingMode)
             .toolbar {
@@ -296,7 +296,7 @@ struct AddPersonView: View {
     }
 }
 
-extension AddPersonView {
+extension NewLifeReelView {
     var permissionAlert: Alert {
         Alert(
             title: Text("Photo Access Required"),

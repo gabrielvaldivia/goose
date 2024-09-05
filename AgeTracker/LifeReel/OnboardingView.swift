@@ -28,7 +28,7 @@ struct OnboardingView: View {
                 UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             }
             .sheet(isPresented: $showAddPersonView) {
-                AddPersonView(
+                NewLifeReelView(
                     viewModel: viewModel,
                     isPresented: $showAddPersonView,
                     onboardingMode: true

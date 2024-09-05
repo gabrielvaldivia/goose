@@ -12,7 +12,6 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var showingAddPersonSheet = false
-    @State private var showingPersonSettings = false
     @State private var showingImagePicker = false
     @State private var activeSheet: ActiveSheet?
     @State private var selectedAssets: [PHAsset] = []
@@ -20,6 +19,7 @@ struct ContentView: View {
     @State private var showingPeopleGrid = false
     @State private var orientation = UIDeviceOrientation.unknown
     @State private var fullScreenPhoto: Photo?
+    @State private var isSettingsActive = false
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -28,19 +28,11 @@ struct ContentView: View {
     }
 
     enum SheetType: Identifiable {
-        case addPerson
         case addPersonSheet
         case peopleGrid
 
         var id: Int { hashValue }
     }
-
-    // Grid layout
-    let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-    ]
 
     // Main body of the view
     var body: some View {
@@ -53,15 +45,62 @@ struct ContentView: View {
                         mainView
                     }
                 }
+
+                // Navigation Bar
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+
+                    // Person Name
+                    ToolbarItem(placement: .principal) {
+                        Button(action: {
+                            showingPeopleGrid = true
+                        }) {
+                            HStack {
+                                Text(
+                                    viewModel.selectedPerson?.name ?? viewModel.people.first?.name
+                                        ?? "Select Person"
+                                )
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(width: 20, height: 20)
+
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                        }
+                    }
+
+                    // Settings Button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        settingsButton
+                    }
+                }
+                .background(
+                    NavigationLink(
+                        destination: settingsView,
+                        isActive: $isSettingsActive,
+                        label: { EmptyView() }
+                    )
+                )
             }
+
+            // People Grid Sheet
             .sheet(isPresented: $showingPeopleGrid) {
                 peopleGridView
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+
+            // New Life Reel Sheet
             .sheet(isPresented: $showingAddPersonSheet) {
-                AddPersonView(
+                NewLifeReelView(
                     viewModel: viewModel,
                     isPresented: $showingAddPersonSheet,
                     onboardingMode: false
@@ -73,6 +112,8 @@ struct ContentView: View {
                     orientation = newOrientation
                 }
             }
+
+            // Full Screen Photo View
             .fullScreenCover(item: $fullScreenPhoto) { photo in
                 FullScreenPhotoView(
                     viewModel: viewModel,
@@ -94,10 +135,12 @@ struct ContentView: View {
                 print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
             }
         }
+
+        // Active Sheet
         .sheet(item: $activeSheet) { sheetType in
             switch sheetType {
             case .addPerson, .addPersonSheet:
-                AddPersonView(
+                NewLifeReelView(
                     viewModel: viewModel,
                     isPresented: Binding(
                         get: { activeSheet != nil },
@@ -124,6 +167,8 @@ struct ContentView: View {
                 EmptyView()
             }
         }
+
+        // Force view update when selected person changes
         .onChange(of: viewModel.selectedPerson) { _, _ in
             // Force view update when selected person changes
             viewModel.objectWillChange.send()
@@ -133,42 +178,74 @@ struct ContentView: View {
     }
 
     // Main view component
-    private var mainView: some View {
-        ZStack {
-            if let person = viewModel.selectedPerson ?? viewModel.people.first {
-                personDetailView(for: person)
-                    .id(person.id) // Add this line to force view refresh
-            } else {
-                Text("No person selected")
-            }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Button(action: {
-                    showingPeopleGrid = true
-                }) {
-                    HStack {
-                        Text(
-                            viewModel.selectedPerson?.name ?? viewModel.people.first?.name
-                                ?? "Select Person"
-                        )
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
+    private var mainView: AnyView {
+        if let person = viewModel.selectedPerson ?? viewModel.people.first {
+            return AnyView(
+                ZStack(alignment: .bottom) {
+                    PageViewController(
+                        pages: [
+                            AnyView(TimelineView(
+                                viewModel: viewModel,
+                                person: viewModel.bindingForPerson(person),
+                                selectedPhoto: $fullScreenPhoto,
+                                forceUpdate: false,
+                                sectionTitle: "All Photos",
+                                showScrubber: true
+                            )),
+                            AnyView(GridView(
+                                viewModel: viewModel,
+                                person: viewModel.bindingForPerson(person),
+                                selectedPhoto: $fullScreenPhoto,
+                                mode: .milestones,
+                                sectionTitle: nil,
+                                forceUpdate: false,
+                                showAge: true
+                            ))
+                        ],
+                        currentPage: $selectedTab,
+                        animationDirection: $animationDirection
+                    )
+                    .edgesIgnoringSafeArea(.all)
 
-                        ZStack {
-                            Circle()
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 20, height: 20)
-
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(.primary)
-                        }
-                    }
+                    BottomControls(
+                        shareAction: {
+                            viewModel.selectedPerson = person
+                            activeSheet = .shareView
+                        },
+                        addPhotoAction: {
+                            viewModel.selectedPerson = person
+                            showingImagePicker = true
+                        },
+                        selectedTab: $selectedTab,
+                        animationDirection: $animationDirection,
+                        options: ["person.crop.rectangle.stack", "square.grid.2x2"]
+                    )
                 }
-            }
+                .sheet(isPresented: $showingImagePicker) {
+                    ImagePicker(
+                        selectedAssets: $selectedAssets,
+                        isPresented: $showingImagePicker,
+                        onSelect: { assets in
+                            DispatchQueue.main.async {
+                                self.handleSelectedAssetsChange(assets)
+                            }
+                        }
+                    )
+                }
+                .onChange(of: selectedAssets) { _, newValue in
+                    print("selectedAssets changed. New count: \(newValue.count)")
+                }
+                .onChange(of: viewModel.selectedPerson) { _, _ in
+                    viewModel.objectWillChange.send()
+                }
+                .id(person.id) // Force view refresh when person changes
+            )
+        } else {
+            return AnyView(
+                ZStack {
+                    Text("No person selected")
+                }
+            )
         }
     }
 
@@ -196,97 +273,12 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showingAddPersonSheet) {
-            AddPersonView(
+            NewLifeReelView(
                 viewModel: viewModel,
                 isPresented: $showingAddPersonSheet,
                 onboardingMode: false
             )
         }
-    }
-
-    // Person detail view component
-    private func personDetailView(for person: Person) -> some View {
-        ZStack(alignment: .bottom) {
-            PageViewController(
-                pages: [
-                    AnyView(timelineViewForPerson(person)),
-                    AnyView(milestonesView(for: person)),
-                ],
-                currentPage: $selectedTab,
-                animationDirection: $animationDirection
-            )
-            .edgesIgnoringSafeArea(.all)
-
-            bottomControls(for: person)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(person.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                settingsButton(for: person)
-            }
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(
-                selectedAssets: $selectedAssets,
-                isPresented: $showingImagePicker,
-                onSelect: { assets in
-                    print("ImagePicker onSelect called with \(assets.count) assets")
-                    DispatchQueue.main.async {
-                        self.handleSelectedAssetsChange(assets)
-                    }
-                }
-            )
-        }
-        .onChange(of: selectedAssets) { _, newValue in
-            print("selectedAssets changed. New count: \(newValue.count)")
-        }
-        .onChange(of: viewModel.selectedPerson) { _, _ in
-            viewModel.objectWillChange.send()
-        }
-    }
-
-    private func timelineViewForPerson(_ person: Person) -> some View {
-        TimelineView(
-            viewModel: viewModel,
-            person: viewModel.bindingForPerson(person),
-            selectedPhoto: Binding(
-                get: { self.fullScreenPhoto },
-                set: {
-                    print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
-                    self.viewModel.selectedPerson = person
-                    self.fullScreenPhoto = $0
-                }
-            ),
-            forceUpdate: false,
-            sectionTitle: "All Photos",
-            showScrubber: true
-        )
-    }
-
-    private func milestonesView(for person: Person) -> some View {
-        GridView(
-            viewModel: viewModel,
-            person: viewModel.bindingForPerson(person),
-            selectedPhoto: Binding(
-                get: { self.fullScreenPhoto },
-                set: {
-                    print("Setting fullScreenPhoto: \($0?.id.uuidString ?? "nil")")
-                    self.viewModel.selectedPerson = person
-                    self.fullScreenPhoto = $0
-                }
-            ),
-            mode: .milestones,
-            sectionTitle: nil,
-            openImagePickerForMoment: { _, _ in },
-            forceUpdate: false,
-            showAge: true
-        )
     }
 
     private func getCurrentPhotos() -> [Photo] {
@@ -302,12 +294,14 @@ struct ContentView: View {
         }
     }
 
+    // Delete photo component
     private func deletePhoto(_ photo: Photo) {
         if let person = viewModel.selectedPerson {
             viewModel.deletePhoto(photo, from: person)
         }
     }
 
+    // Get current person binding component
     private func getCurrentPersonBinding() -> Binding<Person> {
         Binding(
             get: {
@@ -321,31 +315,22 @@ struct ContentView: View {
         )
     }
 
-    // Bottom controls component
-    private func bottomControls(for person: Person) -> some View {
-        BottomControls(
-            shareAction: {
-                viewModel.selectedPerson = person
-                activeSheet = .shareView
-            },
-            addPhotoAction: {
-                viewModel.selectedPerson = person
-                showingImagePicker = true
-            },
-            selectedTab: $selectedTab,
-            animationDirection: $animationDirection,
-            options: ["person.crop.rectangle.stack", "square.grid.2x2"]
-        )
-    }
-
     // Settings button component
-    private func settingsButton(for person: Person) -> some View {
-        NavigationLink(
-            destination: PersonSettingsView(
-                viewModel: viewModel, person: viewModel.bindingForPerson(person))
-        ) {
+    private var settingsButton: some View {
+        Button(action: {
+            isSettingsActive = true
+        }) {
             Image(systemName: "gearshape.fill")
                 .foregroundColor(.blue)
+        }
+    }
+
+    @ViewBuilder
+    private var settingsView: some View {
+        if let person = viewModel.selectedPerson ?? viewModel.people.first {
+            PersonSettingsView(viewModel: viewModel, person: viewModel.bindingForPerson(person))
+        } else {
+            Text("No person selected")
         }
     }
 
@@ -422,78 +407,7 @@ struct PersonGridItem: View {
     }
 }
 
-// Custom PageViewController for swipe navigation
-struct PageViewController: UIViewControllerRepresentable {
-    var pages: [AnyView]
-    @Binding var currentPage: Int
-    @Binding var animationDirection: UIPageViewController.NavigationDirection
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> UIPageViewController {
-        let pageViewController = UIPageViewController(
-            transitionStyle: .scroll,
-            navigationOrientation: .horizontal)
-        pageViewController.dataSource = context.coordinator
-        pageViewController.delegate = context.coordinator
-        return pageViewController
-    }
-
-    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
-        pageViewController.setViewControllers(
-            [context.coordinator.controllers[currentPage]],
-            direction: animationDirection,
-            animated: true)
-    }
-
-    class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
-        var parent: PageViewController
-        var controllers = [UIViewController]()
-
-        init(_ pageViewController: PageViewController) {
-            parent = pageViewController
-            controllers = parent.pages.map { UIHostingController(rootView: $0) }
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController,
-            viewControllerBefore viewController: UIViewController
-        ) -> UIViewController? {
-            guard let index = controllers.firstIndex(of: viewController) else { return nil }
-            if index == 0 {
-                return nil  // Return nil instead of the last controller
-            }
-            return controllers[index - 1]
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController,
-            viewControllerAfter viewController: UIViewController
-        ) -> UIViewController? {
-            guard let index = controllers.firstIndex(of: viewController) else { return nil }
-            if index + 1 == controllers.count {
-                return nil  // Return nil instead of the first controller
-            }
-            return controllers[index + 1]
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController, didFinishAnimating finished: Bool,
-            previousViewControllers: [UIViewController], transitionCompleted completed: Bool
-        ) {
-            if completed,
-                let visibleViewController = pageViewController.viewControllers?.first,
-                let index = controllers.firstIndex(of: visibleViewController)
-            {
-                parent.currentPage = index
-            }
-        }
-    }
-}
-
-// New AddPersonGridItem view
+// AddPersonGridItem view
 struct AddPersonGridItem: View {
     var body: some View {
         VStack {

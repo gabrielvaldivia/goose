@@ -19,17 +19,11 @@ struct TimelineView: View {
     @State private var photoUpdateTrigger = UUID()
     @State private var photosUpdateTrigger = UUID()
     @State private var currentAge: String = ""
-    @State private var scrollPosition: CGFloat = 0
     @State private var scrollViewHeight: CGFloat = 0
     @State private var timelineContentHeight: CGFloat = 0
     @State private var isDraggingTimeline: Bool = false
     @State private var indicatorPosition: CGFloat = 0
     @State private var scrubberHeight: CGFloat = 0
-    @State private var isScrolling: Bool = false
-    @State private var controlsOpacity: Double = 0
-    @State private var controlsTimer: Timer?
-    private let pillOffsetConstant: CGFloat = 10
-    private let handleHeight: CGFloat = 60
     @State private var isDraggingPill: Bool = false
     @State private var pillHeight: CGFloat = 0
     @State private var lastHapticIndex: Int = -1
@@ -38,6 +32,12 @@ struct TimelineView: View {
     @State private var blueLinePosition: CGFloat = 0
     private let agePillOffset: CGFloat = 15
     @State private var localPhotos: [Photo] = []
+    @State private var scrollViewProxy: ScrollViewProxy?
+    @State private var scrollOffset: CGPoint = .zero
+    @State private var scrollPosition: CGFloat = 0
+    @State private var isDragging: Bool = false
+    @State private var scrollTarget: Int?
+    @State private var isScrollingProgrammatically = false
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -51,11 +51,11 @@ struct TimelineView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
-                // Main scrollable content
-                CustomScrollView(
-                    content: {
-                        LazyVStack(spacing: 8) {
-                            ForEach(filteredPhotos()) { photo in
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        offsetReader
+                        LazyVStack(spacing: 10) {
+                            ForEach(Array(filteredPhotos().enumerated()), id: \.element.id) { index, photo in
                                 FilmReelItemView(
                                     photo: photo,
                                     person: person,
@@ -69,7 +69,7 @@ struct TimelineView: View {
                                         showDeleteAlert = true
                                     }
                                 )
-                                .id(photo.id)
+                                .id(index)
                             }
                         }
                         .id(photosUpdateTrigger)
@@ -86,8 +86,22 @@ struct TimelineView: View {
                         .onChange(of: person.photos) { _, _ in
                             photosUpdateTrigger = UUID()
                         }
-                    }, scrollPosition: $scrollPosition, isDraggingTimeline: $isDraggingTimeline
-                )
+                    }
+                    .scrollIndicators(.hidden)
+                    .coordinateSpace(name: "scroll")
+                    .onChange(of: scrollTarget) { _, newValue in
+                        if let target = newValue {
+                            isScrollingProgrammatically = true
+                            withAnimation(.linear(duration: 0.05)) {
+                                proxy.scrollTo(target, anchor: .top)
+                            }
+                            // Reset the flag after a short delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isScrollingProgrammatically = false
+                            }
+                        }
+                    }
+                }
                 .id(photoUpdateTrigger)
                 .background(
                     GeometryReader { scrollViewGeometry in
@@ -96,12 +110,6 @@ struct TimelineView: View {
                         }
                     }
                 )
-                .onChange(of: scrollPosition) { oldValue, newValue in
-                    updateCurrentAge()
-                    isScrolling = true
-                    controlsOpacity = 1  // Show controls when scrolling starts
-                    startControlsTimer()
-                }
 
                 // Timeline scrubber and age pill
                 if showScrubber {
@@ -123,36 +131,34 @@ struct TimelineView: View {
                                 }
                             })
 
-                        if isScrolling || isDraggingPill {
-                            AgePillView(age: currentAge)
-                                .padding(.trailing, timelineWidth + agePillPadding)
-                                .offset(y: blueLinePosition - pillHeight / 2 + agePillOffset)
-                                .background(
-                                    GeometryReader { pillGeometry in
-                                        Color.clear.onAppear {
-                                            pillHeight = pillGeometry.size.height
-                                        }
+                        AgePillView(age: currentAge)
+                            .padding(.trailing, timelineWidth + agePillPadding)
+                            .offset(y: blueLinePosition - pillHeight / 2 + agePillOffset)
+                            .background(
+                                GeometryReader { pillGeometry in
+                                    Color.clear.onAppear {
+                                        pillHeight = pillGeometry.size.height
                                     }
-                                )
-                                .gesture(
-                                    DragGesture()
-                                        .onChanged { value in
-                                            isDraggingPill = true
-                                            isDraggingTimeline = true
-                                            let dragPosition = value.location.y - agePillOffset
-                                            updateScrollPositionFromPill(dragPosition)
-                                            checkForHapticFeedback(dragPosition: dragPosition)
-                                        }
-                                        .onEnded { _ in
-                                            isDraggingPill = false
-                                            isDraggingTimeline = false
-                                            lastHapticIndex = -1
-                                        }
-                                )
-                        }
+                                }
+                            )
+                            .gesture(
+                                DragGesture()
+                                    .onChanged { value in
+                                        isDragging = true
+                                        isDraggingPill = true
+                                        isDraggingTimeline = true
+                                        let dragPosition = value.location.y - agePillOffset
+                                        updateScrollPositionFromPill(dragPosition)
+                                        checkForHapticFeedback(dragPosition: dragPosition)
+                                    }
+                                    .onEnded { _ in
+                                        isDragging = false
+                                        isDraggingPill = false
+                                        isDraggingTimeline = false
+                                        lastHapticIndex = -1
+                                    }
+                            )
                     }
-                    .opacity(controlsOpacity)
-                    .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
                 }
             }
         }
@@ -178,14 +184,6 @@ struct TimelineView: View {
                 secondaryButton: .cancel()
             )
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(person.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-            }
-        }
         .onChange(of: viewModel.mostRecentlyAddedPhoto) { _, newPhoto in
             if let newPhoto = newPhoto {
                 DispatchQueue.main.async {
@@ -204,11 +202,28 @@ struct TimelineView: View {
         }
     }
 
+    private var offsetReader: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .preference(
+                    key: ScrollOffsetPreferenceKey.self,
+                    value: proxy.frame(in: .named("scroll")).origin
+                )
+        }
+        .frame(height: 0)
+        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+            if !isDragging && !isScrollingProgrammatically {
+                scrollOffset = value
+                scrollPosition = -value.y
+                updateCurrentAge()
+            }
+        }
+    }
+
     // Helper methods
     private func updateCurrentAge() {
-        let visiblePhotoIndex = Int(
-            scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))
         let photos = filteredPhotos()
+        let visiblePhotoIndex = min(max(0, Int(scrollPosition / (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth))), photos.count - 1)
         if visiblePhotoIndex < photos.count {
             let visiblePhoto = photos[visiblePhotoIndex]
             currentAge = PhotoUtils.sectionForPhoto(visiblePhoto, person: person)
@@ -224,7 +239,7 @@ struct TimelineView: View {
                     return false
                 }
             }
-            
+
             if let title = sectionTitle, title != "All Photos" {
                 return PhotoUtils.sectionForPhoto(photo, person: person) == title
             }
@@ -237,30 +252,19 @@ struct TimelineView: View {
         photos.sorted { $0.dateTaken > $1.dateTaken }
     }
 
-    private func startControlsTimer() {
-        controlsTimer?.invalidate()
-
-        controlsTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { timer in
-            withAnimation(.easeOut(duration: 0.5)) {
-                controlsOpacity = 0
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isScrolling = false
-            }
-        }
-    }
-
     private func updateScrollPositionFromPill(_ dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(
-            0, min(1, (dragPosition - verticalPadding + agePillOffset) / availableHeight))
-        scrollPosition = progress * (timelineContentHeight - scrollViewHeight)
+        let progress = max(0, min(1, (dragPosition - verticalPadding) / availableHeight))
+        let photos = filteredPhotos()
+        let targetIndex = Int(progress * CGFloat(photos.count - 1))
+        scrollTarget = targetIndex
+        scrollPosition = CGFloat(targetIndex) * (UIScreen.main.bounds.width - 2 * horizontalPadding - timelineWidth)
+        updateCurrentAge()
     }
 
     private func checkForHapticFeedback(dragPosition: CGFloat) {
         let availableHeight = scrubberHeight - verticalPadding - bottomPadding
-        let progress = max(
-            0, min(1, (dragPosition - verticalPadding + agePillOffset) / availableHeight))
+        let progress = max(0, min(1, (dragPosition - verticalPadding) / availableHeight))
         let currentIndex = Int(round(progress * CGFloat(filteredPhotos().count - 1)))
 
         if currentIndex != lastHapticIndex {
@@ -270,64 +274,10 @@ struct TimelineView: View {
     }
 }
 
-// Custom scroll view implementation for the timeline
-struct CustomScrollView<Content: View>: UIViewRepresentable {
-    let content: Content
-    @Binding var scrollPosition: CGFloat
-    @Binding var isDraggingTimeline: Bool
-
-    init(
-        @ViewBuilder content: () -> Content, scrollPosition: Binding<CGFloat>,
-        isDraggingTimeline: Binding<Bool>
-    ) {
-        self.content = content()
-        self._scrollPosition = scrollPosition
-        self._isDraggingTimeline = isDraggingTimeline
-    }
-
-    func makeUIView(context: Context) -> UIScrollView {
-        let scrollView = UIScrollView()
-        scrollView.delegate = context.coordinator
-        scrollView.showsVerticalScrollIndicator = false
-        scrollView.decelerationRate = .normal
-        let hostView = UIHostingController(rootView: content)
-        hostView.view.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(hostView.view)
-
-        NSLayoutConstraint.activate([
-            hostView.view.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            hostView.view.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            hostView.view.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            hostView.view.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            hostView.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-        ])
-
-        return scrollView
-    }
-
-    func updateUIView(_ uiView: UIScrollView, context: Context) {
-        if isDraggingTimeline {
-            uiView.setContentOffset(CGPoint(x: 0, y: scrollPosition), animated: false)
-        }
-        uiView.subviews.first?.setNeedsLayout()
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, UIScrollViewDelegate {
-        var parent: CustomScrollView
-
-        init(_ parent: CustomScrollView) {
-            self.parent = parent
-        }
-
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            if !parent.isDraggingTimeline {
-                parent.scrollPosition = scrollView.contentOffset.y
-            }
-        }
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
+        value = nextValue()
     }
 }
 
@@ -411,7 +361,6 @@ struct FilmReelItemView: View {
             }
         }
         .frame(width: itemWidth, height: itemWidth)
-        .padding(.vertical, 2)
         .onTapGesture {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             selectedPhoto = photo
@@ -451,6 +400,106 @@ struct FilmReelItemView: View {
                 }
             }
         }
+    }
+}
+
+// Timeline scrubber
+struct TimelineScrubber: View {
+    let photos: [Photo]
+    @Binding var scrollPosition: CGFloat
+    let contentHeight: CGFloat
+    @Binding var isDraggingTimeline: Bool
+    @Binding var indicatorPosition: CGFloat
+    @Binding var blueLinePosition: CGFloat
+    @State private var lastHapticIndex: Int = -1
+
+    private let tapAreaSize: CGFloat = 20
+    private let lineWidth: CGFloat = 8
+    private let lineHeight: CGFloat = 1
+    private let bottomPadding: CGFloat = 100
+    private let topPadding: CGFloat = 0
+    private let handleHeight: CGFloat = 60
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .topTrailing) {
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: tapAreaSize)
+
+                ForEach(photos.indices, id: \.self) { index in
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: lineWidth, height: lineHeight)
+                        .offset(y: photoOffset(for: index, in: geometry))
+                }
+
+                ScrubberHandle(tapAreaSize: tapAreaSize)
+                    .offset(y: indicatorPosition - handleHeight / 2)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                handleDrag(value, in: geometry)
+                                blueLinePosition = indicatorPosition
+                            }
+                            .onEnded { _ in
+                                endDrag()
+                            }
+                    )
+            }
+            .padding(.top, topPadding)
+            .padding(.bottom, bottomPadding)
+            .onAppear {
+                updateIndicatorPosition(in: geometry)
+            }
+            .onChange(of: scrollPosition) { oldValue, newValue in
+                updateIndicatorPosition(in: geometry)
+                blueLinePosition = indicatorPosition
+            }
+        }
+    }
+
+    private func photoOffset(for index: Int, in geometry: GeometryProxy) -> CGFloat {
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        return (CGFloat(index) / CGFloat(photos.count - 1)) * availableHeight + topPadding
+    }
+
+    private func updateIndicatorPosition(in geometry: GeometryProxy) {
+        let scrollPercentage = min(
+            1, max(0, scrollPosition / max(1, contentHeight - geometry.size.height)))
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        indicatorPosition = scrollPercentage * availableHeight + topPadding
+    }
+
+    private func handleDrag(_ value: DragGesture.Value, in geometry: GeometryProxy) {
+        isDraggingTimeline = true
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        let dragPercentage = value.translation.height / availableHeight
+        let currentScrollPercentage = scrollPosition / max(1, contentHeight - geometry.size.height)
+        let newScrollPercentage = min(1, max(0, currentScrollPercentage + dragPercentage))
+        scrollPosition = newScrollPercentage * max(1, contentHeight - geometry.size.height)
+
+        checkForHapticFeedback(in: geometry)
+    }
+
+    private func endDrag() {
+        isDraggingTimeline = false
+        lastHapticIndex = -1
+    }
+
+    private func checkForHapticFeedback(in geometry: GeometryProxy) {
+        let currentIndex = getCurrentPhotoIndex(in: geometry)
+        if currentIndex != lastHapticIndex {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            lastHapticIndex = currentIndex
+        }
+    }
+
+    private func getCurrentPhotoIndex(in geometry: GeometryProxy) -> Int {
+        let availableHeight = geometry.size.height - bottomPadding - topPadding
+        let currentPosition = indicatorPosition - topPadding
+        let percentage = currentPosition / availableHeight
+        return Int(round(percentage * CGFloat(photos.count - 1)))
     }
 }
 
