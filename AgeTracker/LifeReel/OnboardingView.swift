@@ -54,13 +54,11 @@ struct OnboardingView: View {
                 .padding(.vertical, 40)
             
             TabView {
-                tourPage(description: "Relive the joy of watching your loved ones grow", imageName: "onboarding-welcome")
+                tourPage(description: "Relive the joy of watching your loved ones grow up", imageName: "onboarding-welcome")
                 tourPage(description: "Upload a photo, see the age—it's that simple!", imageName: "onboarding-age")
                 tourPage(description: "Time travel through your favorite moments", imageName: "onboarding-organize")
                 tourPage(description: "Share stunning slideshows of cherished memories", imageName: "onboarding-share")
                 tourPage(description: "Get reminders to capture key milestones", imageName: "onboarding-reminders")
-                tourPage(description: "Perfect for your children, pets, and beyond", imageName: "onboarding-get-started")
-
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
             .ignoresSafeArea()
@@ -99,7 +97,8 @@ struct OnboardingView: View {
 
 
                 Text(description)
-                    .font(.title)
+                    .font(.title2)
+                    .fontWeight(.medium)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                     .padding(.top, 20)

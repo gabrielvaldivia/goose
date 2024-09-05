@@ -138,7 +138,7 @@ struct PersonSettingsView: View {
                 }
             }
 
-            Section(header: Text("Onboarding")) {
+            Section(header: Text("Internal")) {
                 Button("Replay Onboarding") {
                     showOnboarding = true
                 }
