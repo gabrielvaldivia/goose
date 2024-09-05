@@ -109,16 +109,6 @@ class PersonViewModel: ObservableObject {
         return AgeCalculator.calculate(for: person, at: date).toString()
     }
 
-    // func updatePerson(_ person: Person) {
-    //     if let index = people.firstIndex(where: { $0.id == person.id }) {
-    //         people[index] = person
-    //     } else {
-    //         people.append(person)
-    //     }
-    //     savePeople()
-    //     objectWillChange.send()
-    // }
-
     func updatePerson(_ updatedPerson: Person) {
         if let index = people.firstIndex(where: { $0.id == updatedPerson.id }) {
             people[index] = updatedPerson

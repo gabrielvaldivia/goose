@@ -49,6 +49,16 @@ struct FullScreenPhotoView: View {
         }
     }
 
+    private var filteredPhotos: [Photo] {
+        return photos.filter { photo in
+            if person.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return !age.isPregnancy
+            }
+            return true
+        }
+    }
+
     init(
         viewModel: PersonViewModel,
         photo: Photo, currentIndex: Int, photos: Binding<[Photo]>,
@@ -56,10 +66,21 @@ struct FullScreenPhotoView: View {
     ) {
         self.viewModel = viewModel
         self._photo = Binding(get: { photo }, set: { _ in })
-        self._currentIndex = State(initialValue: currentIndex)
         self._photos = photos
         self.onDelete = onDelete
         self._person = person
+
+        // Find the correct index in filteredPhotos
+        let filteredPhotos = photos.wrappedValue.filter { p in
+            if person.wrappedValue.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person.wrappedValue, at: p.dateTaken)
+                return !age.isPregnancy
+            }
+            return true
+        }
+        self._currentIndex = State(
+            initialValue: filteredPhotos.firstIndex(where: { $0.id == photo.id }) ?? 0)
+
         self._selectedAge = State(
             initialValue: AgeCalculator.calculate(for: person.wrappedValue, at: photo.dateTaken))
         self._selectedDate = State(initialValue: photo.dateTaken)
@@ -70,7 +91,10 @@ struct FullScreenPhotoView: View {
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
 
-                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                if !filteredPhotos.isEmpty,
+                    let currentPhoto = filteredPhotos.indices.contains(currentIndex)
+                        ? filteredPhotos[currentIndex] : nil
+                {
                     // Photo Display
                     GeometryReader { imageGeometry in
                         if let image = currentPhoto.image {
@@ -78,7 +102,8 @@ struct FullScreenPhotoView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(
-                                    width: imageGeometry.size.width, height: imageGeometry.size.height
+                                    width: imageGeometry.size.width,
+                                    height: imageGeometry.size.height
                                 )
                                 .scaleEffect(scale)
                                 .offset(dragOffset)
@@ -178,12 +203,15 @@ struct FullScreenPhotoView: View {
                 }
 
                 // Controls Overlay
-                if !photos.isEmpty, let currentPhoto = photos.indices.contains(currentIndex) ? photos[currentIndex] : nil {
+                if !filteredPhotos.isEmpty,
+                    let currentPhoto = filteredPhotos.indices.contains(currentIndex)
+                        ? filteredPhotos[currentIndex] : nil
+                {
                     ControlsOverlay(
                         showControls: showControls,
                         person: person,
                         photo: currentPhoto,
-                        photos: photos,
+                        photos: filteredPhotos,
                         onClose: {
                             presentationMode.wrappedValue.dismiss()
                         },
@@ -194,7 +222,7 @@ struct FullScreenPhotoView: View {
                             showDeleteConfirmation = true
                         },
                         currentIndex: $currentIndex,
-                        totalPhotos: photos.count,
+                        totalPhotos: filteredPhotos.count,
                         onScrub: { newIndex in
                             currentIndex = newIndex
                             resetZoomAndPan()
@@ -213,13 +241,7 @@ struct FullScreenPhotoView: View {
             print("Photos updated notification received, triggering view refresh")
         }
         .onChange(of: photos) { oldValue, newValue in
-            print("Photos array changed. Old count: \(oldValue.count), New count: \(newValue.count)")
-            if currentIndex >= newValue.count {
-                currentIndex = newValue.count - 1
-            } else {
-                currentIndex = findNewIndexForCurrentPhoto(oldPhotos: oldValue, newPhotos: newValue)
-            }
-            print("Current index updated to: \(currentIndex)")
+            updateCurrentIndexAfterPhotoChange(oldPhotos: oldValue, newPhotos: newValue)
         }
         // Animation on Appear
         .onAppear {
@@ -233,9 +255,9 @@ struct FullScreenPhotoView: View {
             case .shareView:
                 NavigationView {
                     SharePhotoView(
-                        image: photos[currentIndex].image ?? UIImage(),
+                        image: filteredPhotos[currentIndex].image ?? UIImage(),
                         name: person.name,
-                        age: calculateAge(for: person, at: photos[currentIndex].dateTaken),
+                        age: calculateAge(for: person, at: filteredPhotos[currentIndex].dateTaken),
                         isShareSheetPresented: $isShareSheetPresented,
                         activityItems: $activityItems
                     )
@@ -252,7 +274,7 @@ struct FullScreenPhotoView: View {
                 title: Text("Remove Photo"),
                 message: Text("Are you sure you want to remove this photo?"),
                 primaryButton: .destructive(Text("Remove")) {
-                    viewModel.deletePhoto(photos[currentIndex], from: $person)
+                    viewModel.deletePhoto(filteredPhotos[currentIndex], from: $person)
                     if currentIndex > 0 {
                         currentIndex -= 1
                     } else {
@@ -277,7 +299,7 @@ struct FullScreenPhotoView: View {
     }
 
     private func limitOffset(_ offset: CGSize, geometry: GeometryProxy) -> CGSize {
-        guard let image = photos[currentIndex].image else { return .zero }
+        guard let image = filteredPhotos[currentIndex].image else { return .zero }
 
         let imageSize = image.size
         let viewSize = geometry.size
@@ -308,7 +330,7 @@ struct FullScreenPhotoView: View {
 
     private func goToNextPhoto() {
         withAnimation(.spring()) {
-            if currentIndex < photos.count - 1 {
+            if currentIndex < filteredPhotos.count - 1 {
                 currentIndex += 1
             }
         }
@@ -340,22 +362,41 @@ struct FullScreenPhotoView: View {
 
     private func updatePhotoDate(_ newDate: Date) {
         let updatedPerson = viewModel.updatePhotoDate(
-            person: person, photo: photos[currentIndex], newDate: newDate)
+            person: person, photo: filteredPhotos[currentIndex], newDate: newDate)
         person = updatedPerson
         photos = person.photos  // Update the photos array to reflect the new order
-        if let newIndex = photos.firstIndex(where: { $0.id == photos[currentIndex].id }) {
+        if let newIndex = photos.firstIndex(where: { $0.id == filteredPhotos[currentIndex].id }) {
             currentIndex = newIndex
         }
-        print("Photo date updated. New photos count: \(photos.count), Current index: \(currentIndex)")
+        print(
+            "Photo date updated. New photos count: \(photos.count), Current index: \(currentIndex)")
     }
 
-    private func findNewIndexForCurrentPhoto(oldPhotos: [Photo], newPhotos: [Photo]) -> Int {
-        guard currentIndex < oldPhotos.count else { return 0 }
-        let currentPhotoId = oldPhotos[currentIndex].id
-        if let newIndex = newPhotos.firstIndex(where: { $0.id == currentPhotoId }) {
-            return newIndex
+    private func updateCurrentIndexAfterPhotoChange(oldPhotos: [Photo], newPhotos: [Photo]) {
+        let oldFilteredPhotos = oldPhotos.filter { photo in
+            if person.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return !age.isPregnancy
+            }
+            return true
         }
-        return min(currentIndex, newPhotos.count - 1)
+
+        let newFilteredPhotos = newPhotos.filter { photo in
+            if person.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return !age.isPregnancy
+            }
+            return true
+        }
+
+        if currentIndex >= newFilteredPhotos.count {
+            currentIndex = newFilteredPhotos.count - 1
+        } else if currentIndex < oldFilteredPhotos.count {
+            let currentPhotoId = oldFilteredPhotos[currentIndex].id
+            if let newIndex = newFilteredPhotos.firstIndex(where: { $0.id == currentPhotoId }) {
+                currentIndex = newIndex
+            }
+        }
     }
 }
 
@@ -417,7 +458,7 @@ private struct ControlsOverlay: View {
 
             Spacer()
 
-            // Bottom Bar with Share, Age, Delete, and Scrubber
+            // Bottom Bar with Share, Age, Options, and Scrubber
             VStack(spacing: 16) {
                 // Only show scrubber if there are at least 2 photos
                 if photos.count >= 2 {
@@ -468,12 +509,32 @@ private struct ControlsOverlay: View {
                             }
                     }
                     Spacer()
-                    CircularButton(
-                        systemName: "trash",
-                        action: onDelete,
-                        size: 40,
-                        blurEffect: true
-                    )
+                    Menu {
+                        Button {
+                            showDatePicker = true
+                        } label: {
+                            Label("Edit Date", systemImage: "calendar")
+                        }
+
+                        Button {
+                            showAgePicker = true
+                        } label: {
+                            Label("Edit Age", systemImage: "person.crop.circle")
+                        }
+
+                        Button(role: .destructive) {
+                            onDelete()
+                        } label: {
+                            Label("Remove Photo", systemImage: "trash")
+                        }
+                    } label: {
+                        CircularButton(
+                            systemName: "ellipsis",
+                            action: {},
+                            size: 40,
+                            blurEffect: true
+                        )
+                    }
                 }
             }
             .padding(.horizontal, 20)

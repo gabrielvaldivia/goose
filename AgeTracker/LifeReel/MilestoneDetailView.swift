@@ -121,8 +121,13 @@ struct MilestoneDetailView: View {
     }
 
     private func photosForCurrentSection() -> [Photo] {
-        let filteredPhotos = person.photos.filter {
-            PhotoUtils.sectionForPhoto($0, person: person) == sectionTitle
+        let filteredPhotos = person.photos.filter { photo in
+            let shouldInclude = PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
+            if person.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return shouldInclude && !age.isPregnancy
+            }
+            return shouldInclude
         }
         return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
     }
