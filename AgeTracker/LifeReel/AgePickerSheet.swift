@@ -84,7 +84,7 @@ struct AgePickerSheet: View {
                     isPresented = false
                 }
             )
-            .navigationBarTitle("Change Age", displayMode: .inline)
+            .navigationBarTitle("Select Age", displayMode: .inline)
         }
     }
 
