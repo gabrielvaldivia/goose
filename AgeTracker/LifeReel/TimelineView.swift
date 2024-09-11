@@ -60,7 +60,7 @@ struct TimelineView: View {
                             offsetReader
                             LazyVStack(spacing: 10) {
                                 ForEach(Array(filteredPhotos().enumerated()), id: \.element.id) { index, photo in
-                                    FilmReelItemView(
+                                    PhotoItemView(
                                         photo: photo,
                                         person: person,
                                         selectedPhoto: $selectedPhoto,
@@ -352,7 +352,7 @@ struct AgePillView: View {
 }
 
 // View representing a single photo item in the timeline
-struct FilmReelItemView: View {
+struct PhotoItemView: View {
     let photo: Photo
     let person: Person
     @Binding var selectedPhoto: Photo?

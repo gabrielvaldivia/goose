@@ -136,11 +136,11 @@ struct ContentView: View {
                 }
             }
             .onChange(of: fullScreenPhoto) { _, newValue in
-                print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
-                print("Selected person: \(viewModel.selectedPerson?.name ?? "None")")
-                print(
-                    "Total photos for selected person: \(viewModel.selectedPerson?.photos.count ?? 0)"
-                )
+                // print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
+                // print("Selected person: \(viewModel.selectedPerson?.name ?? "None")")
+                // print(
+                //     "Total photos for selected person: \(viewModel.selectedPerson?.photos.count ?? 0)"
+                // )
             }
         }
 
@@ -252,7 +252,7 @@ struct ContentView: View {
                     )
                 }
                 .onChange(of: selectedAssets) { _, newValue in
-                    print("selectedAssets changed. New count: \(newValue.count)")
+                    // print("selectedAssets changed. New count: \(newValue.count)")
                 }
                 .onChange(of: viewModel.selectedPerson) { _, _ in
                     viewModel.objectWillChange.send()
@@ -306,9 +306,9 @@ struct ContentView: View {
             return []
         }
         let photos = selectedPerson.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        print("Number of photos in getCurrentPhotos(): \(photos.count)")
-        print("Selected person: \(selectedPerson.name)")
-        print("Total people in viewModel: \(viewModel.people.count)")
+        // print("Number of photos in getCurrentPhotos(): \(photos.count)")
+        // print("Selected person: \(selectedPerson.name)")
+        // print("Total people in viewModel: \(viewModel.people.count)")
         return photos
     }
 
@@ -363,9 +363,9 @@ struct ContentView: View {
 
     // Handle selected assets change
     private func handleSelectedAssetsChange(_ assets: [PHAsset]) {
-        print("handleSelectedAssetsChange called. Assets count: \(assets.count)")
+        // print("handleSelectedAssetsChange called. Assets count: \(assets.count)")
         guard !assets.isEmpty else {
-            print("No assets selected")
+            // print("No assets selected")
             return
         }
 
