@@ -38,6 +38,9 @@ struct TimelineView: View {
     @State private var isDragging: Bool = false
     @State private var scrollTarget: Int?
     @State private var isScrollingProgrammatically = false
+    @State private var isScrolling: Bool = false
+    @State private var showScrubberAndPill: Bool = true
+    @State private var hideTimer: Timer?
 
     // Layout constants
     private let timelineWidth: CGFloat = 20
@@ -102,6 +105,9 @@ struct TimelineView: View {
                                 }
                             }
                         }
+                        .onAppear {
+                            scrollViewProxy = proxy
+                        }
                     }
                     .id(photoUpdateTrigger)
                     .background(
@@ -111,9 +117,12 @@ struct TimelineView: View {
                             }
                         }
                     )
+                    .onChange(of: scrollOffset) { _, _ in
+                        handleScrollChange()
+                    }
 
                     // Timeline scrubber and age pill
-                    if showScrubber {
+                    if showScrubber && showScrubberAndPill {
                         ZStack(alignment: .topTrailing) {
                             TimelineScrubber(
                                 photos: filteredPhotos(),
@@ -145,7 +154,7 @@ struct TimelineView: View {
                                 .gesture(
                                     DragGesture()
                                         .onChanged { value in
-                                            isDragging = true
+                                            handleDragChange()
                                             isDraggingPill = true
                                             isDraggingTimeline = true
                                             let dragPosition = value.location.y - agePillOffset
@@ -153,13 +162,15 @@ struct TimelineView: View {
                                             checkForHapticFeedback(dragPosition: dragPosition)
                                         }
                                         .onEnded { _ in
-                                            isDragging = false
+                                            handleDragEnd()
                                             isDraggingPill = false
                                             isDraggingTimeline = false
                                             lastHapticIndex = -1
                                         }
                                 )
                         }
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: showScrubberAndPill)
                     }
                 }
             }
@@ -280,6 +291,32 @@ struct TimelineView: View {
         if currentIndex != lastHapticIndex {
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             lastHapticIndex = currentIndex
+        }
+    }
+
+    private func handleScrollChange() {
+        isScrolling = true
+        showScrubberAndPill = true
+        resetHideTimer()
+    }
+
+    private func handleDragChange() {
+        isDragging = true
+        showScrubberAndPill = true
+        resetHideTimer()
+    }
+
+    private func handleDragEnd() {
+        isDragging = false
+        resetHideTimer()
+    }
+
+    private func resetHideTimer() {
+        hideTimer?.invalidate()
+        hideTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+            withAnimation {
+                showScrubberAndPill = false
+            }
         }
     }
 }

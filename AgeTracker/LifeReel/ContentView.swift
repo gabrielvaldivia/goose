@@ -138,7 +138,9 @@ struct ContentView: View {
             .onChange(of: fullScreenPhoto) { _, newValue in
                 print("fullScreenPhoto changed: \(newValue?.id.uuidString ?? "nil")")
                 print("Selected person: \(viewModel.selectedPerson?.name ?? "None")")
-                print("Total photos for selected person: \(viewModel.selectedPerson?.photos.count ?? 0)")
+                print(
+                    "Total photos for selected person: \(viewModel.selectedPerson?.photos.count ?? 0)"
+                )
             }
         }
 
@@ -185,10 +187,10 @@ struct ContentView: View {
             if viewModel.selectedPerson == nil {
                 viewModel.selectedPerson = viewModel.people.first
             }
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            UINavigationBar.appearance().standardAppearance = appearance
-            UINavigationBar.appearance().scrollEdgeAppearance = appearance
+            // let appearance = UINavigationBarAppearance()
+            // appearance.configureWithOpaqueBackground()
+            // UINavigationBar.appearance().standardAppearance = appearance
+            // UINavigationBar.appearance().scrollEdgeAppearance = appearance
         }
     }
 
