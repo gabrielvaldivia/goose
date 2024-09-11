@@ -185,6 +185,10 @@ struct ContentView: View {
             if viewModel.selectedPerson == nil {
                 viewModel.selectedPerson = viewModel.people.first
             }
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            UINavigationBar.appearance().standardAppearance = appearance
+            UINavigationBar.appearance().scrollEdgeAppearance = appearance
         }
     }
 

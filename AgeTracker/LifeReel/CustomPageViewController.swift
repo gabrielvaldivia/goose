@@ -27,10 +27,13 @@ struct PageViewController: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
-        pageViewController.setViewControllers(
-            [context.coordinator.controllers[currentPage]],
-            direction: animationDirection,
-            animated: true)
+        let currentController = context.coordinator.controllers[currentPage]
+        if pageViewController.viewControllers?.first != currentController {
+            pageViewController.setViewControllers(
+                [currentController],
+                direction: animationDirection,
+                animated: true)
+        }
     }
 
     class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
@@ -47,10 +50,7 @@ struct PageViewController: UIViewControllerRepresentable {
             viewControllerBefore viewController: UIViewController
         ) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
-            if index == 0 {
-                return nil  // Return nil instead of the last controller
-            }
-            return controllers[index - 1]
+            return index > 0 ? controllers[index - 1] : nil
         }
 
         func pageViewController(
@@ -58,10 +58,7 @@ struct PageViewController: UIViewControllerRepresentable {
             viewControllerAfter viewController: UIViewController
         ) -> UIViewController? {
             guard let index = controllers.firstIndex(of: viewController) else { return nil }
-            if index + 1 == controllers.count {
-                return nil  // Return nil instead of the first controller
-            }
-            return controllers[index + 1]
+            return index < controllers.count - 1 ? controllers[index + 1] : nil
         }
 
         func pageViewController(
