@@ -409,18 +409,19 @@ struct PersonGridItem: View {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 80, height: 80)
+                    .frame(width: 100, height: 100)
                     .clipShape(Circle())
             } else {
                 Image(systemName: "person.circle.fill")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 80, height: 80)
+                    .frame(width: 100, height: 100)
                     .foregroundColor(.gray)
             }
 
             Text(person.name)
-                .font(.caption)
+                .font(.subheadline)
+                .fontWeight(.medium)
                 .lineLimit(1)
                 .foregroundColor(.primary)
         }
@@ -439,7 +440,7 @@ struct AddPersonGridItem: View {
             ZStack {
                 Circle()
                     .fill(Color.blue.opacity(0.1))
-                    .frame(width: 80, height: 80)
+                    .frame(width: 100, height: 100)
 
                 Image(systemName: "plus")
                     .resizable()
@@ -448,8 +449,9 @@ struct AddPersonGridItem: View {
                     .foregroundColor(.blue)
             }
 
-            Text("New Life Reel")
-                .font(.caption)
+            Text("New")
+                .font(.subheadline)
+                .fontWeight(.medium)
                 .lineLimit(1)
                 .foregroundColor(.primary)
         }
