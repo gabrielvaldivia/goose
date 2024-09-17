@@ -9,8 +9,6 @@ struct ContentView: View {
     @State private var showingAddPerson = false
     @State private var showOnboarding = false
     @State private var showPeopleSheet = false
-    @State private var selectedTab = 0
-    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var showingAddPersonSheet = false
     @State private var showingImagePicker = false
     @State private var activeSheet: ActiveSheet?
@@ -20,6 +18,8 @@ struct ContentView: View {
     @State private var orientation = UIDeviceOrientation.unknown
     @State private var fullScreenPhoto: Photo?
     @State private var isSettingsActive = false
+    @State private var selectedMilestone: String?
+    @State private var showingSlideshowSheet = false
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -43,14 +43,45 @@ struct ContentView: View {
                         OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
                     } else {
                         mainView
+
+                        VStack {
+                            Spacer()
+                            Button(action: {
+                                showingSlideshowSheet = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.system(size: 20))
+                                    Text("Slideshow")
+                                        .fontWeight(.semibold)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(25)
+                                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                            }
+                        }
                     }
                 }
 
                 // Navigation Bar
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        CircularButton(
+                            systemName: "gearshape.fill",
+                            action: {
+                                isSettingsActive = true
+                            },
+                            size: 32,
+                            backgroundColor: Color(.secondarySystemBackground),
+                            iconColor: .primary,
+                            blurEffect: false
+                        )
+                    }
 
-                    // Person Name
                     ToolbarItem(placement: .principal) {
                         Button(action: {
                             showingPeopleGrid = true
@@ -77,9 +108,17 @@ struct ContentView: View {
                         }
                     }
 
-                    // Settings Button
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        settingsButton
+                        CircularButton(
+                            systemName: "plus",
+                            action: {
+                                showingImagePicker = true
+                            },
+                            size: 32,
+                            backgroundColor: Color(.secondarySystemBackground),
+                            iconColor: .primary,
+                            blurEffect: false
+                        )
                     }
                 }
                 .background(
@@ -119,11 +158,15 @@ struct ContentView: View {
                     FullScreenPhotoView(
                         viewModel: viewModel,
                         photo: photo,
-                        currentIndex: getCurrentPhotos().firstIndex(of: photo) ?? 0,
+                        currentIndex: selectedPerson.photos.firstIndex(of: photo) ?? 0,
                         photos: Binding(
-                            get: { self.getCurrentPhotos() },
+                            get: { selectedPerson.photos },
                             set: { newPhotos in
-                                self.updatePhotos(newPhotos)
+                                if let index = viewModel.people.firstIndex(where: {
+                                    $0.id == selectedPerson.id
+                                }) {
+                                    viewModel.people[index].photos = newPhotos
+                                }
                             }
                         ),
                         onDelete: { photoToDelete in
@@ -176,94 +219,86 @@ struct ContentView: View {
             }
         }
 
+        .sheet(isPresented: $showingSlideshowSheet) {
+            if let person = viewModel.selectedPerson {
+                ShareSlideshowView(
+                    photos: person.photos,
+                    person: person,
+                    sectionTitle: "All Photos"
+                )
+            } else {
+                Text("No person selected")
+            }
+        }
+
         // Force view update when selected person changes
         .onChange(of: viewModel.selectedPerson) { _, _ in
             // Force view update when selected person changes
             viewModel.objectWillChange.send()
-            // Reset the selected tab to the timeline view
-            selectedTab = 0
         }
         .onAppear {
             if viewModel.selectedPerson == nil {
                 viewModel.selectedPerson = viewModel.people.first
             }
-            // let appearance = UINavigationBarAppearance()
-            // appearance.configureWithOpaqueBackground()
-            // UINavigationBar.appearance().standardAppearance = appearance
-            // UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        }
+
+        // ImagePicker sheet
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(
+                selectedAssets: $selectedAssets,
+                isPresented: $showingImagePicker,
+                onSelect: { assets in
+                    handleSelectedAssetsChange(assets)
+                }
+            )
+            .edgesIgnoringSafeArea(.all)
         }
     }
 
     // Main view component
-    private var mainView: AnyView {
+    private var mainView: some View {
         if let person = viewModel.selectedPerson ?? viewModel.people.first {
-            return AnyView(
-                ZStack(alignment: .bottom) {
-                    PageViewController(
-                        pages: [
-                            AnyView(
-                                TimelineView(
-                                    viewModel: viewModel,
-                                    person: viewModel.bindingForPerson(person),
-                                    selectedPhoto: $fullScreenPhoto,
-                                    forceUpdate: false,
-                                    sectionTitle: "All Photos",
-                                    showScrubber: true
-                                )),
-                            AnyView(
-                                GridView(
-                                    viewModel: viewModel,
-                                    person: viewModel.bindingForPerson(person),
-                                    selectedPhoto: $fullScreenPhoto,
-                                    mode: .milestones,
-                                    sectionTitle: nil,
-                                    forceUpdate: false,
-                                    showAge: true
-                                )),
-                        ],
-                        currentPage: $selectedTab,
-                        animationDirection: $animationDirection
-                    )
-                    .edgesIgnoringSafeArea(.all)
+            AnyView(
+                NavigationStack {
+                    GeometryReader { geometry in
+                        let width = geometry.size.width
+                        let itemWidth = (width - 48) / 2  // 48 = 3 * 16 (left, middle, and right padding)
 
-                    BottomControls(
-                        shareAction: {
-                            viewModel.selectedPerson = person
-                            activeSheet = .shareView
-                        },
-                        addPhotoAction: {
-                            viewModel.selectedPerson = person
-                            showingImagePicker = true
-                        },
-                        selectedTab: $selectedTab,
-                        animationDirection: $animationDirection,
-                        options: ["person.crop.rectangle.stack", "square.grid.2x2"]
-                    )
-                }
-                .sheet(isPresented: $showingImagePicker) {
-                    ImagePicker(
-                        selectedAssets: $selectedAssets,
-                        isPresented: $showingImagePicker,
-                        onSelect: { assets in
-                            DispatchQueue.main.async {
-                                self.handleSelectedAssetsChange(assets)
+                        ScrollView {
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.fixed(itemWidth), spacing: 16),
+                                    GridItem(.fixed(itemWidth), spacing: 16),
+                                ],
+                                spacing: 24
+                            ) {
+                                ForEach(getMilestones(for: person), id: \.0) { milestone, photos in
+                                    NavigationLink(
+                                        destination: MilestoneDetailView(
+                                            viewModel: viewModel,
+                                            person: viewModel.bindingForPerson(person),
+                                            sectionTitle: milestone
+                                        )
+                                    ) {
+                                        MilestoneTile(
+                                            milestone: milestone,
+                                            photos: photos,
+                                            person: person,
+                                            width: itemWidth,
+                                            isEmpty: photos.isEmpty
+                                        )
+                                    }
+                                }
                             }
+                            .padding(16)
                         }
-                    )
-                }
-                .onChange(of: selectedAssets) { _, newValue in
-                    // print("selectedAssets changed. New count: \(newValue.count)")
-                }
-                .onChange(of: viewModel.selectedPerson) { _, _ in
-                    viewModel.objectWillChange.send()
+                    }
                 }
                 .id(person.id)  // Force view refresh when person changes
             )
         } else {
-            return AnyView(
-                ZStack {
-                    Text("No person selected")
-                }
+            AnyView(
+                Text("No person selected")
             )
         }
     }
@@ -300,27 +335,6 @@ struct ContentView: View {
         }
     }
 
-    private func getCurrentPhotos() -> [Photo] {
-        guard let selectedPerson = viewModel.selectedPerson else {
-            print("No person selected")
-            return []
-        }
-        let photos = selectedPerson.photos.sorted(by: { $0.dateTaken < $1.dateTaken })
-        // print("Number of photos in getCurrentPhotos(): \(photos.count)")
-        // print("Selected person: \(selectedPerson.name)")
-        // print("Total people in viewModel: \(viewModel.people.count)")
-        return photos
-    }
-
-    private func updatePhotos(_ newPhotos: [Photo]) {
-        if let person = viewModel.selectedPerson,
-            let personIndex = viewModel.people.firstIndex(where: { $0.id == person.id })
-        {
-            viewModel.people[personIndex].photos = newPhotos
-            viewModel.objectWillChange.send()
-        }
-    }
-
     // Delete photo component
     private func deletePhoto(_ photo: Photo) {
         if let person = viewModel.selectedPerson {
@@ -340,16 +354,6 @@ struct ContentView: View {
                 }
             }
         )
-    }
-
-    // Settings button component
-    private var settingsButton: some View {
-        Button(action: {
-            isSettingsActive = true
-        }) {
-            Image(systemName: "gearshape.fill")
-                .foregroundColor(.blue)
-        }
     }
 
     @ViewBuilder
@@ -457,5 +461,161 @@ struct AddPersonGridItem: View {
                 .lineLimit(1)
                 .foregroundColor(.primary)
         }
+    }
+}
+
+private func getMilestones(for person: Person) -> [(String, [Photo])] {
+    let allMilestones = PhotoUtils.getAllMilestones(for: person)
+    let groupedPhotos = Dictionary(grouping: person.photos) { photo in
+        PhotoUtils.sectionForPhoto(photo, person: person)
+    }
+
+    return allMilestones.reversed().compactMap { milestone in
+        let photos = groupedPhotos[milestone] ?? []
+        if person.pregnancyTracking == .none {
+            let isPregnancyMilestone =
+                milestone.lowercased().contains("pregnancy")
+                || milestone.lowercased().contains("trimester")
+                || milestone.lowercased().contains("week")
+            if isPregnancyMilestone {
+                return nil
+            }
+        }
+
+        if !photos.isEmpty || person.showEmptyStacks {
+            return (milestone, photos)
+        }
+        return nil
+    }
+}
+
+struct MilestoneTile: View {
+    let milestone: String
+    let photos: [Photo]
+    let person: Person
+    let width: CGFloat
+    let isEmpty: Bool
+
+    private let shadowColor = Color.black.opacity(0.1)
+    private let shadowRadius: CGFloat = 4
+    private let shadowX: CGFloat = 0
+    private let shadowY: CGFloat = 3
+    private let scaleFactor: CGFloat = 0.95
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                if isEmpty {
+                    emptyTileContent
+                } else {
+                    Group {
+                        if photos.count >= 3 {
+                            // Bottom layer (third most recent photo)
+                            photoLayer(at: 2, rotation: 6, scale: scaleFactor * scaleFactor)
+                        }
+                        
+                        if photos.count >= 2 {
+                            // Middle layer (second most recent photo)
+                            photoLayer(at: 1, rotation: 3, scale: scaleFactor)
+                        }
+
+                        // Top layer (most recent photo)
+                        filledTileContent
+                            .frame(width: width, height: width * 4 / 3)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                    }
+                }
+            }
+            .frame(width: width, height: width * 4 / 3)
+        }
+        .frame(width: width)
+    }
+
+    private func photoLayer(at index: Int, rotation: Double, scale: CGFloat) -> some View {
+        let sortedPhotos = photos.sorted(by: { $0.dateTaken > $1.dateTaken })
+        if sortedPhotos.indices.contains(index), let image = sortedPhotos[index].image {
+            return AnyView(
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width * scale, height: width * 4 / 3 * scale)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .rotationEffect(Angle(degrees: rotation), anchor: .bottomLeading)
+                    .shadow(color: shadowColor, radius: shadowRadius, x: shadowX, y: shadowY)
+            )
+        }
+        return AnyView(EmptyView())
+    }
+
+    private var emptyTileContent: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: shadowColor, radius: shadowRadius, x: shadowX, y: shadowY)
+
+            VStack {
+                Spacer()
+
+                Image(systemName: "plus")
+                    .font(.system(size: 30))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Text(milestone)
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .lineLimit(2)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 14)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    private var filledTileContent: some View {
+        ZStack {
+            if let latestPhoto = photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first,
+                let image = latestPhoto.image
+            {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: width * 4 / 3)
+                    .clipped()
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+            }
+
+            VStack {
+                Spacer()
+
+                LinearGradient(
+                    gradient: Gradient(colors: [.clear, .black.opacity(0.7)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 50)
+                .overlay(
+                    VStack(spacing: 2) {
+                        Text(milestone)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .lineLimit(1)
+                            .foregroundColor(.white)
+                        
+                        // Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
+                        //     .font(.caption)
+                        //     .foregroundColor(.white.opacity(0.8))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
+                )
+            }
+        }
+        .shadow(color: shadowColor, radius: shadowRadius, x: shadowX, y: shadowY)
     }
 }

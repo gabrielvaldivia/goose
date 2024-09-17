@@ -34,7 +34,7 @@ public struct PhotoUtils {
     static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel)
         -> [(String, [Photo])]
     {
-        let allStacks = getAllExpectedStacks(for: person)
+        let allStacks = getAllMilestones(for: person)
         let groupedPhotos = Dictionary(grouping: person.photos) { photo in
             PhotoUtils.sectionForPhoto(photo, person: person)
         }
@@ -46,7 +46,7 @@ public struct PhotoUtils {
         return completeGroupedPhotos.sorted { $0.0 < $1.0 }
     }
 
-    static func getAllExpectedStacks(for person: Person) -> [String] {
+    static func getAllMilestones(for person: Person) -> [String] {
         var stacks: [String] = []
         let calendar = Calendar.current
         let currentDate = Date()
@@ -299,7 +299,6 @@ struct CircularButton: View {
     var size: CGFloat = 40
     var backgroundColor: Color?
     var iconColor: Color = .white
-    var iconSize: CGFloat?
     var blurEffect: Bool = true
     
     @Environment(\.colorScheme) var colorScheme
@@ -309,27 +308,22 @@ struct CircularButton: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         }) {
-            Image(systemName: systemName)
-                .foregroundColor(iconColor)
-                .font(.system(size: iconSize ?? (size * 0.35), weight: .bold))
-                .frame(width: size, height: size)
-        }
-        .background(
             ZStack {
-                if let backgroundColor = backgroundColor {
-                    backgroundColor
-                } else if blurEffect {
+                Circle()
+                    .fill(backgroundColor ?? (blurEffect ? .clear : .gray.opacity(0.2)))
+                
+                if blurEffect {
                     VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                    if colorScheme == .light {
-                        Color.black.opacity(blurEffect ? 0.4 : 0.1)
-                    }
-                    if colorScheme == .dark {
-                        Color.white.opacity(0.2)
-                    }
+                        .clipShape(Circle())
                 }
+                
+                Image(systemName: systemName)
+                    .font(.system(size: size * 0.4, weight: .bold))
+                    .foregroundColor(iconColor)
             }
-        )
-        .clipShape(Circle())
+            .frame(width: size, height: size)
+        }
+        .frame(width: size, height: size)
     }
 }
 

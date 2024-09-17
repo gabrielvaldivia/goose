@@ -41,10 +41,9 @@ struct MilestoneDetailView: View {
                                 viewModel: viewModel,
                                 person: $person,
                                 selectedPhoto: $selectedPhoto,
-                                mode: .sectionPhotos,
                                 sectionTitle: sectionTitle,
                                 forceUpdate: forceUpdate,
-                                showAge: false 
+                                showAge: false
                             ))
                         ],
                         currentPage: $selectedTab,

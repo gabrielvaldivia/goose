@@ -21,6 +21,7 @@ struct Person: Identifiable, Codable, Equatable, Hashable {
     var pregnancyTracking: PregnancyTracking
     var isNewlyAdded: Bool = false
     var reminderFrequency: ReminderFrequency = .none
+    var trackPregnancy: Bool = false
 
     enum BirthMonthsDisplay: String, Codable, CaseIterable {
         case none = "None"

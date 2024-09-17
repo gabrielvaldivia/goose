@@ -456,9 +456,11 @@ private struct ControlsOverlay: View {
                     size: 40,
                     blurEffect: true
                 )
+                .padding(.top, 20) // Add top padding to move the button down
+                .padding(.leading, 20) // Add leading padding for consistent spacing
                 Spacer()
+
             }
-            .padding(.horizontal)
 
             Spacer()
 

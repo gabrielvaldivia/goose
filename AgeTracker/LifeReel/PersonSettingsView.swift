@@ -84,13 +84,21 @@ struct PersonSettingsView: View {
                     updatePerson { $0.birthMonthsDisplay = newValue }
                 }
 
-                Picker("Track Pregnancy", selection: $person.pregnancyTracking) {
-                    Text("None").tag(Person.PregnancyTracking.none)
-                    Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
-                    Text("Weeks").tag(Person.PregnancyTracking.weeks)
-                }
-                .onChange(of: person.pregnancyTracking) { _, newValue in
-                    updatePerson { $0.pregnancyTracking = newValue }
+                Toggle("Track Pregnancy", isOn: Binding(
+                    get: { person.pregnancyTracking != .none },
+                    set: { newValue in
+                        updatePerson { $0.pregnancyTracking = newValue ? .trimesters : .none }
+                    }
+                ))
+
+                if person.pregnancyTracking != .none {
+                    Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
+                        Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
+                        Text("Weeks").tag(Person.PregnancyTracking.weeks)
+                    }
+                    .onChange(of: person.pregnancyTracking) { _, newValue in
+                        updatePerson { $0.pregnancyTracking = newValue }
+                    }
                 }
 
                 Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
