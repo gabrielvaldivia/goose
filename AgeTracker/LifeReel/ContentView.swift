@@ -75,8 +75,8 @@ struct ContentView: View {
                             action: {
                                 isSettingsActive = true
                             },
-                            size: 32,
-                            backgroundColor: Color(.secondarySystemBackground),
+                            size: 28,
+                            backgroundColor: Color.gray.opacity(0.2),
                             iconColor: .primary,
                             blurEffect: false
                         )
@@ -114,8 +114,8 @@ struct ContentView: View {
                             action: {
                                 showingImagePicker = true
                             },
-                            size: 32,
-                            backgroundColor: Color(.secondarySystemBackground),
+                            size: 28,
+                            backgroundColor: Color.gray.opacity(0.2),
                             iconColor: .primary,
                             blurEffect: false
                         )

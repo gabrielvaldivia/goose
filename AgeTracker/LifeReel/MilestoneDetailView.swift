@@ -16,56 +16,24 @@ struct MilestoneDetailView: View {
     @State private var showingImagePicker = false
     @State private var selectedPhoto: Photo? = nil
     @State private var isShareSlideshowPresented = false
-    @State private var selectedTab = 0  // 0 for Timeline, 1 for Grid
     @State private var forceUpdate: Bool = false
-    @State private var animationDirection: UIPageViewController.NavigationDirection = .forward
     @State private var isLoading = false
+    @State private var showingSlideshowSheet = false
 
     var body: some View {
         GeometryReader { geometry in
             if photosToDisplay().isEmpty {
                 emptyStateView
             } else {
-                ZStack(alignment: .bottom) {
-                    PageViewController(
-                        pages: [
-                            AnyView(TimelineView(
-                                viewModel: viewModel,
-                                person: $person,
-                                selectedPhoto: $selectedPhoto,
-                                forceUpdate: forceUpdate,
-                                sectionTitle: sectionTitle,
-                                showScrubber: false  // Changed this to false
-                            )),
-                            AnyView(GridView(
-                                viewModel: viewModel,
-                                person: $person,
-                                selectedPhoto: $selectedPhoto,
-                                sectionTitle: sectionTitle,
-                                forceUpdate: forceUpdate,
-                                showAge: false
-                            ))
-                        ],
-                        currentPage: $selectedTab,
-                        animationDirection: $animationDirection
-                    )
-                    .edgesIgnoringSafeArea(.bottom)
-
-                    VStack(spacing: 0) {
-                        Spacer()
-                        BottomControls(
-                            shareAction: {
-                                isShareSlideshowPresented = true
-                            },
-                            addPhotoAction: {
-                                showingImagePicker = true
-                            },
-                            selectedTab: $selectedTab,
-                            animationDirection: $animationDirection,
-                            options: ["person.crop.rectangle.stack", "square.grid.2x2"]
-                        )
-                    }
-                }
+                GridView(
+                    viewModel: viewModel,
+                    person: $person,
+                    selectedPhoto: $selectedPhoto,
+                    sectionTitle: sectionTitle,
+                    forceUpdate: forceUpdate,
+                    showAge: false
+                )
+                .edgesIgnoringSafeArea(.bottom)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -74,6 +42,18 @@ struct MilestoneDetailView: View {
                 Text(sectionTitle)
                     .font(.headline)
                     .fontWeight(.bold)
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                CircularButton(
+                    systemName: "plus",
+                    action: {
+                        showingImagePicker = true
+                    },
+                    size:28,
+                    backgroundColor: Color.gray.opacity(0.2),
+                    iconColor: .primary,
+                    blurEffect: false
+                )
             }
         }
         .sheet(isPresented: $showingImagePicker) {
@@ -113,6 +93,35 @@ struct MilestoneDetailView: View {
                 sectionTitle: sectionTitle
             )
         }
+        .sheet(isPresented: $showingSlideshowSheet) {
+            ShareSlideshowView(
+                photos: photosToDisplay(),
+                person: person,
+                sectionTitle: sectionTitle
+            )
+        }
+        .overlay(
+            VStack {
+                Spacer()
+                Button(action: {
+                    showingSlideshowSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 20))
+                        Text("Slideshow")
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(25)
+                    .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                }
+                // .padding(.bottom, 16)
+            }
+        )
     }
 
     private func photosToDisplay() -> [Photo] {

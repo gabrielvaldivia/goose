@@ -17,31 +17,62 @@ struct GridView: View {
     let showAge: Bool
 
     @State private var orientation = UIDeviceOrientation.unknown
+    @State private var showingImagePicker = false  // Add this line
+
+    private var filteredPhotos: [Photo] {
+        guard let sectionTitle = sectionTitle else {
+            return person.photos
+        }
+
+        return person.photos.filter { photo in
+            switch sectionTitle {
+            case "All Photos":
+                return true
+            case "Pregnancy":
+                return AgeCalculator.calculate(for: person, at: photo.dateTaken).isPregnancy
+            case "Birth Month":
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return age.months == 0 && age.years == 0 && !age.isPregnancy
+            default:
+                if sectionTitle.hasSuffix("Month") || sectionTitle.hasSuffix("Months") {
+                    let targetMonth =
+                        Int(
+                            sectionTitle.components(
+                                separatedBy: CharacterSet.decimalDigits.inverted
+                            ).joined()) ?? 0
+                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                    return age.months == targetMonth && age.years == 0 && !age.isPregnancy
+                } else if sectionTitle.hasSuffix("Year") || sectionTitle.hasSuffix("Years") {
+                    let targetYear =
+                        Int(
+                            sectionTitle.components(
+                                separatedBy: CharacterSet.decimalDigits.inverted
+                            ).joined()) ?? 0
+                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                    return age.years == targetYear && !age.isPregnancy
+                }
+                return false
+            }
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                let filteredPhotos = person.photos.filter { photo in
-                    PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
-                }
-
                 if filteredPhotos.isEmpty {
                     EmptyStateView(
-                        title: "No photos in grid",
+                        title: "No photos in \(sectionTitle ?? "this section")",
                         subtitle: "Add photos to create memories",
                         systemImageName: "photo.on.rectangle.angled",
                         action: {
-                            // Implement photo picker action here
+                            showingImagePicker = true
                         }
                     )
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
-                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10)
-                    {
-                        ForEach(
-                            filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id
-                        ) { photo in
-                            let itemWidth = GridLayoutHelper.gridItemWidth(for: geometry.size)
+                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
+                        ForEach(filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id) { photo in
+                            let itemWidth = max(1, GridLayoutHelper.gridItemWidth(for: geometry.size))
                             Image(uiImage: photo.image ?? UIImage())
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -51,6 +82,18 @@ struct GridView: View {
                                 .onTapGesture {
                                     selectedPhoto = photo
                                 }
+                        }
+
+                        // Add Photos button
+                        Button(action: {
+                            showingImagePicker = true
+                        }) {
+                            VStack {
+                                Spacer()
+                                // ... (rest of the button content)
+                            }
+                            .frame(width: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)), 
+                                   height: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
                         }
                     }
                     .padding()
@@ -63,6 +106,17 @@ struct GridView: View {
         }
         .id(orientation)
         .id(forceUpdate)
+        .sheet(isPresented: $showingImagePicker) {
+            CustomImagePicker(
+                viewModel: viewModel,
+                person: $person,
+                sectionTitle: sectionTitle ?? "All Photos",
+                isPresented: $showingImagePicker,
+                onPhotosAdded: { newPhotos in
+                    // Handle newly added photos if needed
+                }
+            )
+        }
     }
 }
 

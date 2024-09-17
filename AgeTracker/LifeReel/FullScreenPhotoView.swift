@@ -448,73 +448,22 @@ private struct ControlsOverlay: View {
 
     var body: some View {
         VStack {
-            // Top Bar with Close Button
-            HStack {
-                CircularButton(
-                    systemName: "xmark",
-                    action: onClose,
-                    size: 40,
-                    blurEffect: true
-                )
-                .padding(.top, 20) // Add top padding to move the button down
-                .padding(.leading, 20) // Add leading padding for consistent spacing
-                Spacer()
-
-            }
-
-            Spacer()
-
-            // Bottom Bar with Share, Age, Options, and Scrubber
-            VStack(spacing: 16) {
-                // Only show scrubber if there are at least 2 photos
-                if photos.count >= 2 {
-                    // Scrubber with side fade-out effect
-                    ThumbnailScrubber(
-                        photos: photos,
-                        currentIndex: $currentIndex,
-                        onScrub: onScrub
-                    )
-                    .frame(height: 60)
-                    .mask(
-                        HStack(spacing: 0) {
-                            LinearGradient(
-                                gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 40)
-                            Rectangle().fill(Color.white)
-                            LinearGradient(
-                                gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 40)
-                        }
-                    )
-                }
-
+            // Top Bar with Close, Name, Age, Share, and Menu Buttons
+            ZStack {
                 HStack {
                     CircularButton(
-                        systemName: "square.and.arrow.up",
-                        action: onShare,
-                        size: 40,
+                        systemName: "xmark",
+                        action: onClose,
+                        size: 28,
                         blurEffect: true
                     )
                     Spacer()
-                    VStack(spacing: 4) {
-                        Text(selectedAge.toString())
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
-                            .onTapGesture {
-                                showAgePicker = true
-                            }
-                        Text(formatDate(selectedDate))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-                            .onTapGesture {
-                                showDatePicker = true
-                            }
-                    }
-                    Spacer()
+                    CircularButton(
+                        systemName: "square.and.arrow.up",
+                        action: onShare,
+                        size: 28,
+                        blurEffect: true
+                    )
                     Menu {
                         Button {
                             showDatePicker = true
@@ -537,14 +486,55 @@ private struct ControlsOverlay: View {
                         CircularButton(
                             systemName: "ellipsis",
                             action: {},
-                            size: 40,
+                            size: 28,
                             blurEffect: true
                         )
                     }
                 }
+
+                VStack(spacing: 4) {
+                    Text(person.name)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    Text(selectedAge.toString())
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                        .onTapGesture {
+                            showAgePicker = true
+                        }
+                }
+                .frame(maxWidth: .infinity)
             }
+            .padding(.top, 20)
             .padding(.horizontal, 20)
-            .padding(.bottom, 30)
+
+            Spacer()
+
+            // Bottom Bar with Scrubber
+            if photos.count >= 2 {
+                ThumbnailScrubber(
+                    photos: photos,
+                    currentIndex: $currentIndex,
+                    onScrub: onScrub
+                )
+                .frame(height: 60)
+                .mask(
+                    HStack(spacing: 0) {
+                        LinearGradient(
+                            gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 40)
+                        Rectangle().fill(Color.white)
+                        LinearGradient(
+                            gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 40)
+                    }
+                )
+                .padding(.bottom, 30)
+            }
         }
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
