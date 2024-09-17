@@ -19,6 +19,7 @@ struct MilestoneDetailView: View {
     @State private var forceUpdate: Bool = false
     @State private var isLoading = false
     @State private var showingSlideshowSheet = false
+    @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
         GeometryReader { geometry in
@@ -38,6 +39,18 @@ struct MilestoneDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                CircularButton(
+                    systemName: "chevron.left",
+                    action: {
+                        presentationMode.wrappedValue.dismiss()
+                    },
+                    size: 32,
+                    backgroundColor: Color.gray.opacity(0.2),
+                    iconColor: .primary,
+                    blurEffect: false
+                )
+            }
             ToolbarItem(placement: .principal) {
                 Text(sectionTitle)
                     .font(.headline)
@@ -49,13 +62,21 @@ struct MilestoneDetailView: View {
                     action: {
                         showingImagePicker = true
                     },
-                    size:28,
+                    size: 32,
                     backgroundColor: Color.gray.opacity(0.2),
                     iconColor: .primary,
                     blurEffect: false
                 )
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .gesture(
+            DragGesture().updating($dragOffset) { value, state, _ in
+                if value.startLocation.x < 20 && value.translation.width > 100 {
+                    self.presentationMode.wrappedValue.dismiss()
+                }
+            }
+        )
         .sheet(isPresented: $showingImagePicker) {
             CustomImagePicker(
                 viewModel: viewModel,
@@ -97,32 +118,38 @@ struct MilestoneDetailView: View {
             ShareSlideshowView(
                 photos: photosToDisplay(),
                 person: person,
-                sectionTitle: sectionTitle
+                sectionTitle: sectionTitle,
+                forceAllPhotos: true
             )
         }
         .overlay(
-            VStack {
-                Spacer()
-                Button(action: {
-                    showingSlideshowSheet = true
-                }) {
-                    HStack {
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 20))
-                        Text("Slideshow")
-                            .fontWeight(.semibold)
+            Group {
+                if photosToDisplay().count >= 2 {
+                    VStack {
+                        Spacer()
+                        Button(action: {
+                            showingSlideshowSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 20))
+                                Text("Slideshow")
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(25)
+                            .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                        }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(25)
-                    .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
                 }
-                // .padding(.bottom, 16)
             }
         )
     }
+
+    @GestureState private var dragOffset = CGSize.zero
 
     private func photosToDisplay() -> [Photo] {
         return photosForCurrentSection()

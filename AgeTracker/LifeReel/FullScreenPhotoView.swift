@@ -39,6 +39,9 @@ struct FullScreenPhotoView: View {
     @State private var showDatePicker = false
     @State private var selectedDate: Date
     @State private var photosUpdateTrigger = UUID()
+    @Environment(\.colorScheme) var colorScheme
+    @State private var isZooming = false
+    @State private var controlsOpacity: Double = 1.0
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -93,7 +96,8 @@ struct FullScreenPhotoView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
+                backgroundColor
+                    .edgesIgnoringSafeArea(.all)
 
                 if !filteredPhotos.isEmpty,
                     let currentPhoto = filteredPhotos.indices.contains(currentIndex)
@@ -161,6 +165,7 @@ struct FullScreenPhotoView: View {
                                 .gesture(
                                     MagnificationGesture()
                                         .onChanged { value in
+                                            isZooming = true
                                             let delta = value / self.lastScale
                                             self.lastScale = value
 
@@ -179,7 +184,16 @@ struct FullScreenPhotoView: View {
                                         }
                                         .onEnded { _ in
                                             self.lastScale = 1.0
-                                            resetZoomIfNeeded()
+                                            isZooming = false
+                                            if self.scale < 1 {
+                                                withAnimation(.spring()) {
+                                                    self.scale = 1
+                                                    self.offset = .zero
+                                                    self.dragOffset = .zero
+                                                }
+                                            } else {
+                                                self.dragOffset = self.offset
+                                            }
                                         }
                                 )
                                 .onTapGesture(count: 2) {
@@ -234,10 +248,11 @@ struct FullScreenPhotoView: View {
                         onUpdateAge: updatePhotoAge,
                         onUpdateDate: updatePhotoDate
                     )
-                    .opacity(1 - dismissProgress)
+                    .opacity(showControls ? controlsOpacity : 0)
+                    .animation(.easeInOut(duration: 0.2), value: controlsOpacity)
                 }
             }
-            .background(Color.black.opacity(1 - dismissProgress))
+            .background(backgroundColor)
         }
         .id(photosUpdateTrigger)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
@@ -287,6 +302,9 @@ struct FullScreenPhotoView: View {
                 },
                 secondaryButton: .cancel()
             )
+        }
+        .onChange(of: scale) { _, newScale in
+            updateControlsOpacity(for: newScale)
         }
     }
 
@@ -346,16 +364,6 @@ struct FullScreenPhotoView: View {
         dragOffset = .zero
     }
 
-    private func resetZoomIfNeeded() {
-        if scale < 1 {
-            withAnimation(.spring()) {
-                scale = 1
-                offset = .zero
-                dragOffset = .zero
-            }
-        }
-    }
-
     private func updatePhotoAge(_ newAge: ExactAge) {
         let calendar = Calendar.current
         let newDate = calendar.date(byAdding: .year, value: newAge.years, to: person.dateOfBirth)!
@@ -400,6 +408,16 @@ struct FullScreenPhotoView: View {
             if let newIndex = newFilteredPhotos.firstIndex(where: { $0.id == currentPhotoId }) {
                 currentIndex = newIndex
             }
+        }
+    }
+
+    private var backgroundColor: Color {
+        showControls ? Color(UIColor.systemBackground) : .black
+    }
+
+    private func updateControlsOpacity(for newScale: CGFloat) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            controlsOpacity = newScale > 1 ? 0 : 1
         }
     }
 }
@@ -448,20 +466,20 @@ private struct ControlsOverlay: View {
 
     var body: some View {
         VStack {
-            // Top Bar with Close, Name, Age, Share, and Menu Buttons
+            // Top Bar with Close, Name, Share, and Menu Buttons
             ZStack {
                 HStack {
                     CircularButton(
                         systemName: "xmark",
                         action: onClose,
-                        size: 28,
+                        size: 32,
                         blurEffect: true
                     )
                     Spacer()
                     CircularButton(
                         systemName: "square.and.arrow.up",
                         action: onShare,
-                        size: 28,
+                        size: 32,
                         blurEffect: true
                     )
                     Menu {
@@ -486,56 +504,66 @@ private struct ControlsOverlay: View {
                         CircularButton(
                             systemName: "ellipsis",
                             action: {},
-                            size: 28,
+                            size: 32,
                             blurEffect: true
                         )
                     }
                 }
 
-                VStack(spacing: 4) {
-                    Text(person.name)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    Text(selectedAge.toString())
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                        .onTapGesture {
-                            showAgePicker = true
-                        }
-                }
-                .frame(maxWidth: .infinity)
+                Text(person.name)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
             }
-            .padding(.top, 20)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
 
             Spacer()
 
-            // Bottom Bar with Scrubber
-            if photos.count >= 2 {
-                ThumbnailScrubber(
-                    photos: photos,
-                    currentIndex: $currentIndex,
-                    onScrub: onScrub
-                )
-                .frame(height: 60)
-                .mask(
-                    HStack(spacing: 0) {
-                        LinearGradient(
-                            gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: 40)
-                        Rectangle().fill(Color.white)
-                        LinearGradient(
-                            gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: 40)
-                    }
-                )
-                .padding(.bottom, 30)
+            // Bottom Bar with Scrubber, Age, and Date
+            VStack(spacing: 12) {
+                if photos.count >= 2 {
+                    ThumbnailScrubber(
+                        photos: photos,
+                        currentIndex: $currentIndex,
+                        onScrub: onScrub
+                    )
+                    .frame(height: 60)
+                    .mask(
+                        HStack(spacing: 0) {
+                            LinearGradient(
+                                gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 40)
+                            Rectangle().fill(Color.primary)
+                            LinearGradient(
+                                gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 40)
+                        }
+                    )
+                }
+
+                VStack(spacing: 4) {
+                    Text(selectedAge.toString())
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .onTapGesture {
+                            showAgePicker = true
+                        }
+
+                    Text(formatDate(selectedDate))
+                        .font(.caption)
+                        .foregroundColor(.primary.opacity(0.8))
+                        .onTapGesture {
+                            showDatePicker = true
+                        }
+                }
             }
         }
+        .padding(.top, 10)
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
         .sheet(isPresented: $showAgePicker) {

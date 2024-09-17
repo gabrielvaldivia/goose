@@ -298,7 +298,7 @@ struct CircularButton: View {
     let action: () -> Void
     var size: CGFloat = 40
     var backgroundColor: Color?
-    var iconColor: Color = .white
+    var iconColor: Color?
     var blurEffect: Bool = true
     
     @Environment(\.colorScheme) var colorScheme
@@ -310,7 +310,7 @@ struct CircularButton: View {
         }) {
             ZStack {
                 Circle()
-                    .fill(backgroundColor ?? (blurEffect ? .clear : .gray.opacity(0.2)))
+                    .fill(backgroundColor ?? Color(UIColor.secondarySystemBackground))
                 
                 if blurEffect {
                     VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
@@ -319,7 +319,7 @@ struct CircularButton: View {
                 
                 Image(systemName: systemName)
                     .font(.system(size: size * 0.4, weight: .bold))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(iconColor ?? .primary)
             }
             .frame(width: size, height: size)
         }

@@ -70,55 +70,50 @@ struct ContentView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        CircularButton(
-                            systemName: "gearshape.fill",
-                            action: {
-                                isSettingsActive = true
-                            },
-                            size: 28,
-                            backgroundColor: Color.gray.opacity(0.2),
-                            iconColor: .primary,
-                            blurEffect: false
-                        )
-                    }
-
-                    ToolbarItem(placement: .principal) {
                         Button(action: {
                             showingPeopleGrid = true
                         }) {
-                            HStack {
+                            HStack(spacing: 4) {
                                 Text(
                                     viewModel.selectedPerson?.name ?? viewModel.people.first?.name
                                         ?? "Select Person"
                                 )
-                                .font(.headline)
+                                .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.gray.opacity(0.2))
-                                        .frame(width: 20, height: 20)
-
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 8, weight: .bold))
+                                 Image(systemName: "chevron.down")
+                                        .font(.system(size: 12, weight: .bold))
                                         .foregroundColor(.primary)
-                                }
+
                             }
                         }
                     }
 
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        CircularButton(
-                            systemName: "plus",
-                            action: {
-                                showingImagePicker = true
-                            },
-                            size: 28,
-                            backgroundColor: Color.gray.opacity(0.2),
-                            iconColor: .primary,
-                            blurEffect: false
-                        )
+                        HStack(spacing: 16) {
+                            CircularButton(
+                                systemName: "gearshape.fill",
+                                action: {
+                                    isSettingsActive = true
+                                },
+                                size: 32,
+                                backgroundColor: Color.gray.opacity(0.2),
+                                iconColor: .primary,
+                                blurEffect: false
+                            )
+
+                            CircularButton(
+                                systemName: "plus",
+                                action: {
+                                    showingImagePicker = true
+                                },
+                                size: 32,
+                                backgroundColor: Color.gray.opacity(0.2),
+                                iconColor: .primary,
+                                blurEffect: false
+                            )
+                        }
                     }
                 }
                 .background(
@@ -408,20 +403,20 @@ struct PersonGridItem: View {
     @Binding var showingPeopleGrid: Bool
 
     var body: some View {
-        VStack {
+        VStack (spacing: 12) {
             if let latestPhoto = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first,
                 let uiImage = latestPhoto.image
             {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 100, height: 100)
+                    .frame(width: 85, height: 85)
                     .clipShape(Circle())
             } else {
                 Image(systemName: "person.circle.fill")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 100, height: 100)
+                    .frame(width: 85, height: 85)
                     .foregroundColor(.gray)
             }
 
@@ -442,17 +437,17 @@ struct PersonGridItem: View {
 // AddPersonGridItem view
 struct AddPersonGridItem: View {
     var body: some View {
-        VStack {
+        VStack (spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 100, height: 100)
+                    .fill(Color(.secondarySystemBackground))
+                    .frame(width: 85, height: 85)
 
                 Image(systemName: "plus")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 28, height: 28)
-                    .foregroundColor(.blue)
+                    .frame(width: 24, height: 24)
+                    .foregroundColor(.secondary)
             }
 
             Text("New")

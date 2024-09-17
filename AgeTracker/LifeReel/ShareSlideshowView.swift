@@ -70,12 +70,14 @@ struct ShareSlideshowView: View {
     
     private let availableMusic = ["Serenity", "Echoes", "Sunshine", "Whispers"]
     
-    @State private var milestoneMode: MilestoneMode = .milestones
+    @State private var milestoneMode: MilestoneMode
+    private let forceAllPhotos: Bool
     
-    init(photos: [Photo], person: Person, sectionTitle: String? = nil) {
+    init(photos: [Photo], person: Person, sectionTitle: String? = nil, forceAllPhotos: Bool = false) {
         self.photos = photos
         self.person = person
         self.sectionTitle = sectionTitle
+        self.forceAllPhotos = forceAllPhotos
         
         // Subtitle option always defaults to age
         _subtitleOption = State(initialValue: .age)
@@ -86,8 +88,8 @@ struct ShareSlideshowView: View {
         // Ensure isPlaying is true by default
         _isPlaying = State(initialValue: true)
         
-        // Set default milestone mode to milestones
-        _milestoneMode = State(initialValue: .milestones)
+        // Set milestone mode based on the forceAllPhotos parameter
+        _milestoneMode = State(initialValue: forceAllPhotos ? .allPhotos : .milestones)
     }
     
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -135,6 +137,11 @@ struct ShareSlideshowView: View {
         .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
         .onDisappear {
             stopAudio()
+        }
+        .onChange(of: milestoneMode) { oldValue, newValue in
+            if forceAllPhotos && newValue != .allPhotos {
+                milestoneMode = .allPhotos
+            }
         }
     }
     
@@ -283,13 +290,15 @@ struct ShareSlideshowView: View {
                 
 
                     // Milestone Mode
-                    SimplifiedCustomizationButton(
-                        icon: "photo.on.rectangle.angled",
-                        title: "Photos",
-                        options: MilestoneMode.allCases,
-                        selection: $milestoneMode
-                    )
-                    .frame(width: 80)
+                    if !forceAllPhotos {
+                        SimplifiedCustomizationButton(
+                            icon: "photo.on.rectangle.angled",
+                            title: "Photos",
+                            options: MilestoneMode.allCases,
+                            selection: $milestoneMode
+                        )
+                        .frame(width: 80)
+                    }
 
                     // Watermark
                     Button(action: { showAppIcon.toggle() }) {

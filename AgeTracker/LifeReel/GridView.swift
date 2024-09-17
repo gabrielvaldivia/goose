@@ -84,13 +84,16 @@ struct GridView: View {
                                 }
                         }
 
-                        // Add Photos button
+                        // Add Photos tile
                         Button(action: {
                             showingImagePicker = true
                         }) {
-                            VStack {
-                                Spacer()
-                                // ... (rest of the button content)
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.secondarySystemBackground))
+                                Image(systemName: "plus")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.secondary)
                             }
                             .frame(width: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)), 
                                    height: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
