@@ -23,7 +23,7 @@ struct ContentView: View {
 
     // Enums
     enum ActiveSheet: Identifiable {
-        case settings, shareView, addPerson, addPersonSheet, peopleGrid
+        case settings, shareView, addPerson, addPersonSheet
         var id: Int { hashValue }
     }
 
@@ -70,9 +70,25 @@ struct ContentView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
-                            showingPeopleGrid = true
-                        }) {
+                        Menu {
+                            ForEach(viewModel.people) { person in
+                                Button(person.name) {
+                                    viewModel.selectedPerson = person
+                                }
+                            }
+                            
+                            Divider()
+                            
+                            Button {
+                                showingAddPersonSheet = true
+                            } label: {
+                                HStack {
+                                    Text("New Life Reel")
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                }
+                            }
+                        } label: {
                             HStack(spacing: 4) {
                                 Text(
                                     viewModel.selectedPerson?.name ?? viewModel.people.first?.name
@@ -82,10 +98,9 @@ struct ContentView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
-                                 Image(systemName: "chevron.down")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(.primary)
-
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary)
                             }
                         }
                     }
@@ -123,13 +138,6 @@ struct ContentView: View {
                         label: { EmptyView() }
                     )
                 )
-            }
-
-            // People Grid Sheet
-            .sheet(isPresented: $showingPeopleGrid) {
-                peopleGridView
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
             }
 
             // New Life Reel Sheet
@@ -194,10 +202,6 @@ struct ContentView: View {
                     ),
                     onboardingMode: false
                 )
-            case .peopleGrid:
-                NavigationView {
-                    peopleGridView
-                }
             case .shareView:
                 if let person = viewModel.selectedPerson {
                     ShareSlideshowView(
@@ -298,38 +302,6 @@ struct ContentView: View {
         }
     }
 
-    // People grid view component
-    private var peopleGridView: some View {
-        VStack {
-            Text("Life Reels")
-                .font(.headline)
-                .padding()
-
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
-                    ForEach(viewModel.people) { person in
-                        PersonGridItem(
-                            person: person, viewModel: viewModel,
-                            showingPeopleGrid: $showingPeopleGrid)
-                    }
-
-                    AddPersonGridItem()
-                        .onTapGesture {
-                            showingAddPersonSheet = true
-                        }
-                }
-                .padding()
-            }
-        }
-        .sheet(isPresented: $showingAddPersonSheet) {
-            NewLifeReelView(
-                viewModel: viewModel,
-                isPresented: $showingAddPersonSheet,
-                onboardingMode: false
-            )
-        }
-    }
-
     // Delete photo component
     private func deletePhoto(_ photo: Photo) {
         if let person = viewModel.selectedPerson {
@@ -396,69 +368,6 @@ struct ContentView: View {
     }
 }
 
-// PersonGridItem component
-struct PersonGridItem: View {
-    let person: Person
-    @ObservedObject var viewModel: PersonViewModel
-    @Binding var showingPeopleGrid: Bool
-
-    var body: some View {
-        VStack (spacing: 12) {
-            if let latestPhoto = person.photos.sorted(by: { $0.dateTaken > $1.dateTaken }).first,
-                let uiImage = latestPhoto.image
-            {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 85, height: 85)
-                    .clipShape(Circle())
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 85, height: 85)
-                    .foregroundColor(.gray)
-            }
-
-            Text(person.name)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .lineLimit(1)
-                .foregroundColor(.primary)
-        }
-        .onTapGesture {
-            viewModel.selectedPerson = person
-            showingPeopleGrid = false
-            viewModel.objectWillChange.send()
-        }
-    }
-}
-
-// AddPersonGridItem view
-struct AddPersonGridItem: View {
-    var body: some View {
-        VStack (spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color(.secondarySystemBackground))
-                    .frame(width: 85, height: 85)
-
-                Image(systemName: "plus")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-                    .foregroundColor(.secondary)
-            }
-
-            Text("New")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .lineLimit(1)
-                .foregroundColor(.primary)
-        }
-    }
-}
-
 private func getMilestones(for person: Person) -> [(String, [Photo])] {
     let allMilestones = PhotoUtils.getAllMilestones(for: person)
     let groupedPhotos = Dictionary(grouping: person.photos) { photo in
@@ -508,7 +417,7 @@ struct MilestoneTile: View {
                             // Bottom layer (third most recent photo)
                             photoLayer(at: 2, rotation: 6, scale: scaleFactor * scaleFactor)
                         }
-                        
+
                         if photos.count >= 2 {
                             // Middle layer (second most recent photo)
                             photoLayer(at: 1, rotation: 3, scale: scaleFactor)
@@ -601,7 +510,7 @@ struct MilestoneTile: View {
                             .fontWeight(.bold)
                             .lineLimit(1)
                             .foregroundColor(.white)
-                        
+
                         // Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
                         //     .font(.caption)
                         //     .foregroundColor(.white.opacity(0.8))
