@@ -187,12 +187,30 @@ struct ShareSlideshowView: View {
 
     private var navigationBar: some View {
         HStack {
-            cancelButton
+            if isEditing {
+                Button("Cancel") {
+                    withAnimation {
+                        isEditing = false
+                        // Revert any unsaved changes here
+                    }
+                }
+            } else {
+                cancelButton
+            }
             Spacer()
             Text("Slideshow")
                 .font(.headline)
             Spacer()
-            editButton
+            if isEditing {
+                Button("Save") {
+                    withAnimation {
+                        isEditing = false
+                        // Save changes here
+                    }
+                }
+            } else {
+                editButton
+            }
         }
         .padding(.horizontal)
         .padding(.top, 10)
@@ -279,9 +297,9 @@ struct ShareSlideshowView: View {
     }
 
     private var editButton: some View {
-        Button(isEditing ? "Done" : "Edit") {
+        Button("Edit") {
             withAnimation {
-                isEditing.toggle()
+                isEditing = true
             }
         }
     }
