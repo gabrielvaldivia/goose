@@ -50,7 +50,7 @@ struct ContentView: View {
                                 showingSlideshowSheet = true
                             }) {
                                 HStack {
-                                    Image(systemName: "play.circle.fill")
+                                    Image(systemName: "play.rectangle.fill")
                                         .font(.system(size: 20))
                                     Text("Slideshow")
                                         .fontWeight(.semibold)

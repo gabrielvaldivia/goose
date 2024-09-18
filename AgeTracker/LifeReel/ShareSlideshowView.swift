@@ -37,6 +37,28 @@ enum SlideshowRange: Hashable {
     }
 }
 
+enum SharePlatform {
+    case facebook, instagram, instagramStory, other
+
+    var label: String {
+        switch self {
+        case .facebook: return "Facebook"
+        case .instagram: return "Instagram"
+        case .instagramStory: return "IG Story"
+        case .other: return "Other"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .facebook: return "f.square"
+        case .instagram: return "camera"
+        case .instagramStory: return "square.and.arrow.up"
+        case .other: return "square.and.arrow.up"
+        }
+    }
+}
+
 // ShareSlideshowView
 struct ShareSlideshowView: View {
     // Properties
@@ -72,6 +94,8 @@ struct ShareSlideshowView: View {
     
     @State private var milestoneMode: MilestoneMode
     private let forceAllPhotos: Bool
+    
+    @State private var isEditing: Bool = false
     
     init(photos: [Photo], person: Person, sectionTitle: String? = nil, forceAllPhotos: Bool = false) {
         self.photos = photos
@@ -150,8 +174,14 @@ struct ShareSlideshowView: View {
         if filteredPhotos.isEmpty {
             emptyStateView
         } else {
-            photoView
-            bottomControls
+            VStack {
+                photoView
+                if isEditing {
+                    bottomControls
+                } else {
+                    shareOptions
+                }
+            }
         }
     }
 
@@ -162,7 +192,7 @@ struct ShareSlideshowView: View {
             Text("Slideshow")
                 .font(.headline)
             Spacer()
-            shareButton
+            editButton
         }
         .padding(.horizontal)
         .padding(.top, 10)
@@ -196,14 +226,14 @@ struct ShareSlideshowView: View {
                         .id(currentImageId)
                         .transition(effectOption == .none ? .identity : .opacity)
                         
+                        // Play button overlay (only shown when paused)
                         if !isPlaying {
-                            Image(systemName: "pause.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(.white.opacity(0.8))
+                            PlayButton(isPlaying: $isPlaying)
                         }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
+                    .contentShape(Rectangle()) // Ensures the entire area is tappable
                     .onTapGesture {
                         isPlaying.toggle()
                     }
@@ -216,6 +246,54 @@ struct ShareSlideshowView: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
+        }
+    }
+
+    private var shareOptions: some View {
+        HStack(spacing: 20) {
+            shareButton(for: .facebook)
+            shareButton(for: .instagram)
+            shareButton(for: .instagramStory)
+            shareButton(for: .other)
+        }
+        .padding()
+    }
+
+    private func shareButton(for platform: SharePlatform) -> some View {
+        Button(action: {
+            shareToPlaftorm(platform)
+        }) {
+            VStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        Image(systemName: platform.iconName)
+                            .foregroundColor(.primary)
+                    )
+                Text(platform.label)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+            }
+        }
+    }
+
+    private var editButton: some View {
+        Button(isEditing ? "Done" : "Edit") {
+            withAnimation {
+                isEditing.toggle()
+            }
+        }
+    }
+
+    private func shareToPlaftorm(_ platform: SharePlatform) {
+        switch platform {
+        case .facebook, .instagram, .instagramStory:
+            // Implement specific sharing logic for each platform
+            print("Sharing to \(platform.label)")
+        case .other:
+            // Implement native share sheet
+            print("Opening native share sheet")
         }
     }
 
@@ -503,19 +581,6 @@ struct ShareSlideshowView: View {
         }
     }
 
-    private var shareButton: some View {
-        Button("Share") {
-            if filteredPhotos.count < 2 {
-                showComingSoonAlert = true
-            } else {
-                // Implement your sharing logic here
-                // For now, we'll just show the alert
-                showComingSoonAlert = true
-            }
-        }
-        .disabled(filteredPhotos.count < 2)
-    }
-
     private var filteredPhotos: [Photo] {
         switch milestoneMode {
         case .allPhotos:
@@ -624,7 +689,7 @@ struct LazyImage: View {
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .modifier(KenBurnsEffect(isActive: effectOption == .kenBurns, duration: duration))
+                        .modifier(KenBurnsEffect(isActive: effectOption == .kenBurns && isPlaying, duration: duration))
                         .clipped()
                 } else {
                     ProgressView()
@@ -691,39 +756,8 @@ struct LazyImage: View {
                     self.opacity = 1
                 }
             }
-            .onChange(of: isActive) { oldValue, newValue in
-                if newValue {
-                    startEffect()
-                } else {
-                    stopEffect()
-                }
-            }
         }
         .aspectRatio(aspectRatio, contentMode: .fit)
-    }
-
-    private func startEffect() {
-        let scales = [1.02, 1.03, 1.04]
-        let offsets: [CGSize] = [
-            CGSize(width: 5, height: 5),
-            CGSize(width: -5, height: -5),
-            CGSize(width: 0, height: 5),
-            CGSize(width: 5, height: 0),
-            CGSize(width: -5, height: 0),
-            CGSize(width: 0, height: -5)
-        ]
-        
-        withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
-            self.scale = scales.randomElement() ?? 1.02
-            self.offset = offsets.randomElement() ?? .zero
-        }
-    }
-
-    private func stopEffect() {
-        withAnimation(.easeInOut(duration: 0.5)) {
-            scale = 1.0
-            offset = .zero
-        }
     }
 }
 
@@ -735,8 +769,8 @@ struct KenBurnsEffect: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(isActive ? scale : 1.0)
-            .offset(isActive ? offset : .zero)
+            .scaleEffect(scale)
+            .offset(offset)
             .onAppear(perform: startEffectIfNeeded)
             .onChange(of: isActive) { oldValue, newValue in
                 if newValue {
@@ -785,15 +819,14 @@ struct PlayButton: View {
         Button(action: {
             isPlaying.toggle()
         }) {
-            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                .foregroundColor(.blue)
-                .font(.system(size: 18, weight: .bold))
+            Image(systemName: "play.fill")
+                .foregroundColor(.white)
+                .font(.system(size: 24, weight: .bold))
         }
-        .frame(width: 40, height: 40)
-        .background(Color.clear)
+        .frame(width: 60, height: 60)
+        .background(Color.black.opacity(0.5))
         .clipShape(Circle())
     }
-
 }
 
 // Add these new structs outside the main view
