@@ -313,54 +313,6 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-    // func migratePhotos() {
-    //     print("Starting photo migration...")
-    //     for personIndex in 0..<people.count {
-    //         var person = people[personIndex]
-    //         var newPhotos: [Photo] = []
-
-    //         for oldPhoto in person.photos {
-    //             let assets = PHAsset.fetchAssets(
-    //                 withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-    //             if let asset = assets.firstObject,
-    //                 let newPhoto = Photo(asset: asset)
-    //             {
-    //                 newPhotos.append(newPhoto)
-    //                 print("Migrated photo for \(person.name): \(newPhoto.assetIdentifier)")
-    //             } else {
-    //                 print("Failed to migrate photo for \(person.name): \(oldPhoto.assetIdentifier)")
-    //             }
-    //         }
-
-    //         person.photos = newPhotos
-    //         people[personIndex] = person
-    //     }
-
-    //     savePeople()
-    //     print("Photo migration completed.")
-    // }
-
-    // private func migratePhotoStructure() {
-    //     for personIndex in 0..<people.count {
-    //         var person = people[personIndex]
-    //         person.photos = person.photos.compactMap { oldPhoto in
-    //             // Fetch the asset using the assetIdentifier
-    //             let fetchResult = PHAsset.fetchAssets(
-    //                 withLocalIdentifiers: [oldPhoto.assetIdentifier], options: nil)
-    //             if let asset = fetchResult.firstObject,
-    //                 let newPhoto = Photo(asset: asset)
-    //             {
-    //                 return newPhoto
-    //             } else {
-    //                 // If the asset can't be found or the Photo can't be created, return nil to remove this photo
-    //                 print("Failed to migrate photo: \(oldPhoto.assetIdentifier)")
-    //                 return nil
-    //             }
-    //         }
-    //         people[personIndex] = person
-    //     }
-    //     savePeople()
-    // }
 
     func setLastOpenedPerson(_ person: Person) {
         lastOpenedPersonId = person.id

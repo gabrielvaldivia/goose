@@ -39,6 +39,9 @@ struct PersonSettingsView: View {
         case deletePhotos, deletePerson
     }
 
+    @Environment(\.presentationMode) var presentationMode
+    @GestureState private var dragOffset = CGSize.zero
+
     init(viewModel: PersonViewModel, person: Binding<Person>) {
         self.viewModel = viewModel
         self._person = person
@@ -49,161 +52,185 @@ struct PersonSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section(header: Text("Personal Information")) {
-                HStack {
-                    Text("Name")
-                    Spacer()
-                    TextField("", text: $editedName)
-                        .multilineTextAlignment(.trailing)
-                        .foregroundColor(.secondary)
-                        .onChange(of: editedName) { _, newValue in
-                            updatePerson { $0.name = newValue }
+        NavigationStack {
+            Form {
+                Section(header: Text("Personal Information")) {
+                    HStack {
+                        Text("Name")
+                        Spacer()
+                        TextField("", text: $editedName)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(.secondary)
+                            .onChange(of: editedName) { _, newValue in
+                                updatePerson { $0.name = newValue }
+                            }
+                    }
+                    Button(action: {
+                        showingDatePicker = true
+                    }) {
+                        HStack {
+                            Text("Date of Birth")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text(formatDate(editedDateOfBirth))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("Milestones")) {
+                    Picker("Group by Month", selection: $birthMonthsDisplay) {
+                        Text("None").tag(Person.BirthMonthsDisplay.none)
+                        Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
+                        Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
+                    }
+                    .onChange(of: birthMonthsDisplay) { _, newValue in
+                        updatePerson { $0.birthMonthsDisplay = newValue }
+                    }
+
+                    Toggle("Track Pregnancy", isOn: Binding(
+                        get: { person.pregnancyTracking != .none },
+                        set: { newValue in
+                            updatePerson { $0.pregnancyTracking = newValue ? .trimesters : .none }
+                        }
+                    ))
+
+                    if person.pregnancyTracking != .none {
+                        Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
+                            Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
+                            Text("Weeks").tag(Person.PregnancyTracking.weeks)
+                        }
+                        .onChange(of: person.pregnancyTracking) { _, newValue in
+                            updatePerson { $0.pregnancyTracking = newValue }
+                        }
+                    }
+
+                    Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
+                        .onChange(of: person.showEmptyStacks) { _, newValue in
+                            updatePerson { $0.showEmptyStacks = newValue }
                         }
                 }
-                Button(action: {
-                    showingDatePicker = true
-                }) {
-                    HStack {
-                        Text("Date of Birth")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text(formatDate(editedDateOfBirth))
+
+                Section {
+                    Picker("Upload Reminder", selection: $localReminderFrequency) {
+                        ForEach(Person.ReminderFrequency.allCases, id: \.self) { frequency in
+                            Text(frequency.rawValue).tag(frequency)
+                        }
+                    }
+                    .onChange(of: localReminderFrequency) { _, newValue in
+                        if newValue != .none {
+                            viewModel.requestNotificationPermissions { granted in
+                                if granted {
+                                    updatePerson { $0.reminderFrequency = newValue }
+                                    scheduleReminder()
+                                    DispatchQueue.main.async {
+                                        viewModel.objectWillChange.send()
+                                    }
+                                } else {
+                                    // Handle the case where permission is not granted
+                                    // For example, show an alert to the user
+                                    localReminderFrequency = .none
+                                }
+                            }
+                        } else {
+                            updatePerson { $0.reminderFrequency = newValue }
+                            scheduleReminder()
+                            DispatchQueue.main.async {
+                                viewModel.objectWillChange.send()
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Reminders")
+                } footer: {
+                    if localReminderFrequency != .none, let nextReminder = nextReminderDate {
+                        Text("Next reminder: \(formatDateTime(nextReminder))")
+                            .font(.footnote)
                             .foregroundColor(.secondary)
                     }
                 }
-            }
 
-            Section(header: Text("Milestones")) {
-                Picker("Group by Month", selection: $birthMonthsDisplay) {
-                    Text("None").tag(Person.BirthMonthsDisplay.none)
-                    Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
-                    Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
-                }
-                .onChange(of: birthMonthsDisplay) { _, newValue in
-                    updatePerson { $0.birthMonthsDisplay = newValue }
-                }
-
-                Toggle("Track Pregnancy", isOn: Binding(
-                    get: { person.pregnancyTracking != .none },
-                    set: { newValue in
-                        updatePerson { $0.pregnancyTracking = newValue ? .trimesters : .none }
-                    }
-                ))
-
-                if person.pregnancyTracking != .none {
-                    Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
-                        Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
-                        Text("Weeks").tag(Person.PregnancyTracking.weeks)
-                    }
-                    .onChange(of: person.pregnancyTracking) { _, newValue in
-                        updatePerson { $0.pregnancyTracking = newValue }
+                Section(header: Text("Internal")) {
+                    Button("Replay Onboarding") {
+                        showOnboarding = true
                     }
                 }
 
-                Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
-                    .onChange(of: person.showEmptyStacks) { _, newValue in
-                        updatePerson { $0.showEmptyStacks = newValue }
+                Section(header: Text("Danger Zone")) {
+                    Button("Delete All Photos") {
+                        activeAlert = .deletePhotos
+                        showingAlert = true
                     }
-            }
+                    .foregroundColor(.red)
 
-            Section {
-                Picker("Upload Reminder", selection: $localReminderFrequency) {
-                    ForEach(Person.ReminderFrequency.allCases, id: \.self) { frequency in
-                        Text(frequency.rawValue).tag(frequency)
+                    Button("Delete Person") {
+                        activeAlert = .deletePerson
+                        showingAlert = true
                     }
-                }
-                .onChange(of: localReminderFrequency) { _, newValue in
-                    if newValue != .none {
-                        viewModel.requestNotificationPermissions { granted in
-                            if granted {
-                                updatePerson { $0.reminderFrequency = newValue }
-                                scheduleReminder()
-                                DispatchQueue.main.async {
-                                    viewModel.objectWillChange.send()
-                                }
-                            } else {
-                                // Handle the case where permission is not granted
-                                // For example, show an alert to the user
-                                localReminderFrequency = .none
-                            }
-                        }
-                    } else {
-                        updatePerson { $0.reminderFrequency = newValue }
-                        scheduleReminder()
-                        DispatchQueue.main.async {
-                            viewModel.objectWillChange.send()
-                        }
-                    }
-                }
-            } header: {
-                Text("Reminders")
-            } footer: {
-                if localReminderFrequency != .none, let nextReminder = nextReminderDate {
-                    Text("Next reminder: \(formatDateTime(nextReminder))")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
+                    .foregroundColor(.red)
                 }
             }
-
-            Section(header: Text("Internal")) {
-                Button("Replay Onboarding") {
-                    showOnboarding = true
+            .navigationTitle("\(person.name)'s Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    CircularButton(
+                        systemName: "chevron.left",
+                        action: {
+                            presentationMode.wrappedValue.dismiss()
+                        },
+                        size: 32,
+                        backgroundColor: Color.gray.opacity(0.2),
+                        iconColor: .primary,
+                        blurEffect: false
+                    )
                 }
             }
-
-            Section(header: Text("Danger Zone")) {
-                Button("Delete All Photos") {
-                    activeAlert = .deletePhotos
-                    showingAlert = true
+            .alert(isPresented: $showingAlert) {
+                switch activeAlert {
+                case .deletePhotos:
+                    Alert(
+                        title: Text("Delete All Photos"),
+                        message: Text(
+                            "Are you sure you want to delete all photos for this person? This action cannot be undone."
+                        ),
+                        primaryButton: .destructive(Text("Delete"), action: deleteAllPhotos),
+                        secondaryButton: .cancel()
+                    )
+                case .deletePerson:
+                    Alert(
+                        title: Text("Delete Reel"),
+                        message: Text(
+                            "Are you sure you want to delete this reel? This action cannot be undone."),
+                        primaryButton: .destructive(Text("Delete"), action: deletePerson),
+                        secondaryButton: .cancel()
+                    )
                 }
-                .foregroundColor(.red)
-
-                Button("Delete Person") {
-                    activeAlert = .deletePerson
-                    showingAlert = true
-                }
-                .foregroundColor(.red)
             }
-        }
-        .navigationTitle("\(person.name)'s Settings")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert(isPresented: $showingAlert) {
-            switch activeAlert {
-            case .deletePhotos:
-                Alert(
-                    title: Text("Delete All Photos"),
-                    message: Text(
-                        "Are you sure you want to delete all photos for this person? This action cannot be undone."
-                    ),
-                    primaryButton: .destructive(Text("Delete"), action: deleteAllPhotos),
-                    secondaryButton: .cancel()
-                )
-            case .deletePerson:
-                Alert(
-                    title: Text("Delete Reel"),
-                    message: Text(
-                        "Are you sure you want to delete this reel? This action cannot be undone."),
-                    primaryButton: .destructive(Text("Delete"), action: deletePerson),
-                    secondaryButton: .cancel()
+            .sheet(isPresented: $showingDatePicker) {
+                DatePickerSheet(
+                    date: $editedDateOfBirth,
+                    isPresented: $showingDatePicker,
+                    onSave: { newDate in
+                        updatePerson { $0.dateOfBirth = newDate }
+                    }
                 )
             }
+            .fullScreenCover(isPresented: $showOnboarding) {
+                OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
+            }
+            .onAppear {
+                scheduleReminder()
+            }
         }
-        .sheet(isPresented: $showingDatePicker) {
-            DatePickerSheet(
-                date: $editedDateOfBirth,
-                isPresented: $showingDatePicker,
-                onSave: { newDate in
-                    updatePerson { $0.dateOfBirth = newDate }
+        .gesture(
+            DragGesture().updating($dragOffset) { value, state, _ in
+                if value.startLocation.x < 20 && value.translation.width > 100 {
+                    self.presentationMode.wrappedValue.dismiss()
                 }
-            )
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
-        }
-        .onAppear {
-            scheduleReminder()
-        }
+            }
+        )
     }
 
     private func updatePerson(_ update: (inout Person) -> Void) {

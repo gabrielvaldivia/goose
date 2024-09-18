@@ -310,7 +310,7 @@ struct CircularButton: View {
         }) {
             ZStack {
                 Circle()
-                    .fill(backgroundColor ?? Color(UIColor.secondarySystemBackground))
+                    .fill(Color.gray.opacity(0.2))
                 
                 if blurEffect {
                     VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))

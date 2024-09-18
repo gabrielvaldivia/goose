@@ -563,7 +563,7 @@ private struct ControlsOverlay: View {
                 }
             }
         }
-        .padding(.top, 10)
+        .padding(.top, 4)
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
         .sheet(isPresented: $showAgePicker) {
@@ -706,6 +706,7 @@ struct ThumbnailScrubber: View {
 struct ThumbnailView: View {
     let photo: Photo
     let isSelected: Bool
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         ZStack {
@@ -713,17 +714,17 @@ struct ThumbnailView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 50, height: 50)
+                    .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 Color.gray
-                    .frame(width: 50, height: 50)
+                    .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white, lineWidth: isSelected ? 2 : 0)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.primary, lineWidth: isSelected ? 2 : 0)
         )
     }
 }
