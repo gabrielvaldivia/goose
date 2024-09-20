@@ -41,23 +41,23 @@ enum SlideshowRange: Hashable {
 }
 
 enum SharePlatform {
-    case facebook, instagram, instagramStory, other
+    case facebook, instagram, instagramStory, sms
 
     var label: String {
         switch self {
         case .facebook: return "Facebook"
         case .instagram: return "Instagram"
         case .instagramStory: return "IG Story"
-        case .other: return "Other"
+        case .sms: return "Messages"
         }
     }
 
     var iconName: String {
         switch self {
-        case .facebook: return "f.square"
-        case .instagram: return "camera"
-        case .instagramStory: return "square.and.arrow.up"
-        case .other: return "square.and.arrow.up"
+        case .facebook: return "FacebookIcon"
+        case .instagram: return "InstagramIcon"
+        case .instagramStory: return "InstagramStoryIcon"
+        case .sms: return "SMSIcon"
         }
     }
 }
@@ -277,7 +277,7 @@ struct ShareSlideshowView: View {
             shareButton(for: .facebook)
             shareButton(for: .instagram)
             shareButton(for: .instagramStory)
-            shareButton(for: .other)
+            shareButton(for: .sms)
         }
         .padding()
     }
@@ -287,13 +287,8 @@ struct ShareSlideshowView: View {
             shareToPlaftorm(platform)
         }) {
             VStack {
-                Circle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: 60, height: 60)
-                    .overlay(
-                        Image(systemName: platform.iconName)
-                            .foregroundColor(.primary)
-                    )
+                CustomIcon(name: platform.iconName, renderingMode: .original)
+                    .frame(width: 44, height: 44)
                 Text(platform.label)
                     .font(.caption)
                     .foregroundColor(.primary)
@@ -314,7 +309,7 @@ struct ShareSlideshowView: View {
         case .facebook, .instagram, .instagramStory:
             // Implement specific sharing logic for each platform
             print("Sharing to \(platform.label)")
-        case .other:
+        case .sms:
             // Implement native share sheet
             print("Opening native share sheet")
         }

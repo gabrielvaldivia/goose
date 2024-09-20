@@ -25,6 +25,7 @@
 		403C94762C666E26003373A2 /* ShareSlideshowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403C94752C666E26003373A2 /* ShareSlideshowView.swift */; };
 		4062061B2C6A7078000DE3C5 /* CustomImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */; };
 		40684AB62C7BAFDC00A1BE60 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */; };
+		40B474D32C9D172C00DA31C9 /* CustomIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B474D22C9D172C00DA31C9 /* CustomIcons.swift */; };
 		40C00B562C6168A700C1B076 /* SharePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B552C6168A700C1B076 /* SharePhotoView.swift */; };
 		40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C00B572C61691400C1B076 /* ActivityViewController.swift */; };
 		40CE60862C88A9AE007FACAD /* AgePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */; };
@@ -76,6 +77,7 @@
 		403C94752C666E26003373A2 /* ShareSlideshowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSlideshowView.swift; sourceTree = "<group>"; };
 		4062061A2C6A7078000DE3C5 /* CustomImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomImagePicker.swift; sourceTree = "<group>"; };
 		40684AB52C7BAFDC00A1BE60 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		40B474D22C9D172C00DA31C9 /* CustomIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomIcons.swift; sourceTree = "<group>"; };
 		40C00B552C6168A700C1B076 /* SharePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePhotoView.swift; sourceTree = "<group>"; };
 		40C00B572C61691400C1B076 /* ActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViewController.swift; sourceTree = "<group>"; };
 		40CE60852C88A9AE007FACAD /* AgePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgePickerSheet.swift; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 				40C00B552C6168A700C1B076 /* SharePhotoView.swift */,
 				403C94752C666E26003373A2 /* ShareSlideshowView.swift */,
 				40CE60892C88AC63007FACAD /* TimelineView.swift */,
+				40B474D22C9D172C00DA31C9 /* CustomIcons.swift */,
 			);
 			path = LifeReel;
 			sourceTree = "<group>";
@@ -343,6 +346,7 @@
 				40C00B582C61691400C1B076 /* ActivityViewController.swift in Sources */,
 				4015B76A2C5D7EC7001FA4E4 /* FullScreenPhotoView.swift in Sources */,
 				40CE60882C88AA30007FACAD /* DatePickerSheet.swift in Sources */,
+				40B474D32C9D172C00DA31C9 /* CustomIcons.swift in Sources */,
 				4015B75F2C5C56B7001FA4E4 /* ImagePicker.swift in Sources */,
 				40CE608C2C88DAE2007FACAD /* GridView.swift in Sources */,
 				402EF17D2C6EC8D100156F55 /* AgeCalculator.swift in Sources */,
