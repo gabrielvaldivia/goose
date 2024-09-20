@@ -5,14 +5,17 @@
 //  Created by Gabriel Valdivia on 8/9/24.
 //
 
-import Foundation
-import SwiftUI
-import Photos
-import Vision
 import AVFoundation
+import Foundation
+import Photos
+import SwiftUI
+import Vision
 
 enum SlideshowRange: Hashable {
-    case allPhotos, pregnancy, birthMonth, month(Int), year(Int), custom(String)
+    case allPhotos, pregnancy, birthMonth
+    case month(Int)
+    case year(Int)
+    case custom(String)
 
     var displayName: String {
         switch self {
@@ -24,7 +27,7 @@ enum SlideshowRange: Hashable {
         case .custom(let value): return value
         }
     }
-    
+
     static var allCases: [SlideshowRange] {
         var cases: [SlideshowRange] = [.allPhotos, .pregnancy, .birthMonth]
         for month in 1...12 {
@@ -74,76 +77,77 @@ struct ShareSlideshowView: View {
     @State private var timer: Timer?
     @State private var scrubberPosition: Double = 0
     @Environment(\.presentationMode) var presentationMode
-    
+
     @State private var currentFilteredPhotoIndex = 0
     @State private var aspectRatio: AspectRatio = .portrait
     @State private var showAppIcon: Bool = true
     @State private var titleOption: TitleOption = .name
     @State private var subtitleOption: TitleOption = .age
     @State private var speedOptions = [1.0, 2.0, 3.0]
-    
+
     @State private var currentImageId = UUID()
-    @State private var baseImageDuration: Double = 3.0 // Base duration for each image
-    @State private var imageDuration: Double = 3.0 // Actual duration, affected by speed
+    @State private var baseImageDuration: Double = 3.0  // Base duration for each image
+    @State private var imageDuration: Double = 3.0  // Actual duration, affected by speed
     @State private var effectOption: EffectOption = .kenBurns
-    
+
     @State private var audioPlayer: AVAudioPlayer?
     @State private var selectedMusic: String?
-    
+
     private let availableMusic = ["Serenity", "Echoes", "Sunshine", "Whispers"]
-    
+
     @State private var milestoneMode: MilestoneMode
     private let forceAllPhotos: Bool
-    
+
     @State private var isEditing: Bool = false
-    
-    init(photos: [Photo], person: Person, sectionTitle: String? = nil, forceAllPhotos: Bool = false) {
+
+    init(photos: [Photo], person: Person, sectionTitle: String? = nil, forceAllPhotos: Bool = false)
+    {
         self.photos = photos
         self.person = person
         self.sectionTitle = sectionTitle
         self.forceAllPhotos = forceAllPhotos
-        
+
         // Subtitle option always defaults to age
         _subtitleOption = State(initialValue: .age)
-        
+
         // Randomly select a song
         _selectedMusic = State(initialValue: availableMusic.randomElement())
-        
+
         // Ensure isPlaying is true by default
         _isPlaying = State(initialValue: true)
-        
+
         // Set milestone mode based on the forceAllPhotos parameter
         _milestoneMode = State(initialValue: forceAllPhotos ? .allPhotos : .milestones)
     }
-    
+
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
         case none = "None"
         case name = "Name"
         case age = "Age"
         case date = "Date"
-        
+
         var description: String { self.rawValue }
     }
-    
+
     enum EffectOption: String, CaseIterable, CustomStringConvertible {
         case kenBurns = "Ken Burns"
         case none = "None"
 
         var description: String { self.rawValue }
     }
-    
+
     enum MilestoneMode: String, CaseIterable, CustomStringConvertible {
         case allPhotos = "All Photos"
         case milestones = "Milestones"
-        
+
         var description: String { self.rawValue }
     }
-    
+
     // Body
-    var body: some View {   
+    var body: some View {
         VStack(alignment: .center, spacing: 10) {
             navigationBar
-            
+
             contentView
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -168,7 +172,7 @@ struct ShareSlideshowView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private var contentView: some View {
         if filteredPhotos.isEmpty {
@@ -231,7 +235,8 @@ struct ShareSlideshowView: View {
                     ZStack {
                         LazyImage(
                             photo: filteredPhotos[safeIndex],
-                            loadedImage: loadedImages[filteredPhotos[safeIndex].id.uuidString] ?? UIImage(),
+                            loadedImage: loadedImages[filteredPhotos[safeIndex].id.uuidString]
+                                ?? UIImage(),
                             aspectRatio: aspectRatio.value,
                             showAppIcon: showAppIcon,
                             titleText: getTitleText(for: filteredPhotos[safeIndex]),
@@ -243,7 +248,7 @@ struct ShareSlideshowView: View {
                         )
                         .id(currentImageId)
                         .transition(effectOption == .none ? .identity : .opacity)
-                        
+
                         // Play button overlay (only shown when paused)
                         if !isPlaying {
                             PlayButton(isPlaying: $isPlaying)
@@ -251,7 +256,7 @@ struct ShareSlideshowView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    .contentShape(Rectangle()) // Ensures the entire area is tappable
+                    .contentShape(Rectangle())  // Ensures the entire area is tappable
                     .onTapGesture {
                         isPlaying.toggle()
                     }
@@ -318,10 +323,10 @@ struct ShareSlideshowView: View {
     private var bottomControls: some View {
         VStack(spacing: 0) {
             Divider()
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    
+
                     // Title
                     SimplifiedCustomizationButton(
                         icon: "textformat",
@@ -330,7 +335,7 @@ struct ShareSlideshowView: View {
                         selection: $titleOption
                     )
                     .frame(width: 80)
-                    
+
                     // Subtitle
                     SimplifiedCustomizationButton(
                         icon: "text.alignleft",
@@ -357,7 +362,7 @@ struct ShareSlideshowView: View {
                         selection: musicBinding
                     )
                     .frame(width: 80)
-                    
+
                     // Speed
                     SimplifiedCustomizationButton(
                         icon: "speedometer",
@@ -368,7 +373,8 @@ struct ShareSlideshowView: View {
                             set: { newValue in
                                 if let speed = Double(newValue.dropLast()) {
                                     self.playbackSpeed = speed
-                                    self.handleSpeedChange(oldValue: self.playbackSpeed, newValue: speed)
+                                    self.handleSpeedChange(
+                                        oldValue: self.playbackSpeed, newValue: speed)
                                 }
                             }
                         )
@@ -383,7 +389,6 @@ struct ShareSlideshowView: View {
                         selection: $aspectRatio
                     )
                     .frame(width: 80)
-                
 
                     // Milestone Mode
                     if !forceAllPhotos {
@@ -399,9 +404,11 @@ struct ShareSlideshowView: View {
                     // Watermark
                     Button(action: { showAppIcon.toggle() }) {
                         VStack(spacing: 6) {
-                            Image(systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal")
-                                .font(.system(size: 24))
-                                .frame(height: 28)
+                            Image(
+                                systemName: showAppIcon ? "checkmark.seal.fill" : "checkmark.seal"
+                            )
+                            .font(.system(size: 24))
+                            .frame(height: 28)
                             Text("Watermark")
                                 .font(.caption)
                         }
@@ -469,17 +476,17 @@ struct ShareSlideshowView: View {
     }
 
     private func comingSoonAlert() -> some View {
-        Button("OK", role: .cancel) { }
+        Button("OK", role: .cancel) {}
     }
 
     // Helper Methods
     private func loadImagesAround(index: Int) {
         let photos = filteredPhotos
         guard !photos.isEmpty else { return }
-        
+
         let count = photos.count
         let safeIndex = (index + count) % count
-        
+
         // Determine the range of indices to load
         let rangeToLoad: [Int]
         if count <= 11 {
@@ -489,7 +496,7 @@ struct ShareSlideshowView: View {
             // Otherwise, load 5 before and 5 after the current index
             rangeToLoad = (-5...5).map { (safeIndex + $0 + count) % count }
         }
-        
+
         for i in rangeToLoad {
             let photo = photos[i]
             if loadedImages[photo.id.uuidString] == nil {
@@ -497,10 +504,10 @@ struct ShareSlideshowView: View {
             }
         }
     }
-    
+
     private func calculateGeneralAge(for person: Person, at date: Date) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: date)
-        
+
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
             case .none:
@@ -512,17 +519,18 @@ struct ShareSlideshowView: View {
                 return "Week \(exactAge.pregnancyWeeks)"
             }
         }
-        
+
         let calendar = Calendar.current
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
         let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
         if date >= person.dateOfBirth && date <= endOfBirthMonth {
             return "Birth Month"
         }
-        
+
         switch person.birthMonthsDisplay {
         case .none:
-            return exactAge.years == 0 ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
+            return exactAge.years == 0
+                ? "Birth Year" : "\(exactAge.years) Year\(exactAge.years == 1 ? "" : "s")"
         case .twelveMonths:
             if exactAge.years == 0 {
                 return "\(exactAge.months) Month\(exactAge.months == 1 ? "" : "s")"
@@ -537,14 +545,14 @@ struct ShareSlideshowView: View {
             }
         }
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
-    
+
     private func getTitleText(for photo: Photo) -> String {
         switch titleOption {
         case .none: return ""
@@ -553,7 +561,7 @@ struct ShareSlideshowView: View {
         case .date: return formatDate(photo.dateTaken)
         }
     }
-    
+
     private func getSubtitleText(for photo: Photo) -> String {
         switch subtitleOption {
         case .none: return ""
@@ -562,11 +570,11 @@ struct ShareSlideshowView: View {
         case .date: return formatDate(photo.dateTaken)
         }
     }
-    
+
     // Timer Methods
     private func startTimer() {
         guard filteredPhotos.count > 1 else { return }
-        let interval = 0.016 // Approximately 60 FPS
+        let interval = 0.016  // Approximately 60 FPS
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
             self.scrubberPosition += interval / self.imageDuration
             if self.scrubberPosition >= Double(self.filteredPhotos.count) {
@@ -574,7 +582,10 @@ struct ShareSlideshowView: View {
             }
             let newPhotoIndex = Int(self.scrubberPosition) % self.filteredPhotos.count
             if newPhotoIndex != self.currentFilteredPhotoIndex {
-                withAnimation(self.effectOption == .none ? .none : .easeInOut(duration: self.imageDuration * 0.5)) {
+                withAnimation(
+                    self.effectOption == .none
+                        ? .none : .easeInOut(duration: self.imageDuration * 0.5)
+                ) {
                     self.currentFilteredPhotoIndex = newPhotoIndex
                     self.currentImageId = UUID()
                 }
@@ -582,13 +593,13 @@ struct ShareSlideshowView: View {
             }
         }
     }
-    
+
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
         scrubberPosition = Double(currentFilteredPhotoIndex)
     }
-    
+
     private func groupAndSortPhotos() -> [(String, [Photo])] {
         return PhotoUtils.groupAndSortPhotos(for: person)
     }
@@ -610,13 +621,14 @@ struct ShareSlideshowView: View {
                 return true
             }
         case .milestones:
-            return filterMilestoneStack(photos: photos.filter { photo in
-                if person.pregnancyTracking == .none {
-                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                    return !age.isPregnancy
-                }
-                return true
-            })
+            return filterMilestoneStack(
+                photos: photos.filter { photo in
+                    if person.pregnancyTracking == .none {
+                        let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                        return !age.isPregnancy
+                    }
+                    return true
+                })
         }
     }
 
@@ -637,9 +649,9 @@ struct ShareSlideshowView: View {
 
     private func setupAudioPlayer() {
         guard let musicFileName = selectedMusic else { return }
-        
+
         print("Attempting to set up audio player for: \(musicFileName)")
-        
+
         // List all resources in the bundle
         if let resourcePath = Bundle.main.resourcePath {
             do {
@@ -652,30 +664,31 @@ struct ShareSlideshowView: View {
                 print("Error listing bundle contents: \(error)")
             }
         }
-        
+
         // Try to find the file directly in the bundle
         if let path = Bundle.main.path(forResource: musicFileName, ofType: "mp3") {
             createAudioPlayer(with: path)
         } else {
             print("Unable to find \(musicFileName).mp3 in bundle")
             if let resourcePath = Bundle.main.resourcePath {
-                let fullPath = (resourcePath as NSString).appendingPathComponent("\(musicFileName).mp3")
+                let fullPath = (resourcePath as NSString).appendingPathComponent(
+                    "\(musicFileName).mp3")
                 print("Searched path: \(fullPath)")
             }
         }
     }
-    
+
     private func createAudioPlayer(with path: String) {
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
-            audioPlayer?.numberOfLoops = -1 // Loop indefinitely
+            audioPlayer?.numberOfLoops = -1  // Loop indefinitely
             audioPlayer?.prepareToPlay()
             print("Successfully set up audio player for: \(path)")
         } catch {
             print("Error setting up audio player: \(error.localizedDescription)")
         }
     }
-    
+
     private func stopAudio() {
         audioPlayer?.stop()
         audioPlayer = nil
@@ -706,24 +719,32 @@ struct LazyImage: View {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.width / aspectRatio)
-                        .modifier(KenBurnsEffect(isActive: effectOption == .kenBurns && isPlaying, duration: duration))
+                        .frame(
+                            width: geometry.size.width, height: geometry.size.width / aspectRatio
+                        )
+                        .modifier(
+                            KenBurnsEffect(
+                                isActive: effectOption == .kenBurns && isPlaying, duration: duration
+                            )
+                        )
                         .clipped()
                 } else {
                     ProgressView()
                 }
-                
+
                 // Gradient overlay
                 VStack {
                     Spacer()
                     LinearGradient(
-                        gradient: Gradient(colors: [Color.black.opacity(0.5), Color.black.opacity(0)]),
+                        gradient: Gradient(colors: [
+                            Color.black.opacity(0.5), Color.black.opacity(0),
+                        ]),
                         startPoint: .bottom,
                         endPoint: .top
                     )
                     .frame(height: geometry.size.width / aspectRatio / 3)
                 }
-                
+
                 // Title, subtitle, and watermark
                 VStack {
                     Spacer()
@@ -734,22 +755,22 @@ struct LazyImage: View {
                                     .font(.title2)
                                     .fontWeight(.bold)
                             }
-                            
+
                             if !subtitleText.isEmpty {
                                 Text(subtitleText)
                                     .font(.subheadline)
                                     .opacity(0.7)
                             }
                         }
-                        
+
                         Spacer()
-                        
+
                         if showAppIcon {
                             VStack(alignment: .trailing) {
                                 Text("Made with")
                                     .font(.system(size: geometry.size.width * 0.04))
                                     .foregroundColor(.white.opacity(0.7))
-                                
+
                                 Text("Life Reel")
                                     .font(.system(size: geometry.size.width * 0.05, weight: .bold))
                                     .foregroundColor(.white)
@@ -813,9 +834,9 @@ struct KenBurnsEffect: ViewModifier {
             CGSize(width: 0, height: 5),
             CGSize(width: 5, height: 0),
             CGSize(width: -5, height: 0),
-            CGSize(width: 0, height: -5)
+            CGSize(width: 0, height: -5),
         ]
-        
+
         withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
             self.scale = scales.randomElement() ?? 1.02
             self.offset = offsets.randomElement() ?? .zero
@@ -832,7 +853,7 @@ struct KenBurnsEffect: ViewModifier {
 
 struct PlayButton: View {
     @Binding var isPlaying: Bool
-    
+
     var body: some View {
         Button(action: {
             isPlaying.toggle()
@@ -851,9 +872,9 @@ struct PlayButton: View {
 struct AspectRatio: Hashable, CustomStringConvertible {
     let value: CGFloat
     let description: String
-    
+
     static let square = AspectRatio(value: 1.0, description: "Square")
-    static let portrait = AspectRatio(value: 9.0/16.0, description: "IG Story")
+    static let portrait = AspectRatio(value: 9.0 / 16.0, description: "IG Story")
 }
 
 struct CustomScrubber: View {
@@ -884,7 +905,8 @@ struct CustomScrubber: View {
                     .onChanged { gesture in
                         isDragging = true
                         let newValue = self.gestureLocation(value: gesture.location.x, in: geometry)
-                        self.value = min(max(newValue, self.range.lowerBound), self.range.upperBound)
+                        self.value = min(
+                            max(newValue, self.range.lowerBound), self.range.upperBound)
                         self.onEditingChanged(true)
                     }
                     .onEnded { _ in

@@ -88,12 +88,16 @@ struct PersonSettingsView: View {
                         updatePerson { $0.birthMonthsDisplay = newValue }
                     }
 
-                    Toggle("Track Pregnancy", isOn: Binding(
-                        get: { person.pregnancyTracking != .none },
-                        set: { newValue in
-                            updatePerson { $0.pregnancyTracking = newValue ? .trimesters : .none }
-                        }
-                    ))
+                    Toggle(
+                        "Track Pregnancy",
+                        isOn: Binding(
+                            get: { person.pregnancyTracking != .none },
+                            set: { newValue in
+                                updatePerson {
+                                    $0.pregnancyTracking = newValue ? .trimesters : .none
+                                }
+                            }
+                        ))
 
                     if person.pregnancyTracking != .none {
                         Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
@@ -124,30 +128,41 @@ struct PersonSettingsView: View {
                                     updatePerson { $0.reminderFrequency = newValue }
                                     scheduleReminder()
                                     DispatchQueue.main.async {
-                                        viewModel.objectWillChange.send()
+                                        self.viewModel.objectWillChange.send()
+                                        // Force update of nextReminderDate in the UI
+                                        self.nextReminderDate = self.nextReminderDate
                                     }
                                 } else {
                                     // Handle the case where permission is not granted
-                                    // For example, show an alert to the user
-                                    localReminderFrequency = .none
+                                    DispatchQueue.main.async {
+                                        self.localReminderFrequency = .none
+                                    }
                                 }
                             }
                         } else {
                             updatePerson { $0.reminderFrequency = newValue }
-                            scheduleReminder()
+                            scheduleReminder()  // This will cancel all reminders when set to .none
                             DispatchQueue.main.async {
-                                viewModel.objectWillChange.send()
+                                self.viewModel.objectWillChange.send()
+                                // Force update of nextReminderDate in the UI
+                                self.nextReminderDate = self.nextReminderDate
                             }
                         }
                     }
                 } header: {
                     Text("Reminders")
                 } footer: {
-                    if localReminderFrequency != .none, let nextReminder = nextReminderDate {
-                        Text("Next reminder: \(formatDateTime(nextReminder))")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                    Group {
+                        if localReminderFrequency != .none {
+                            if let nextReminder = nextReminderDate {
+                                Text("Next reminder: \(formatDateTime(nextReminder))")
+                            } else {
+                                Text("Next reminder: Not set")
+                            }
+                        }
                     }
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
                 }
 
                 Section(header: Text("Internal")) {
@@ -202,7 +217,8 @@ struct PersonSettingsView: View {
                     Alert(
                         title: Text("Delete Reel"),
                         message: Text(
-                            "Are you sure you want to delete this reel? This action cannot be undone."),
+                            "Are you sure you want to delete this reel? This action cannot be undone."
+                        ),
                         primaryButton: .destructive(Text("Delete"), action: deletePerson),
                         secondaryButton: .cancel()
                     )
@@ -277,10 +293,8 @@ struct PersonSettingsView: View {
     }
 
     private func scheduleReminder() {
-        // First, remove any existing reminders for this person
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
-            person.id.uuidString
-        ])
+        // Cancel all existing reminders for this person
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [person.id.uuidString])
 
         guard person.reminderFrequency != .none else {
             nextReminderDate = nil
@@ -294,64 +308,62 @@ struct PersonSettingsView: View {
 
         let calendar = Calendar.current
         let now = Date()
-        var dateComponents = calendar.dateComponents(
-            [.year, .month, .day], from: person.dateOfBirth)
-        dateComponents.hour = 10  // Set reminder time to 10 AM
-        dateComponents.minute = 0
+        print("Current date: \(now)")
+        print("Person's date of birth: \(person.dateOfBirth)")
+        print("Reminder frequency: \(person.reminderFrequency)")
 
         switch person.reminderFrequency {
         case .daily:
-            dateComponents = calendar.dateComponents([.hour, .minute], from: now)
-            dateComponents.hour = 10
-            dateComponents.minute = 0
-            nextReminderDate = calendar.nextDate(
-                after: now, matching: dateComponents, matchingPolicy: .nextTime)
+            var components = calendar.dateComponents([.year, .month, .day], from: now)
+            components.hour = 9
+            components.minute = 0
+            components.second = 0
+            
+            if let date = calendar.date(from: components), date <= now {
+                components.day! += 1
+            }
+            
+            nextReminderDate = calendar.date(from: components)
+            
         case .monthly:
-            let currentYear = calendar.component(.year, from: now)
-            let currentMonth = calendar.component(.month, from: now)
-            let birthDay = dateComponents.day!
-
-            dateComponents.year = currentYear
-            dateComponents.month = currentMonth
-            dateComponents.day = birthDay
-
-            if let nextDate = calendar.nextDate(
-                after: now, matching: dateComponents, matchingPolicy: .nextTime)
-            {
-                nextReminderDate = nextDate
-            } else {
-                // If we couldn't find a valid date this month, move to the next month
-                dateComponents.month = (currentMonth % 12) + 1
-                if dateComponents.month == 1 {
-                    dateComponents.year = currentYear + 1
-                }
-                nextReminderDate = calendar.date(from: dateComponents)
-            }
+            let birthDay = calendar.component(.day, from: person.dateOfBirth)
+            var components = DateComponents()
+            components.day = birthDay
+            components.hour = 9
+            components.minute = 0
+            
+            nextReminderDate = calendar.nextDate(after: now, matching: components, matchingPolicy: .nextTime)
+            
         case .yearly:
-            dateComponents.year = calendar.component(.year, from: now)
-            if let nextDate = calendar.date(from: dateComponents),
-                nextDate > now
-            {
-                nextReminderDate = nextDate
-            } else {
-                dateComponents.year! += 1
-                nextReminderDate = calendar.date(from: dateComponents)
+            var components = calendar.dateComponents([.month, .day], from: person.dateOfBirth)
+            components.year = calendar.component(.year, from: now)
+            components.hour = 9
+            components.minute = 0
+            
+            var nextDate = calendar.date(from: components)!
+            if nextDate <= now {
+                components.year! += 1
+                nextDate = calendar.date(from: components)!
             }
+            nextReminderDate = nextDate
+            
         case .none:
             nextReminderDate = nil
             return
         }
 
+        print("Calculated next reminder date: \(nextReminderDate ?? Date())")
+
         if let nextReminderDate = nextReminderDate {
-            let trigger = UNCalendarNotificationTrigger(
-                dateMatching: calendar.dateComponents(
-                    [.year, .month, .day, .hour, .minute], from: nextReminderDate), repeats: true)
-            let request = UNNotificationRequest(
-                identifier: person.id.uuidString, content: content, trigger: trigger)
+            let triggerComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: nextReminderDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComponents, repeats: true)
+            let request = UNNotificationRequest(identifier: person.id.uuidString, content: content, trigger: trigger)
 
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error {
                     print("Error scheduling reminder: \(error.localizedDescription)")
+                } else {
+                    print("Reminder scheduled successfully for \(nextReminderDate)")
                 }
             }
         }
