@@ -76,9 +76,9 @@ struct ContentView: View {
                                     viewModel.selectedPerson = person
                                 }
                             }
-                            
+
                             Divider()
-                            
+
                             Button {
                                 showingAddPersonSheet = true
                             } label: {
@@ -289,8 +289,11 @@ struct ContentView: View {
                                     }
                                 }
                             }
-                            .padding(16)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 60)
                         }
+                        .scrollIndicators(.hidden)
                     }
                 }
                 .id(person.id)  // Force view refresh when person changes
@@ -404,7 +407,6 @@ struct MilestoneTile: View {
     private let shadowRadius: CGFloat = 4
     private let shadowX: CGFloat = 0
     private let shadowY: CGFloat = 3
-    private let scaleFactor: CGFloat = 0.95
 
     var body: some View {
         VStack(spacing: 0) {
@@ -412,43 +414,12 @@ struct MilestoneTile: View {
                 if isEmpty {
                     emptyTileContent
                 } else {
-                    Group {
-                        if photos.count >= 3 {
-                            // Bottom layer (third most recent photo)
-                            photoLayer(at: 2, rotation: 6, scale: scaleFactor * scaleFactor)
-                        }
-
-                        if photos.count >= 2 {
-                            // Middle layer (second most recent photo)
-                            photoLayer(at: 1, rotation: 3, scale: scaleFactor)
-                        }
-
-                        // Top layer (most recent photo)
-                        filledTileContent
-                            .frame(width: width, height: width * 4 / 3)
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                    }
+                    filledTileContent
                 }
             }
             .frame(width: width, height: width * 4 / 3)
         }
         .frame(width: width)
-    }
-
-    private func photoLayer(at index: Int, rotation: Double, scale: CGFloat) -> some View {
-        let sortedPhotos = photos.sorted(by: { $0.dateTaken > $1.dateTaken })
-        if sortedPhotos.indices.contains(index), let image = sortedPhotos[index].image {
-            return AnyView(
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: width * scale, height: width * 4 / 3 * scale)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .rotationEffect(Angle(degrees: rotation), anchor: .bottomLeading)
-                    .shadow(color: shadowColor, radius: shadowRadius, x: shadowX, y: shadowY)
-            )
-        }
-        return AnyView(EmptyView())
     }
 
     private var emptyTileContent: some View {
@@ -495,6 +466,18 @@ struct MilestoneTile: View {
             }
 
             VStack {
+                HStack {
+                    Spacer()
+                    Text("\(photos.count)")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                        .padding(8)
+                }
                 Spacer()
 
                 LinearGradient(
@@ -504,22 +487,17 @@ struct MilestoneTile: View {
                 )
                 .frame(height: 50)
                 .overlay(
-                    VStack(spacing: 2) {
-                        Text(milestone)
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .lineLimit(1)
-                            .foregroundColor(.white)
-
-                        // Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
-                        //     .font(.caption)
-                        //     .foregroundColor(.white.opacity(0.8))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 4)
+                    Text(milestone)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .lineLimit(1)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 4)
                 )
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: shadowColor, radius: shadowRadius, x: shadowX, y: shadowY)
     }
 }
