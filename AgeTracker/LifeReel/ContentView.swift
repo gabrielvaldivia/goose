@@ -70,6 +70,19 @@ struct ContentView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
+                        CircularButton(
+                            systemName: "gearshape.fill",
+                            action: {
+                                isSettingsActive = true
+                            },
+                            size: 32,
+                            backgroundColor: Color.gray.opacity(0.2),
+                            iconColor: .primary,
+                            blurEffect: false
+                        )
+                    }
+
+                    ToolbarItem(placement: .principal) {
                         Menu {
                             ForEach(viewModel.people) { person in
                                 Button(person.name) {
@@ -94,7 +107,7 @@ struct ContentView: View {
                                     viewModel.selectedPerson?.name ?? viewModel.people.first?.name
                                         ?? "Select Person"
                                 )
-                                .font(.title2)
+                                .font(.headline)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
 
@@ -106,29 +119,16 @@ struct ContentView: View {
                     }
 
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack(spacing: 16) {
-                            CircularButton(
-                                systemName: "gearshape.fill",
-                                action: {
-                                    isSettingsActive = true
-                                },
-                                size: 32,
-                                backgroundColor: Color.gray.opacity(0.2),
-                                iconColor: .primary,
-                                blurEffect: false
-                            )
-
-                            CircularButton(
-                                systemName: "plus",
-                                action: {
-                                    showingImagePicker = true
-                                },
-                                size: 32,
-                                backgroundColor: Color.gray.opacity(0.2),
-                                iconColor: .primary,
-                                blurEffect: false
-                            )
-                        }
+                        CircularButton(
+                            systemName: "plus",
+                            action: {
+                                showingImagePicker = true
+                            },
+                            size: 32,
+                            backgroundColor: Color.gray.opacity(0.2),
+                            iconColor: .primary,
+                            blurEffect: false
+                        )
                     }
                 }
                 .background(
