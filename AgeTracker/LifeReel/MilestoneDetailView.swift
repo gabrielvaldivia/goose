@@ -48,7 +48,8 @@ struct MilestoneDetailView: View {
                     size: 32,
                     backgroundColor: Color.gray.opacity(0.2),
                     iconColor: .primary,
-                    blurEffect: false
+                    blurEffect: false,
+                    iconSize: nil  // Add this line
                 )
             }
             ToolbarItem(placement: .principal) {
@@ -57,16 +58,32 @@ struct MilestoneDetailView: View {
                     .fontWeight(.bold)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                CircularButton(
-                    systemName: "plus",
-                    action: {
-                        showingImagePicker = true
-                    },
-                    size: 32,
-                    backgroundColor: Color.gray.opacity(0.2),
-                    iconColor: .primary,
-                    blurEffect: false
-                )
+                HStack(spacing: 16) {
+                    if photosToDisplay().count >= 2 {
+                        CircularButton(
+                            systemName: "square.and.arrow.up",
+                            action: {
+                                showingSlideshowSheet = true
+                            },
+                            size: 32,
+                            backgroundColor: Color.gray.opacity(0.2),
+                            iconColor: .primary,
+                            blurEffect: false,
+                            iconSize: 11
+                        )
+                    }
+                    CircularButton(
+                        systemName: "plus",
+                        action: {
+                            showingImagePicker = true
+                        },
+                        size: 32,
+                        backgroundColor: Color.gray.opacity(0.2),
+                        iconColor: .primary,
+                        blurEffect: false,
+                        iconSize: nil  // Add this line
+                    )
+                }
             }
         }
         .navigationBarBackButtonHidden(true)

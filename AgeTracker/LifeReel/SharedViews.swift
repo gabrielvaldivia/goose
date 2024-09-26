@@ -296,11 +296,12 @@ struct EmptyStateView: View {
 struct CircularButton: View {
     let systemName: String
     let action: () -> Void
-    var size: CGFloat = 40
-    var backgroundColor: Color?
+    let size: CGFloat
+    var backgroundColor: Color = Color.gray.opacity(0.2)
     var iconColor: Color?
-    var blurEffect: Bool = true
-    
+    var blurEffect: Bool = false
+    var iconSize: CGFloat?
+
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -310,7 +311,7 @@ struct CircularButton: View {
         }) {
             ZStack {
                 Circle()
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(backgroundColor)
                 
                 if blurEffect {
                     VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
@@ -318,7 +319,7 @@ struct CircularButton: View {
                 }
                 
                 Image(systemName: systemName)
-                    .font(.system(size: size * 0.4, weight: .bold))
+                    .font(.system(size: iconSize ?? (size * 0.4), weight: .bold))
                     .foregroundColor(iconColor ?? .primary)
             }
             .frame(width: size, height: size)
@@ -393,7 +394,10 @@ struct BottomControls: View {
                 action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     shareAction()
-                })
+                },
+                size: 40,
+                iconSize: nil
+            )
             Spacer()
 
             SegmentedControlView(selectedTab: $selectedTab, animationDirection: $animationDirection)
@@ -405,7 +409,11 @@ struct BottomControls: View {
                 action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     addPhotoAction()
-                }, size: 50, backgroundColor: .blue)
+                },
+                size: 50,
+                backgroundColor: .blue,
+                iconSize: nil
+            )
         }
         .padding(.horizontal)
     }

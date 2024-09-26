@@ -473,14 +473,16 @@ private struct ControlsOverlay: View {
                         systemName: "xmark",
                         action: onClose,
                         size: 32,
-                        blurEffect: true
+                        blurEffect: true,
+                        iconSize: nil
                     )
                     Spacer()
                     CircularButton(
                         systemName: "square.and.arrow.up",
                         action: onShare,
                         size: 32,
-                        blurEffect: true
+                        blurEffect: true,
+                        iconSize: nil
                     )
                     Menu {
                         Button {
@@ -505,7 +507,8 @@ private struct ControlsOverlay: View {
                             systemName: "ellipsis",
                             action: {},
                             size: 32,
-                            blurEffect: true
+                            blurEffect: true,
+                            iconSize: nil
                         )
                     }
                 }
@@ -603,7 +606,7 @@ struct ThumbnailScrubber: View {
     @Binding var currentIndex: Int
     let onScrub: (Int) -> Void
 
-    private let thumbnailSize: CGFloat = 50
+    private let thumbnailSize: CGFloat = 48
     private let spacing: CGFloat = 4
 
     @State private var scrollOffset: CGFloat = 0
@@ -722,10 +725,13 @@ struct ThumbnailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
+        .frame(width: 46, height: 46)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.primary, lineWidth: isSelected ? 2 : 0)
+                .stroke(isSelected ? Color(.white) : Color.clear, lineWidth: 2)
+                .frame(width: 46, height: 46)
         )
+        .shadow(color: isSelected ? Color.primary.opacity(0.2) : Color.clear, radius: 3, x: 0, y: 1)
     }
 }
 

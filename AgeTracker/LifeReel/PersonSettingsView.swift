@@ -198,7 +198,8 @@ struct PersonSettingsView: View {
                         size: 32,
                         backgroundColor: Color.gray.opacity(0.2),
                         iconColor: .primary,
-                        blurEffect: false
+                        blurEffect: false,
+                        iconSize: nil  
                     )
                 }
             }

@@ -43,26 +43,6 @@ struct ContentView: View {
                         OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
                     } else {
                         mainView
-
-                        VStack {
-                            Spacer()
-                            Button(action: {
-                                showingSlideshowSheet = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "play.rectangle.fill")
-                                        .font(.system(size: 20))
-                                    Text("Slideshow")
-                                        .fontWeight(.semibold)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(25)
-                                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-                            }
-                        }
                     }
                 }
 
@@ -78,7 +58,8 @@ struct ContentView: View {
                             size: 32,
                             backgroundColor: Color.gray.opacity(0.2),
                             iconColor: .primary,
-                            blurEffect: false
+                            blurEffect: false,
+                            iconSize: nil
                         )
                     }
 
@@ -119,16 +100,31 @@ struct ContentView: View {
                     }
 
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        CircularButton(
-                            systemName: "plus",
-                            action: {
-                                showingImagePicker = true
-                            },
-                            size: 32,
-                            backgroundColor: Color.gray.opacity(0.2),
-                            iconColor: .primary,
-                            blurEffect: false
-                        )
+                        HStack(spacing: 16) {
+                            CircularButton(
+                                systemName: "square.and.arrow.up",
+                                action: {
+                                    showingSlideshowSheet = true
+                                },
+                                size: 32,
+                                backgroundColor: Color.gray.opacity(0.2),
+                                iconColor: .primary,
+                                blurEffect: false,
+                                iconSize: 11
+                            )
+                            
+                            CircularButton(
+                                systemName: "plus",
+                                action: {
+                                    showingImagePicker = true
+                                },
+                                size: 32,
+                                backgroundColor: Color.gray.opacity(0.2),
+                                iconColor: .primary,
+                                blurEffect: false,
+                                iconSize: nil
+                            )
+                        }
                     }
                 }
                 .background(
