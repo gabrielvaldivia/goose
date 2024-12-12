@@ -7,10 +7,10 @@
 
 import AVKit
 import Foundation
+import Network
 import PhotosUI
 import SwiftUI
 import UIKit
-import Network
 
 struct FullScreenPhotoView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -468,7 +468,7 @@ private struct ControlsOverlay: View {
 
     var body: some View {
         VStack {
-            // Top Bar with Close, Name, Share, and Menu Buttons
+            // Top Bar with Close, Name/Age/Date, Share, and Menu Buttons
             ZStack {
                 HStack {
                     CircularButton(
@@ -515,45 +515,14 @@ private struct ControlsOverlay: View {
                     }
                 }
 
-                Text(person.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity)
-            }
-            .padding(.horizontal, 12)
-
-            Spacer()
-
-            // Bottom Bar with Scrubber, Age, and Date
-            VStack(spacing: 12) {
-                if photos.count >= 2 {
-                    ThumbnailScrubber(
-                        photos: photos,
-                        currentIndex: $currentIndex,
-                        onScrub: onScrub
-                    )
-                    .frame(height: 60)
-                    .mask(
-                        HStack(spacing: 0) {
-                            LinearGradient(
-                                gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 40)
-                            Rectangle().fill(Color.primary)
-                            LinearGradient(
-                                gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 40)
-                        }
-                    )
-                }
-
                 VStack(spacing: 4) {
+                    // Text(person.name)
+                    //     .font(.headline)
+                    //     .fontWeight(.bold)
+                    //     .foregroundColor(.primary)
+
                     Text(selectedAge.toString())
-                        .font(.subheadline)
+                        .font(.headline)
                         .foregroundColor(.primary)
                         .onTapGesture {
                             showAgePicker = true
@@ -561,11 +530,41 @@ private struct ControlsOverlay: View {
 
                     Text(formatDate(selectedDate))
                         .font(.caption)
-                        .foregroundColor(.primary.opacity(0.8))
+                        .foregroundColor(.secondary)
                         .onTapGesture {
                             showDatePicker = true
                         }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical)
+            }
+            .padding(.horizontal, 12)
+
+            Spacer()
+
+            // Bottom Bar with Scrubber
+            if photos.count >= 2 {
+                ThumbnailScrubber(
+                    photos: photos,
+                    currentIndex: $currentIndex,
+                    onScrub: onScrub
+                )
+                .frame(height: 60)
+                .mask(
+                    HStack(spacing: 0) {
+                        LinearGradient(
+                            gradient: Gradient(colors: [.clear, .white]), startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 40)
+                        Rectangle().fill(Color.primary)
+                        LinearGradient(
+                            gradient: Gradient(colors: [.white, .clear]), startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 40)
+                    }
+                )
             }
         }
         .padding(.top, 4)
@@ -754,40 +753,81 @@ enum DragState {
 struct HighResolutionImageLoader: View {
     let photo: Photo
     let completion: (UIImage?) -> Void
-    @State private var isLoading = true
-    
+    @State private var retryCount = 0
+    private let maxRetries = 3
+    private let monitor = NWPathMonitor()
+    @State private var isNetworkAvailable = true
+
     var body: some View {
-        ZStack {
-            if isLoading {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+        Color.clear
+            .onAppear {
+                startNetworkMonitor()
+                loadHighResolutionImage()
             }
-            
-            Color.clear
-                .onAppear {
-                    loadHighResolutionImage()
-                }
-        }
+            .onDisappear {
+                monitor.cancel()
+            }
     }
-    
+
+    private func startNetworkMonitor() {
+        monitor.pathUpdateHandler = { path in
+            DispatchQueue.main.async {
+                self.isNetworkAvailable = path.status == .satisfied
+            }
+        }
+        let queue = DispatchQueue(label: "NetworkMonitor")
+        monitor.start(queue: queue)
+    }
+
     private func loadHighResolutionImage() {
+        guard isNetworkAvailable else {
+            print("Network unavailable. Cannot load image.")
+            completion(nil)  // Provide a placeholder or error image
+            return
+        }
+
         let options = PHImageRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .opportunistic
         options.isSynchronous = false
-        
-        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [photo.assetIdentifier], options: nil)
+        options.version = .current
+
+        let fetchResult = PHAsset.fetchAssets(
+            withLocalIdentifiers: [photo.assetIdentifier], options: nil)
         if let asset = fetchResult.firstObject {
+            let targetSize = CGSize(width: 1024, height: 1024)
+
             PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: PHImageManagerMaximumSize,
+                targetSize: targetSize,
                 contentMode: .aspectFit,
                 options: options
-            ) { image, _ in
-                DispatchQueue.main.async {
-                    isLoading = false
-                    completion(image)
+            ) { image, info in
+                if let error = info?[PHImageErrorKey] as? Error {
+                    print("Error loading image: \(error.localizedDescription)")
+                    if self.retryCount < self.maxRetries {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self.retryCount += 1
+                            self.loadHighResolutionImage()
+                        }
+                    } else {
+                        completion(nil)  // Provide a placeholder or error image
+                    }
+                    return
+                }
+
+                if let loadedImage = image {
+                    let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                    DispatchQueue.main.async {
+                        completion(loadedImage)
+
+                        if isDegraded && self.retryCount < self.maxRetries {
+                            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                                self.retryCount += 1
+                                self.loadHighResolutionImage()
+                            }
+                        }
+                    }
                 }
             }
         }

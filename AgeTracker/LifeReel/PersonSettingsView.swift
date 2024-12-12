@@ -303,8 +303,8 @@ struct PersonSettingsView: View {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "Photo Upload Reminder"
-        content.body = "Don't forget to upload new photos of \(person.name)!"
+        content.title = "\(person.name) is \(AgeCalculator.calculate(for: person, at: Date()).toString()) old today"
+        content.body = "Upload a photo to their LifeReel!"
         content.sound = .default
 
         let calendar = Calendar.current
