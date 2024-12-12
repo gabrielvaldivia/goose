@@ -19,8 +19,34 @@ struct MilestoneDetailView: View {
     @State private var forceUpdate: Bool = false
     @State private var isLoading = false
     @State private var showingSlideshowSheet = false
+    @State private var loadingError: Error? = nil
     @Environment(\.presentationMode) var presentationMode
-
+    
+    // Cache filtered photos
+    @State private var cachedPhotos: [Photo] = []
+    
+    private func loadCachedPhotos() {
+        isLoading = true
+        loadingError = nil
+        
+        let filteredPhotos = person.photos.filter { photo in
+            let shouldInclude = PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
+            if person.pregnancyTracking == .none {
+                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                return shouldInclude && !age.isPregnancy
+            }
+            return shouldInclude
+        }
+        
+        // Just sort and assign the photos - they should already have their images
+        cachedPhotos = filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
+        isLoading = false
+    }
+    
+    private func photosToDisplay() -> [Photo] {
+        return cachedPhotos
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             if photosToDisplay().isEmpty {
@@ -36,6 +62,9 @@ struct MilestoneDetailView: View {
                 )
                 .edgesIgnoringSafeArea(.bottom)
             }
+        }
+        .onAppear {
+            loadCachedPhotos()
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -139,50 +168,9 @@ struct MilestoneDetailView: View {
                 forceAllPhotos: true
             )
         }
-        .overlay(
-            Group {
-                if photosToDisplay().count >= 2 {
-                    VStack {
-                        Spacer()
-                        Button(action: {
-                            showingSlideshowSheet = true
-                        }) {
-                            HStack {
-                                Image(systemName: "play.rectangle.fill")
-                                    .font(.system(size: 20))
-                                Text("Slideshow")
-                                    .fontWeight(.semibold)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(25)
-                            .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-                        }
-                    }
-                }
-            }
-        )
     }
 
     @GestureState private var dragOffset = CGSize.zero
-
-    private func photosToDisplay() -> [Photo] {
-        return photosForCurrentSection()
-    }
-
-    private func photosForCurrentSection() -> [Photo] {
-        let filteredPhotos = person.photos.filter { photo in
-            let shouldInclude = PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
-            if person.pregnancyTracking == .none {
-                let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                return shouldInclude && !age.isPregnancy
-            }
-            return shouldInclude
-        }
-        return filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
-    }
 
     private var emptyStateView: some View {
         GeometryReader { geometry in

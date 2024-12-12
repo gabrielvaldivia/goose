@@ -7,8 +7,10 @@
 
 import AVKit
 import Foundation
+import PhotosUI
 import SwiftUI
 import UIKit
+import Network
 
 struct FullScreenPhotoView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -745,6 +747,49 @@ enum DragState {
             return .zero
         case .dragging(let translation):
             return translation
+        }
+    }
+}
+
+struct HighResolutionImageLoader: View {
+    let photo: Photo
+    let completion: (UIImage?) -> Void
+    @State private var isLoading = true
+    
+    var body: some View {
+        ZStack {
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+            }
+            
+            Color.clear
+                .onAppear {
+                    loadHighResolutionImage()
+                }
+        }
+    }
+    
+    private func loadHighResolutionImage() {
+        let options = PHImageRequestOptions()
+        options.isNetworkAccessAllowed = true
+        options.deliveryMode = .opportunistic
+        options.isSynchronous = false
+        
+        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [photo.assetIdentifier], options: nil)
+        if let asset = fetchResult.firstObject {
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: PHImageManagerMaximumSize,
+                contentMode: .aspectFit,
+                options: options
+            ) { image, _ in
+                DispatchQueue.main.async {
+                    isLoading = false
+                    completion(image)
+                }
+            }
         }
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Photos
 import SwiftUI
 
 struct GridView: View {
@@ -18,6 +19,9 @@ struct GridView: View {
 
     @State private var orientation = UIDeviceOrientation.unknown
     @State private var showingImagePicker = false  // Add this line
+
+    // Add image cache
+    @State private var imageCache: [String: UIImage] = [:]
 
     private var filteredPhotos: [Photo] {
         guard let sectionTitle = sectionTitle else {
@@ -56,6 +60,82 @@ struct GridView: View {
         }
     }
 
+    private func placeholderImage(size: CGSize) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            // Ensure background matches the "Add Photos" tile
+            UIColor.secondarySystemBackground.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+
+            // Draw photo icon with bolder weight
+            let iconSize: CGFloat = min(size.width, size.height) * 0.3
+            let config = UIImage.SymbolConfiguration(pointSize: iconSize, weight: .semibold)  // Bolder icon
+            if let icon = UIImage(systemName: "photo", withConfiguration: config)?.withTintColor(
+                .systemGray3, renderingMode: .alwaysOriginal)
+            {
+                let iconAspectRatio = icon.size.width / icon.size.height
+                let iconWidth = iconSize
+                let iconHeight = iconWidth / iconAspectRatio
+
+                let iconRect = CGRect(
+                    x: (size.width - iconWidth) / 2,
+                    y: (size.height - iconHeight) / 2,
+                    width: iconWidth,
+                    height: iconHeight
+                )
+                icon.draw(in: iconRect)
+            }
+        }
+    }
+
+    private func loadImage(for photo: Photo) -> UIImage {
+        // Check cache first
+        if let cachedImage = imageCache[photo.id.uuidString] {
+            return cachedImage
+        }
+
+        // If we already have the image loaded, cache and return it
+        if let existingImage = photo.image {
+            imageCache[photo.id.uuidString] = existingImage
+            return existingImage
+        }
+
+        // Set up options to avoid iCloud download and main thread issues
+        let options = PHImageRequestOptions()
+        options.isNetworkAccessAllowed = true  // Allow network access for full screen view
+        options.isSynchronous = false  // Async loading
+        options.deliveryMode = .opportunistic  // Start with fast image, then load better quality
+        options.version = .current
+
+        // Create placeholder with same size as target image
+        let size = CGSize(width: 300, height: 300)
+        let placeholder = placeholderImage(size: size)
+
+        // Load image using asset identifier
+        let fetchResult = PHAsset.fetchAssets(
+            withLocalIdentifiers: [photo.assetIdentifier], options: nil)
+        if let asset = fetchResult.firstObject {
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: size,
+                contentMode: .aspectFill,
+                options: options
+            ) { image, info in
+                if let loadedImage = image {
+                    // Check if this is the final image (not a temporary one)
+                    let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                    if !isDegraded {
+                        DispatchQueue.main.async {
+                            self.imageCache[photo.id.uuidString] = loadedImage
+                        }
+                    }
+                }
+            }
+        }
+
+        return imageCache[photo.id.uuidString] ?? placeholder
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -70,18 +150,21 @@ struct GridView: View {
                     )
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
-                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10) {
-                        ForEach(filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id) { photo in
-                            let itemWidth = max(1, GridLayoutHelper.gridItemWidth(for: geometry.size))
-                            Image(uiImage: photo.image ?? UIImage())
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: itemWidth, height: itemWidth)
-                                .clipped()
-                                .cornerRadius(10)
-                                .onTapGesture {
+                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10)
+                    {
+                        ForEach(
+                            filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id
+                        ) { photo in
+                            let itemWidth = max(
+                                1, GridLayoutHelper.gridItemWidth(for: geometry.size))
+                            PhotoThumbnail(
+                                photo: photo,
+                                width: itemWidth,
+                                loadImage: loadImage,
+                                onTap: {
                                     selectedPhoto = photo
                                 }
+                            )
                         }
 
                         // Add Photos tile
@@ -95,8 +178,9 @@ struct GridView: View {
                                     .font(.system(size: 30))
                                     .foregroundColor(.secondary)
                             }
-                            .frame(width: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)), 
-                                   height: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
+                            .frame(
+                                width: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)),
+                                height: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
                         }
                     }
                     .padding()
@@ -137,3 +221,41 @@ struct GridLayoutHelper {
         return (size.width - totalSpacing - 20) / columnCount
     }
 }
+
+// Photo Thumbnail View
+struct PhotoThumbnail: View {
+    let photo: Photo
+    let width: CGFloat
+    let loadImage: (Photo) -> UIImage
+    let onTap: () -> Void
+
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            if let img = image {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Color(.secondarySystemBackground)
+                ProgressView()
+            }
+        }
+        .frame(width: width, height: width)
+        .clipped()
+        .cornerRadius(10)
+        .onAppear {
+            // Load image asynchronously
+            DispatchQueue.global(qos: .userInitiated).async {
+                let loadedImage = loadImage(photo)
+                DispatchQueue.main.async {
+                    self.image = loadedImage
+                }
+
+            }
+        }
+        .onTapGesture(perform: onTap)
+    }
+}
+
