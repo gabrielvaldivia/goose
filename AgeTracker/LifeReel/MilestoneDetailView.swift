@@ -52,13 +52,14 @@ struct MilestoneDetailView: View {
             if photosToDisplay().isEmpty {
                 emptyStateView
             } else {
-                GridView(
+               GridView(
                     viewModel: viewModel,
                     person: $person,
                     selectedPhoto: $selectedPhoto,
                     sectionTitle: sectionTitle,
                     forceUpdate: forceUpdate,
-                    showAge: false
+                    showAge: false,
+                    showMilestoneScroll: false
                 )
                 .edgesIgnoringSafeArea(.bottom)
             }

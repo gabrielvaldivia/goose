@@ -16,6 +16,7 @@ struct GridView: View {
     let sectionTitle: String?
     let forceUpdate: Bool
     let showAge: Bool
+    let showMilestoneScroll: Bool
 
     @State private var orientation = UIDeviceOrientation.unknown
     @State private var showingImagePicker = false  // Add this line
@@ -139,52 +140,94 @@ struct GridView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                if filteredPhotos.isEmpty {
-                    EmptyStateView(
-                        title: "No photos in \(sectionTitle ?? "this section")",
-                        subtitle: "Add photos to create memories",
-                        systemImageName: "photo.on.rectangle.angled",
-                        action: {
-                            showingImagePicker = true
-                        }
-                    )
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                } else {
-                    LazyVGrid(columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 10)
-                    {
-                        ForEach(
-                            filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id
-                        ) { photo in
-                            let itemWidth = max(
-                                1, GridLayoutHelper.gridItemWidth(for: geometry.size))
-                            PhotoThumbnail(
-                                photo: photo,
-                                width: itemWidth,
-                                loadImage: loadImage,
-                                onTap: {
-                                    selectedPhoto = photo
+                VStack(spacing: 0) {
+                    // Show milestone scroll only when requested
+                    if showMilestoneScroll {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(getMilestones(for: person), id: \.0) { milestone, photos in
+                                    NavigationLink(
+                                        destination: MilestoneDetailView(
+                                            viewModel: viewModel,
+                                            person: viewModel.bindingForPerson(person),
+                                            sectionTitle: milestone
+                                        )
+                                    ) {
+                                        MilestoneTile(
+                                            milestone: milestone,
+                                            photos: photos,
+                                            person: person,
+                                            width: UIScreen.main.bounds.width * 0.35,
+                                            isEmpty: photos.isEmpty
+                                        )
+                                    }
                                 }
-                            )
-                        }
-
-                        // Add Photos tile
-                        Button(action: {
-                            showingImagePicker = true
-                        }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(.secondarySystemBackground))
-                                Image(systemName: "plus")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.secondary)
                             }
-                            .frame(
-                                width: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)),
-                                height: max(1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
+                            .padding(.horizontal)
+                            .padding(.vertical, 10)
                         }
+                        .background(Color(.systemBackground))
+
+                        // Add the "All photos" title here
+                        Text("All photos")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                            .padding(.top, 20)
+                            .padding(.bottom, 10)
                     }
-                    .padding()
-                    .padding(.bottom, 80)
+
+                    // Existing grid content
+                    if filteredPhotos.isEmpty {
+                        EmptyStateView(
+                            title: "No photos in \(sectionTitle ?? "this section")",
+                            subtitle: "Add photos to create memories",
+                            systemImageName: "photo.on.rectangle.angled",
+                            action: {
+                                showingImagePicker = true
+                            }
+                        )
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    } else {
+                        LazyVGrid(
+                            columns: GridLayoutHelper.gridItems(for: geometry.size), spacing: 2
+                        ) {
+                            ForEach(
+                                filteredPhotos.sorted(by: { $0.dateTaken > $1.dateTaken }), id: \.id
+                            ) { photo in
+                                let itemWidth = max(
+                                    1, GridLayoutHelper.gridItemWidth(for: geometry.size))
+                                PhotoThumbnail(
+                                    photo: photo,
+                                    width: itemWidth,
+                                    loadImage: loadImage,
+                                    onTap: {
+                                        selectedPhoto = photo
+                                    }
+                                )
+                            }
+
+                            // Add Photos tile
+                            Button(action: {
+                                showingImagePicker = true
+                            }) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(.secondarySystemBackground))
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(
+                                    width: max(
+                                        1, GridLayoutHelper.gridItemWidth(for: geometry.size)),
+                                    height: max(
+                                        1, GridLayoutHelper.gridItemWidth(for: geometry.size)))
+                            }
+                        }
+                        .padding(.bottom, 80)
+                    }
                 }
             }
         }
@@ -205,20 +248,46 @@ struct GridView: View {
             )
         }
     }
+
+    // Add the getMilestones function to GridView
+    private func getMilestones(for person: Person) -> [(String, [Photo])] {
+        let allMilestones = PhotoUtils.getAllMilestones(for: person)
+        let groupedPhotos = Dictionary(grouping: person.photos) { photo in
+            PhotoUtils.sectionForPhoto(photo, person: person)
+        }
+
+        return allMilestones.reversed().compactMap { milestone in
+            let photos = groupedPhotos[milestone] ?? []
+            if person.pregnancyTracking == .none {
+                let isPregnancyMilestone =
+                    milestone.lowercased().contains("pregnancy")
+                    || milestone.lowercased().contains("trimester")
+                    || milestone.lowercased().contains("week")
+                if isPregnancyMilestone {
+                    return nil
+                }
+            }
+
+            if !photos.isEmpty || person.showEmptyStacks {
+                return (milestone, photos)
+            }
+            return nil
+        }
+    }
 }
 
 struct GridLayoutHelper {
     static func gridItems(for size: CGSize) -> [GridItem] {
         let isLandscape = size.width > size.height
         let columnCount = isLandscape ? 6 : 3
-        return Array(repeating: GridItem(.flexible(), spacing: 20), count: columnCount)
+        return Array(repeating: GridItem(.flexible(), spacing: 2), count: columnCount)
     }
 
     static func gridItemWidth(for size: CGSize) -> CGFloat {
         let isLandscape = size.width > size.height
         let columnCount = CGFloat(isLandscape ? 6 : 3)
-        let totalSpacing = CGFloat(10 * (Int(columnCount) - 1))
-        return (size.width - totalSpacing - 20) / columnCount
+        let totalSpacing = CGFloat(2 * (Int(columnCount) - 1))
+        return (size.width - totalSpacing) / columnCount
     }
 }
 
@@ -244,7 +313,6 @@ struct PhotoThumbnail: View {
         }
         .frame(width: width, height: width)
         .clipped()
-        .cornerRadius(10)
         .onAppear {
             // Load image asynchronously
             DispatchQueue.global(qos: .userInitiated).async {
@@ -258,4 +326,3 @@ struct PhotoThumbnail: View {
         .onTapGesture(perform: onTap)
     }
 }
-

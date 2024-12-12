@@ -204,6 +204,44 @@ class PersonViewModel: ObservableObject {
         }
     }
 
+    // Add to PersonViewModel
+    func loadPhotos(
+        for person: Person, page: Int, perPage: Int, completion: @escaping (Bool) -> Void
+    ) {
+        guard let index = people.firstIndex(where: { $0.id == person.id }) else {
+            completion(false)
+            return
+        }
+
+        let start = page * perPage
+        let end = min(start + perPage, person.photos.count)
+        guard start < person.photos.count else {
+            completion(false)
+            return
+        }
+
+        // Simulate async loading to prevent UI blocking
+        DispatchQueue.global(qos: .userInitiated).async {
+            let photosToLoad = Array(person.photos[start..<end])
+
+            // Pre-load images in background
+            for photo in photosToLoad {
+                _ = photo.image  // This will trigger the image loading
+            }
+
+            DispatchQueue.main.async {
+                // Update the UI
+                self.objectWillChange.send()
+                completion(true)
+            }
+        }
+    }
+
+    // Optional: Add a method to clear cached images when memory warning is received
+    func clearImageCache() {
+        // Implement cache clearing logic here
+    }
+
     // func fetchAlbums(completion: @escaping (Result<[PHAssetCollection], Error>) -> Void) {
     //     let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
 
@@ -313,7 +351,6 @@ class PersonViewModel: ObservableObject {
         }
     }
 
-
     func setLastOpenedPerson(_ person: Person) {
         lastOpenedPersonId = person.id
         UserDefaults.standard.set(lastOpenedPersonId?.uuidString, forKey: "lastOpenedPersonId")
@@ -364,7 +401,9 @@ class PersonViewModel: ObservableObject {
                     DispatchQueue.main.async {
                         self.objectWillChange.send()
                         NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                        print("Photo added successfully. Total photos for \(person.name): \(self.people[index].photos.count)")
+                        print(
+                            "Photo added successfully. Total photos for \(person.name): \(self.people[index].photos.count)"
+                        )
                         completion(newPhoto)
                     }
                 } else {
@@ -372,7 +411,9 @@ class PersonViewModel: ObservableObject {
                     completion(nil)
                 }
             } else {
-                print("Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)")
+                print(
+                    "Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)"
+                )
                 completion(nil)
             }
         } else {
@@ -465,7 +506,9 @@ class PersonViewModel: ObservableObject {
                         self.savePeople()
                         self.objectWillChange.send()
                         NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                        print("Photo added successfully to \(selectedPerson.name). Total photos: \(self.people[index].photos.count)")
+                        print(
+                            "Photo added successfully to \(selectedPerson.name). Total photos: \(self.people[index].photos.count)"
+                        )
                     } else {
                         print("Failed to find selected person in people array")
                     }

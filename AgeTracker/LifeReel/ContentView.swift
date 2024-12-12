@@ -20,6 +20,9 @@ struct ContentView: View {
     @State private var isSettingsActive = false
     @State private var selectedMilestone: String?
     @State private var showingSlideshowSheet = false
+    @State private var isLoading = false
+    @State private var currentPage = 0
+    @State private var photosPerPage = 20  // Adjust this number based on performance testing
 
     // Enums
     enum ActiveSheet: Identifiable {
@@ -112,7 +115,7 @@ struct ContentView: View {
                                 blurEffect: false,
                                 iconSize: 11
                             )
-                            
+
                             CircularButton(
                                 systemName: "plus",
                                 action: {
@@ -256,43 +259,26 @@ struct ContentView: View {
             AnyView(
                 NavigationStack {
                     GeometryReader { geometry in
-                        let width = geometry.size.width
-                        let itemWidth = (width - 48) / 2  // 48 = 3 * 16 (left, middle, and right padding)
-
-                        ScrollView {
-                            LazyVGrid(
-                                columns: [
-                                    GridItem(.fixed(itemWidth), spacing: 16),
-                                    GridItem(.fixed(itemWidth), spacing: 16),
-                                ],
-                                spacing: 24
-                            ) {
-                                ForEach(getMilestones(for: person), id: \.0) { milestone, photos in
-                                    NavigationLink(
-                                        destination: MilestoneDetailView(
-                                            viewModel: viewModel,
-                                            person: viewModel.bindingForPerson(person),
-                                            sectionTitle: milestone
-                                        )
-                                    ) {
-                                        MilestoneTile(
-                                            milestone: milestone,
-                                            photos: photos,
-                                            person: person,
-                                            width: itemWidth,
-                                            isEmpty: photos.isEmpty
-                                        )
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 60)
+                        GridView(
+                            viewModel: viewModel,
+                            person: viewModel.bindingForPerson(person),
+                            selectedPhoto: $fullScreenPhoto,
+                            sectionTitle: nil,
+                            forceUpdate: false,
+                            showAge: true,
+                            showMilestoneScroll: true
+                        )
+                        .frame(minHeight: geometry.size.height)
+                        .onAppear {
+                            loadInitialPhotos(for: person)
                         }
-                        .scrollIndicators(.hidden)
+                        .onChange(of: person.id) { _, _ in
+                            resetPagination()
+                            loadInitialPhotos(for: person)
+                        }
                     }
                 }
-                .id(person.id)  // Force view refresh when person changes
+                .id(person.id)
             )
         } else {
             AnyView(
@@ -363,6 +349,36 @@ struct ContentView: View {
                 self.viewModel.objectWillChange.send()
             }
             print("Added \(addedPhotos.count) photos to \(selectedPerson.name)")
+        }
+    }
+
+    private func resetPagination() {
+        currentPage = 0
+        isLoading = false
+    }
+
+    private func loadInitialPhotos(for person: Person) {
+        guard !isLoading else { return }
+        isLoading = true
+        
+        // Load first batch of photos
+        viewModel.loadPhotos(for: person, page: currentPage, perPage: photosPerPage) { success in
+            isLoading = false
+            if success {
+                currentPage += 1
+            }
+        }
+    }
+
+    private func loadMorePhotos() {
+        guard !isLoading, let person = viewModel.selectedPerson else { return }
+        isLoading = true
+        
+        viewModel.loadPhotos(for: person, page: currentPage, perPage: photosPerPage) { success in
+            isLoading = false
+            if success {
+                currentPage += 1
+            }
         }
     }
 }
