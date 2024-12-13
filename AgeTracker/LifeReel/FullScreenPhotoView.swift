@@ -44,6 +44,7 @@ struct FullScreenPhotoView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var isZooming = false
     @State private var controlsOpacity: Double = 1.0
+    @State private var photoToDelete: Photo?
 
     enum ActiveSheet: Identifiable {
         case shareView
@@ -62,9 +63,6 @@ struct FullScreenPhotoView: View {
             }
             return true
         }
-        print("Number of filtered photos in FullScreenPhotoView: \(filtered.count)")
-        print("Person name in FullScreenPhotoView: \(person.name)")
-        print("Pregnancy tracking: \(person.pregnancyTracking)")
         return filtered
     }
 
@@ -220,6 +218,7 @@ struct FullScreenPhotoView: View {
                 } else {
                     Text("No photos available")
                         .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
                 // Controls Overlay
@@ -238,7 +237,7 @@ struct FullScreenPhotoView: View {
                         onShare: {
                             activeSheet = .shareView
                         },
-                        onDelete: {
+                        onDelete: { [self] in
                             showDeleteConfirmation = true
                         },
                         currentIndex: $currentIndex,
@@ -258,11 +257,18 @@ struct FullScreenPhotoView: View {
         }
         .id(photosUpdateTrigger)
         .onReceive(NotificationCenter.default.publisher(for: .photosUpdated)) { _ in
+            photos = person.photos
             photosUpdateTrigger = UUID()
-            print("Photos updated notification received, triggering view refresh")
         }
         .onChange(of: photos) { oldValue, newValue in
-            updateCurrentIndexAfterPhotoChange(oldPhotos: oldValue, newPhotos: newValue)
+            print("Photos array changed from \(oldValue.count) to \(newValue.count)")
+            photosUpdateTrigger = UUID()
+        }
+        .onChange(of: photosUpdateTrigger) { _, _ in
+            print("Update trigger changed")
+            if currentIndex >= filteredPhotos.count {
+                currentIndex = max(0, filteredPhotos.count - 1)
+            }
         }
         // Animation on Appear
         .onAppear {
@@ -295,11 +301,31 @@ struct FullScreenPhotoView: View {
                 title: Text("Remove Photo"),
                 message: Text("Are you sure you want to remove this photo?"),
                 primaryButton: .destructive(Text("Remove")) {
-                    viewModel.deletePhoto(filteredPhotos[currentIndex], from: $person)
-                    if currentIndex > 0 {
-                        currentIndex -= 1
-                    } else {
-                        presentationMode.wrappedValue.dismiss()
+                    if let currentPhoto = filteredPhotos.indices.contains(currentIndex)
+                        ? filteredPhotos[currentIndex] : nil
+                    {
+                        // Delete the photo
+                        onDelete(currentPhoto)
+                        
+                        // Update the current index before updating photos
+                        let newIndex = max(0, min(currentIndex, filteredPhotos.count - 2))
+                        
+                        // Update the photos array
+                        DispatchQueue.main.async {
+                            photos = person.photos
+                            currentIndex = newIndex
+                            
+                            // If no photos left, dismiss
+                            if filteredPhotos.isEmpty {
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                            
+                            // Force view update
+                            photosUpdateTrigger = UUID()
+                            
+                            // Reset zoom and pan for the next photo
+                            resetZoomAndPan()
+                        }
                     }
                 },
                 secondaryButton: .cancel()
@@ -500,6 +526,7 @@ private struct ControlsOverlay: View {
                         }
 
                         Button(role: .destructive) {
+                            print("Delete button tapped")
                             onDelete()
                         } label: {
                             Label("Remove Photo", systemImage: "trash")
@@ -516,10 +543,6 @@ private struct ControlsOverlay: View {
                 }
 
                 VStack(spacing: 4) {
-                    // Text(person.name)
-                    //     .font(.headline)
-                    //     .fontWeight(.bold)
-                    //     .foregroundColor(.primary)
 
                     Text(selectedAge.toString())
                         .font(.headline)
@@ -665,6 +688,18 @@ struct ThumbnailScrubber: View {
                 .onAppear {
                     viewWidth = geometry.size.width
                     scrollToCurrentIndex(proxy: scrollProxy)
+
+                    NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("photoDeleted"),
+                        object: nil,
+                        queue: .main
+                    ) { notification in
+                        if let deletedPhotoID = notification.userInfo?["photoID"] as? UUID {
+                            DispatchQueue.main.async {
+                                scrollToCurrentIndex(proxy: scrollProxy)
+                            }
+                        }
+                    }
                 }
                 .onChange(of: currentIndex) { oldValue, newValue in
                     if !isDragging {

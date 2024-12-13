@@ -289,8 +289,8 @@ struct ContentView: View {
 
     // Delete photo component
     private func deletePhoto(_ photo: Photo) {
-        if let person = viewModel.selectedPerson {
-            viewModel.deletePhoto(photo, from: person)
+        if let personBinding = viewModel.bindingForSelectedPerson() {
+            viewModel.deletePhoto(photo, from: personBinding)
         }
     }
 
@@ -360,7 +360,7 @@ struct ContentView: View {
     private func loadInitialPhotos(for person: Person) {
         guard !isLoading else { return }
         isLoading = true
-        
+
         // Load first batch of photos
         viewModel.loadPhotos(for: person, page: currentPage, perPage: photosPerPage) { success in
             isLoading = false
@@ -373,7 +373,7 @@ struct ContentView: View {
     private func loadMorePhotos() {
         guard !isLoading, let person = viewModel.selectedPerson else { return }
         isLoading = true
-        
+
         viewModel.loadPhotos(for: person, page: currentPage, perPage: photosPerPage) { success in
             isLoading = false
             if success {

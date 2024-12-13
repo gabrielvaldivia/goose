@@ -341,12 +341,22 @@ class PersonViewModel: ObservableObject {
     func deletePhoto(_ photo: Photo, from personBinding: Binding<Person>) {
         if let index = personBinding.wrappedValue.photos.firstIndex(where: { $0.id == photo.id }) {
             personBinding.photos.wrappedValue.remove(at: index)
-            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }
-            ) {
+            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }) {
                 people[personIndex] = personBinding.wrappedValue
                 savePeople()
-                objectWillChange.send()
-                NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                
+                // Force view updates
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
+                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
+                    
+                    // Post an additional notification specifically for photo deletion
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("photoDeleted"),
+                        object: nil,
+                        userInfo: ["photoID": photo.id]
+                    )
+                }
             }
         }
     }
