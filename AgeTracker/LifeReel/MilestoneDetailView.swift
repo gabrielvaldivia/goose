@@ -21,14 +21,14 @@ struct MilestoneDetailView: View {
     @State private var showingSlideshowSheet = false
     @State private var loadingError: Error? = nil
     @Environment(\.presentationMode) var presentationMode
-    
+
     // Cache filtered photos
     @State private var cachedPhotos: [Photo] = []
-    
+
     private func loadCachedPhotos() {
         isLoading = true
         loadingError = nil
-        
+
         let filteredPhotos = person.photos.filter { photo in
             let shouldInclude = PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
             if person.pregnancyTracking == .none {
@@ -37,22 +37,21 @@ struct MilestoneDetailView: View {
             }
             return shouldInclude
         }
-        
-        // Just sort and assign the photos - they should already have their images
+
         cachedPhotos = filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
         isLoading = false
     }
-    
+
     private func photosToDisplay() -> [Photo] {
         return cachedPhotos
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             if photosToDisplay().isEmpty {
                 emptyStateView
             } else {
-               GridView(
+                GridView(
                     viewModel: viewModel,
                     person: $person,
                     selectedPhoto: $selectedPhoto,
@@ -66,6 +65,22 @@ struct MilestoneDetailView: View {
         }
         .onAppear {
             loadCachedPhotos()
+        }
+        .onChange(of: person.photos) { _, _ in
+            loadCachedPhotos()
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            CustomImagePicker(
+                viewModel: viewModel,
+                person: $person,
+                sectionTitle: sectionTitle,
+                isPresented: $showingImagePicker,
+                onPhotosAdded: { newPhotos in
+                    isLoading = true
+                    loadCachedPhotos()
+                    isLoading = false
+                }
+            )
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -124,19 +139,6 @@ struct MilestoneDetailView: View {
                 }
             }
         )
-        .sheet(isPresented: $showingImagePicker) {
-            CustomImagePicker(
-                viewModel: viewModel,
-                person: $person,
-                sectionTitle: sectionTitle,
-                isPresented: $showingImagePicker,
-                onPhotosAdded: { newPhotos in
-                    isLoading = true
-                    viewModel.objectWillChange.send()
-                    isLoading = false
-                }
-            )
-        }
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 viewModel: viewModel,
