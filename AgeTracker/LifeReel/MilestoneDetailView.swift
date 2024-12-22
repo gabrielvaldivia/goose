@@ -29,17 +29,30 @@ struct MilestoneDetailView: View {
         isLoading = true
         loadingError = nil
 
+        print("Loading photos for section: \(sectionTitle)")
+        print("Total photos before filtering: \(person.photos.count)")
+
         let filteredPhotos = person.photos.filter { photo in
-            let shouldInclude = PhotoUtils.sectionForPhoto(photo, person: person) == sectionTitle
+            let photoSection = PhotoUtils.sectionForPhoto(photo, person: person)
+            let shouldInclude = photoSection == sectionTitle
+            print(
+                "Photo date: \(photo.dateTaken), Section: \(photoSection), Should include: \(shouldInclude)"
+            )
+
             if person.pregnancyTracking == .none {
                 let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                return shouldInclude && !age.isPregnancy
+                let result = shouldInclude && !age.isPregnancy
+                print("Pregnancy tracking off - Age: \(age.toString()), Final result: \(result)")
+                return result
             }
+            print("Final result: \(shouldInclude)")
             return shouldInclude
         }
 
+        print("Total photos after filtering: \(filteredPhotos.count)")
         cachedPhotos = filteredPhotos.sorted { $0.dateTaken < $1.dateTaken }
         isLoading = false
+        forceUpdate.toggle()
     }
 
     private func photosToDisplay() -> [Photo] {

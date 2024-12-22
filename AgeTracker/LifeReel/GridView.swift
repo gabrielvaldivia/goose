@@ -29,36 +29,18 @@ struct GridView: View {
             return person.photos
         }
 
-        return person.photos.filter { photo in
-            switch sectionTitle {
-            case "All Photos":
-                return true
-            case "Pregnancy":
-                return AgeCalculator.calculate(for: person, at: photo.dateTaken).isPregnancy
-            case "Birth Month":
+        let filteredPhotos = person.photos.filter { photo in
+            let photoSection = PhotoUtils.sectionForPhoto(photo, person: person)
+            let shouldInclude = photoSection == sectionTitle
+
+            if person.pregnancyTracking == .none {
                 let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                return age.months == 0 && age.years == 0 && !age.isPregnancy
-            default:
-                if sectionTitle.hasSuffix("Month") || sectionTitle.hasSuffix("Months") {
-                    let targetMonth =
-                        Int(
-                            sectionTitle.components(
-                                separatedBy: CharacterSet.decimalDigits.inverted
-                            ).joined()) ?? 0
-                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                    return age.months == targetMonth && age.years == 0 && !age.isPregnancy
-                } else if sectionTitle.hasSuffix("Year") || sectionTitle.hasSuffix("Years") {
-                    let targetYear =
-                        Int(
-                            sectionTitle.components(
-                                separatedBy: CharacterSet.decimalDigits.inverted
-                            ).joined()) ?? 0
-                    let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-                    return age.years == targetYear && !age.isPregnancy
-                }
-                return false
+                return shouldInclude && !age.isPregnancy
             }
+            return shouldInclude
         }
+
+        return filteredPhotos
     }
 
     private func placeholderImage(size: CGSize) -> UIImage {

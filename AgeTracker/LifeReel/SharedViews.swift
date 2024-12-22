@@ -161,10 +161,12 @@ public struct PhotoUtils {
                 }
             } else if section.contains("Year") {
                 if let years = Int(section.components(separatedBy: " ").first ?? "") {
-                    let start =
-                        calendar.date(byAdding: .year, value: years - 1, to: birthDate) ?? birthDate
-                    let end =
-                        calendar.date(byAdding: .year, value: years, to: birthDate) ?? birthDate
+                    let targetYear = calendar.component(.year, from: birthDate) + years
+                    let startComponents = DateComponents(
+                        year: targetYear, month: calendar.component(.month, from: birthDate),
+                        day: calendar.component(.day, from: birthDate))
+                    let start = calendar.date(from: startComponents) ?? birthDate
+                    let end = calendar.date(byAdding: .year, value: 1, to: start) ?? birthDate
                     let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end) ?? end
                     return (start: start, end: adjustedEnd)
                 }
@@ -176,7 +178,8 @@ public struct PhotoUtils {
                         calendar.date(byAdding: .day, value: (week - 1) * 7, to: pregnancyStart)
                         ?? pregnancyStart
                     let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
-                    return (start: start, end: end)
+                    let adjustedEnd = calendar.date(byAdding: .second, value: -1, to: end) ?? end
+                    return (start: start, end: adjustedEnd)
                 }
             }
             throw NSError(domain: "Invalid section", code: 0, userInfo: nil)
@@ -312,12 +315,14 @@ struct CircularButton: View {
             ZStack {
                 Circle()
                     .fill(backgroundColor)
-                
+
                 if blurEffect {
-                    VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light))
-                        .clipShape(Circle())
+                    VisualEffectView(
+                        effect: UIBlurEffect(style: colorScheme == .dark ? .dark : .light)
+                    )
+                    .clipShape(Circle())
                 }
-                
+
                 Image(systemName: systemName)
                     .font(.system(size: iconSize ?? (size * 0.4), weight: .bold))
                     .foregroundColor(iconColor ?? .primary)
@@ -457,4 +462,3 @@ struct VisualEffectView: UIViewRepresentable {
         uiView.effect = effect
     }
 }
-
