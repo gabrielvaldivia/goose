@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftUI
 import PhotosUI
+import SwiftUI
 
 struct OnboardingView: View {
     @Binding var showOnboarding: Bool
@@ -34,35 +34,36 @@ struct OnboardingView: View {
                     onboardingMode: true
                 )
             }
-            .onChange(of: viewModel.people.count) { oldCount, newCount in
-                if newCount > oldCount, let newPerson = viewModel.people.last {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        viewModel.setSelectedPerson(newPerson)
-                        showOnboarding = false
-                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-                    }
-                }
-            }
         }
     }
-    
+
     private var appTourStep: some View {
         VStack(spacing: 0) {
             Text("Life Reel")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.vertical, 40)
-            
+
             TabView {
-                tourPage(description: "Relive the joy of watching your loved ones grow up", imageName: "onboarding-welcome")
-                tourPage(description: "Upload a photo, see the age—it's that simple!", imageName: "onboarding-age")
-                tourPage(description: "Time travel through your favorite moments", imageName: "onboarding-organize")
-                tourPage(description: "Share stunning slideshows of cherished memories", imageName: "onboarding-share")
-                tourPage(description: "Get reminders to capture key milestones", imageName: "onboarding-reminders")
+                tourPage(
+                    description: "Relive the joy of watching your loved ones grow up",
+                    imageName: "onboarding-welcome")
+                tourPage(
+                    description: "Upload a photo, see the age—it's that simple!",
+                    imageName: "onboarding-age")
+                tourPage(
+                    description: "Time travel through your favorite moments",
+                    imageName: "onboarding-organize")
+                tourPage(
+                    description: "Share stunning slideshows of cherished memories",
+                    imageName: "onboarding-share")
+                tourPage(
+                    description: "Get reminders to capture key milestones",
+                    imageName: "onboarding-reminders")
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
             .ignoresSafeArea()
-            
+
             Button(action: {
                 showAddPersonView = true
             }) {
@@ -79,7 +80,7 @@ struct OnboardingView: View {
         }
         .background(Color(UIColor.systemBackground))
     }
-    
+
     private func tourPage(description: String, imageName: String) -> some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
@@ -91,10 +92,8 @@ struct OnboardingView: View {
                         .scaledToFit()
                         .padding(40)
                 }
-                .frame(width: geometry.size.width, height: geometry.size.width) // Square frame
-                .clipped() // Ensure the ZStack doesn't exceed its frame
-
-
+                .frame(width: geometry.size.width, height: geometry.size.width)  // Square frame
+                .clipped()  // Ensure the ZStack doesn't exceed its frame
 
                 Text(description)
                     .font(.title2)
@@ -102,13 +101,13 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                     .padding(.top, 20)
-                    
-                Spacer() 
+
+                Spacer()
 
             }
         }
     }
-    
+
     private func randomBackgroundColor() -> Color {
         Color(
             red: .random(in: 0.1...0.9),
@@ -116,9 +115,10 @@ struct OnboardingView: View {
             blue: .random(in: 0.1...0.9)
         ).opacity(0.3)
     }
-    
+
     private func setupPageControlAppearance() {
         UIPageControl.appearance().currentPageIndicatorTintColor = UIColor.secondaryLabel
-        UIPageControl.appearance().pageIndicatorTintColor = UIColor.secondaryLabel.withAlphaComponent(0.2)
+        UIPageControl.appearance().pageIndicatorTintColor = UIColor.secondaryLabel
+            .withAlphaComponent(0.2)
     }
 }

@@ -261,24 +261,34 @@ struct NewLifeReelView: View {
         var newPerson = Person(
             name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
 
-        for asset in selectedAssets {
-            viewModel.addPhoto(to: &newPerson, asset: asset)
-        }
-
-        // Add the person to the array first
+        // First add the person to the array
         viewModel.people.append(newPerson)
         viewModel.savePeople()
 
-        self.isLoading = false
-        viewModel.selectedPerson = newPerson
-        viewModel.setLastOpenedPerson(newPerson)
-
-        if onboardingMode {
-            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        // Then add photos to the person
+        for asset in selectedAssets {
+            if let index = viewModel.people.firstIndex(where: { $0.id == newPerson.id }) {
+                viewModel.addPhoto(to: &viewModel.people[index], asset: asset)
+            }
         }
 
-        isPresented = false
-        viewModel.navigateToPersonDetail(newPerson)
+        // Get the final version with photos
+        if let finalPerson = viewModel.people.first(where: { $0.id == newPerson.id }) {
+            // Set selected person and mark onboarding as completed
+            viewModel.selectedPerson = finalPerson
+            viewModel.setLastOpenedPerson(finalPerson)
+
+            if onboardingMode {
+                UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            }
+
+            // First navigate to the detail view
+            viewModel.navigateToPersonDetail(finalPerson)
+            // Then dismiss the sheet
+            isPresented = false
+        }
+
+        self.isLoading = false
     }
 
     private func requestPhotoLibraryAuthorization() {
