@@ -306,23 +306,23 @@ struct FullScreenPhotoView: View {
                     {
                         // Delete the photo
                         onDelete(currentPhoto)
-                        
+
                         // Update the current index before updating photos
                         let newIndex = max(0, min(currentIndex, filteredPhotos.count - 2))
-                        
+
                         // Update the photos array
                         DispatchQueue.main.async {
                             photos = person.photos
                             currentIndex = newIndex
-                            
+
                             // If no photos left, dismiss
                             if filteredPhotos.isEmpty {
                                 presentationMode.wrappedValue.dismiss()
                             }
-                            
+
                             // Force view update
                             photosUpdateTrigger = UUID()
-                            
+
                             // Reset zoom and pan for the next photo
                             resetZoomAndPan()
                         }
@@ -590,7 +590,7 @@ private struct ControlsOverlay: View {
                 )
             }
         }
-        .padding(.top, 4)
+        // .padding(.top, 4)
         .opacity(showControls ? 1 : 0)
         .animation(.easeInOut, value: showControls)
         .sheet(isPresented: $showAgePicker) {

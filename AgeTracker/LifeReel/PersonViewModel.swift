@@ -12,6 +12,7 @@ import UIKit
 
 extension Notification.Name {
     static let photosUpdated = Notification.Name("photosUpdated")
+    static let personDeleted = Notification.Name("personDeleted")
 }
 
 class PersonViewModel: ObservableObject {
@@ -98,10 +99,31 @@ class PersonViewModel: ObservableObject {
         savePeople()
     }
 
-    func deletePerson(_ person: Person) {
+    func deletePerson(_ person: Person, completion: (() -> Void)? = nil) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
+            // Remove the person
             people.remove(at: index)
             savePeople()
+
+            // Clear selected person if it was the deleted one
+            if selectedPerson?.id == person.id {
+                // Select the next person, or the previous one if this was the last person
+                let nextIndex = min(index, people.count - 1)
+                if nextIndex >= 0 {
+                    selectedPerson = people[nextIndex]
+                    // Reset navigation path
+                    navigationPath = NavigationPath()
+                } else {
+                    selectedPerson = nil
+                    navigationPath = NavigationPath()
+                }
+            }
+
+            // Notify observers of the change
+            objectWillChange.send()
+
+            // Call completion handler if provided
+            completion?()
         }
     }
 
@@ -341,15 +363,16 @@ class PersonViewModel: ObservableObject {
     func deletePhoto(_ photo: Photo, from personBinding: Binding<Person>) {
         if let index = personBinding.wrappedValue.photos.firstIndex(where: { $0.id == photo.id }) {
             personBinding.photos.wrappedValue.remove(at: index)
-            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }) {
+            if let personIndex = people.firstIndex(where: { $0.id == personBinding.wrappedValue.id }
+            ) {
                 people[personIndex] = personBinding.wrappedValue
                 savePeople()
-                
+
                 // Force view updates
                 DispatchQueue.main.async {
                     self.objectWillChange.send()
                     NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                    
+
                     // Post an additional notification specifically for photo deletion
                     NotificationCenter.default.post(
                         name: NSNotification.Name("photoDeleted"),

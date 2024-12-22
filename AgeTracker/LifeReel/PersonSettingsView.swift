@@ -52,202 +52,177 @@ struct PersonSettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Personal Information")) {
+        Form {
+            Section(header: Text("Personal Information")) {
+                HStack {
+                    Text("Name")
+                    Spacer()
+                    TextField("", text: $editedName)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                        .onChange(of: editedName) { _, newValue in
+                            updatePerson { $0.name = newValue }
+                        }
+                }
+                Button(action: {
+                    showingDatePicker = true
+                }) {
                     HStack {
-                        Text("Name")
+                        Text("Date of Birth")
+                            .foregroundColor(.primary)
                         Spacer()
-                        TextField("", text: $editedName)
-                            .multilineTextAlignment(.trailing)
+                        Text(formatDate(editedDateOfBirth))
                             .foregroundColor(.secondary)
-                            .onChange(of: editedName) { _, newValue in
-                                updatePerson { $0.name = newValue }
-                            }
                     }
-                    Button(action: {
-                        showingDatePicker = true
-                    }) {
-                        HStack {
-                            Text("Date of Birth")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text(formatDate(editedDateOfBirth))
-                                .foregroundColor(.secondary)
+                }
+            }
+
+            Section(header: Text("Milestones")) {
+                Picker("Group by Month", selection: $birthMonthsDisplay) {
+                    Text("None").tag(Person.BirthMonthsDisplay.none)
+                    Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
+                    Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
+                }
+                .onChange(of: birthMonthsDisplay) { _, newValue in
+                    updatePerson { $0.birthMonthsDisplay = newValue }
+                }
+
+                Toggle(
+                    "Track Pregnancy",
+                    isOn: Binding(
+                        get: { person.pregnancyTracking != .none },
+                        set: { newValue in
+                            updatePerson {
+                                $0.pregnancyTracking = newValue ? .trimesters : .none
+                            }
                         }
+                    ))
+
+                if person.pregnancyTracking != .none {
+                    Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
+                        Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
+                        Text("Weeks").tag(Person.PregnancyTracking.weeks)
+                    }
+                    .onChange(of: person.pregnancyTracking) { _, newValue in
+                        updatePerson { $0.pregnancyTracking = newValue }
                     }
                 }
 
-                Section(header: Text("Milestones")) {
-                    Picker("Group by Month", selection: $birthMonthsDisplay) {
-                        Text("None").tag(Person.BirthMonthsDisplay.none)
-                        Text("First 12 months").tag(Person.BirthMonthsDisplay.twelveMonths)
-                        Text("First 24 months").tag(Person.BirthMonthsDisplay.twentyFourMonths)
+                Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
+                    .onChange(of: person.showEmptyStacks) { _, newValue in
+                        updatePerson { $0.showEmptyStacks = newValue }
                     }
-                    .onChange(of: birthMonthsDisplay) { _, newValue in
-                        updatePerson { $0.birthMonthsDisplay = newValue }
+            }
+
+            Section {
+                Picker("Upload Reminder", selection: $localReminderFrequency) {
+                    ForEach(Person.ReminderFrequency.allCases, id: \.self) { frequency in
+                        Text(frequency.rawValue).tag(frequency)
                     }
-
-                    Toggle(
-                        "Track Pregnancy",
-                        isOn: Binding(
-                            get: { person.pregnancyTracking != .none },
-                            set: { newValue in
-                                updatePerson {
-                                    $0.pregnancyTracking = newValue ? .trimesters : .none
-                                }
-                            }
-                        ))
-
-                    if person.pregnancyTracking != .none {
-                        Picker("Pregnancy Tracking", selection: $person.pregnancyTracking) {
-                            Text("Trimesters").tag(Person.PregnancyTracking.trimesters)
-                            Text("Weeks").tag(Person.PregnancyTracking.weeks)
-                        }
-                        .onChange(of: person.pregnancyTracking) { _, newValue in
-                            updatePerson { $0.pregnancyTracking = newValue }
-                        }
-                    }
-
-                    Toggle("Show Empty Milestones", isOn: $person.showEmptyStacks)
-                        .onChange(of: person.showEmptyStacks) { _, newValue in
-                            updatePerson { $0.showEmptyStacks = newValue }
-                        }
                 }
-
-                Section {
-                    Picker("Upload Reminder", selection: $localReminderFrequency) {
-                        ForEach(Person.ReminderFrequency.allCases, id: \.self) { frequency in
-                            Text(frequency.rawValue).tag(frequency)
-                        }
-                    }
-                    .onChange(of: localReminderFrequency) { _, newValue in
-                        if newValue != .none {
-                            viewModel.requestNotificationPermissions { granted in
-                                if granted {
-                                    updatePerson { $0.reminderFrequency = newValue }
-                                    scheduleReminder()
-                                    DispatchQueue.main.async {
-                                        self.viewModel.objectWillChange.send()
-                                        // Force update of nextReminderDate in the UI
-                                        self.nextReminderDate = self.nextReminderDate
-                                    }
-                                } else {
-                                    // Handle the case where permission is not granted
-                                    DispatchQueue.main.async {
-                                        self.localReminderFrequency = .none
-                                    }
+                .onChange(of: localReminderFrequency) { _, newValue in
+                    if newValue != .none {
+                        viewModel.requestNotificationPermissions { granted in
+                            if granted {
+                                updatePerson { $0.reminderFrequency = newValue }
+                                scheduleReminder()
+                                DispatchQueue.main.async {
+                                    self.viewModel.objectWillChange.send()
+                                    // Force update of nextReminderDate in the UI
+                                    self.nextReminderDate = self.nextReminderDate
                                 }
-                            }
-                        } else {
-                            updatePerson { $0.reminderFrequency = newValue }
-                            scheduleReminder()  // This will cancel all reminders when set to .none
-                            DispatchQueue.main.async {
-                                self.viewModel.objectWillChange.send()
-                                // Force update of nextReminderDate in the UI
-                                self.nextReminderDate = self.nextReminderDate
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Reminders")
-                } footer: {
-                    Group {
-                        if localReminderFrequency != .none {
-                            if let nextReminder = nextReminderDate {
-                                Text("Next reminder: \(formatDateTime(nextReminder))")
                             } else {
-                                Text("Next reminder: Not set")
+                                // Handle the case where permission is not granted
+                                DispatchQueue.main.async {
+                                    self.localReminderFrequency = .none
+                                }
                             }
                         }
+                    } else {
+                        updatePerson { $0.reminderFrequency = newValue }
+                        scheduleReminder()  // This will cancel all reminders when set to .none
+                        DispatchQueue.main.async {
+                            self.viewModel.objectWillChange.send()
+                            // Force update of nextReminderDate in the UI
+                            self.nextReminderDate = self.nextReminderDate
+                        }
                     }
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
                 }
+            } header: {
+                Text("Reminders")
+            } footer: {
+                Group {
+                    if localReminderFrequency != .none {
+                        if let nextReminder = nextReminderDate {
+                            Text("Next reminder: \(formatDateTime(nextReminder))")
+                        } else {
+                            Text("Next reminder: Not set")
+                        }
+                    }
+                }
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            }
 
-                Section(header: Text("Internal")) {
-                    Button("Replay Onboarding") {
-                        showOnboarding = true
-                    }
+            Section(header: Text("Internal")) {
+                Button("Replay Onboarding") {
+                    showOnboarding = true
                 }
+            }
 
-                Section(header: Text("Danger Zone")) {
-                    Button("Delete All Photos") {
-                        activeAlert = .deletePhotos
-                        showingAlert = true
-                    }
-                    .foregroundColor(.red)
+            Section(header: Text("Danger Zone")) {
+                Button("Delete All Photos") {
+                    activeAlert = .deletePhotos
+                    showingAlert = true
+                }
+                .foregroundColor(.red)
 
-                    Button("Delete Person") {
-                        activeAlert = .deletePerson
-                        showingAlert = true
-                    }
-                    .foregroundColor(.red)
+                Button("Delete Person") {
+                    activeAlert = .deletePerson
+                    showingAlert = true
                 }
-            }
-            .navigationTitle("\(person.name)'s Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    CircularButton(
-                        systemName: "chevron.left",
-                        action: {
-                            presentationMode.wrappedValue.dismiss()
-                        },
-                        size: 32,
-                        backgroundColor: Color.gray.opacity(0.2),
-                        iconColor: .primary,
-                        blurEffect: false,
-                        iconSize: nil  
-                    )
-                }
-            }
-            .alert(isPresented: $showingAlert) {
-                switch activeAlert {
-                case .deletePhotos:
-                    Alert(
-                        title: Text("Delete All Photos"),
-                        message: Text(
-                            "Are you sure you want to delete all photos for this person? This action cannot be undone."
-                        ),
-                        primaryButton: .destructive(Text("Delete"), action: deleteAllPhotos),
-                        secondaryButton: .cancel()
-                    )
-                case .deletePerson:
-                    Alert(
-                        title: Text("Delete Reel"),
-                        message: Text(
-                            "Are you sure you want to delete this reel? This action cannot be undone."
-                        ),
-                        primaryButton: .destructive(Text("Delete"), action: deletePerson),
-                        secondaryButton: .cancel()
-                    )
-                }
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                DatePickerSheet(
-                    date: $editedDateOfBirth,
-                    isPresented: $showingDatePicker,
-                    onSave: { newDate in
-                        updatePerson { $0.dateOfBirth = newDate }
-                    }
-                )
-            }
-            .fullScreenCover(isPresented: $showOnboarding) {
-                OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
-            }
-            .onAppear {
-                scheduleReminder()
+                .foregroundColor(.red)
             }
         }
-        .gesture(
-            DragGesture().updating($dragOffset) { value, state, _ in
-                if value.startLocation.x < 20 && value.translation.width > 100 {
-                    self.presentationMode.wrappedValue.dismiss()
-                }
+        .navigationTitle("\(person.name)'s Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(isPresented: $showingAlert) {
+            switch activeAlert {
+            case .deletePhotos:
+                Alert(
+                    title: Text("Delete All Photos"),
+                    message: Text(
+                        "Are you sure you want to delete all photos for this person? This action cannot be undone."
+                    ),
+                    primaryButton: .destructive(Text("Delete"), action: deleteAllPhotos),
+                    secondaryButton: .cancel()
+                )
+            case .deletePerson:
+                Alert(
+                    title: Text("Delete Reel"),
+                    message: Text(
+                        "Are you sure you want to delete this reel? This action cannot be undone."
+                    ),
+                    primaryButton: .destructive(Text("Delete"), action: deletePerson),
+                    secondaryButton: .cancel()
+                )
             }
-        )
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            DatePickerSheet(
+                date: $editedDateOfBirth,
+                isPresented: $showingDatePicker,
+                onSave: { newDate in
+                    updatePerson { $0.dateOfBirth = newDate }
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(showOnboarding: $showOnboarding, viewModel: viewModel)
+        }
+        .onAppear {
+            scheduleReminder()
+        }
     }
 
     private func updatePerson(_ update: (inout Person) -> Void) {
@@ -276,7 +251,12 @@ struct PersonSettingsView: View {
     }
 
     private func deletePerson() {
-        viewModel.deletePerson(person)
+        viewModel.deletePerson(person) {
+            // Dismiss the settings view
+            DispatchQueue.main.async {
+                self.presentationMode.wrappedValue.dismiss()
+            }
+        }
     }
 
     private func formatDate(_ date: Date) -> String {
@@ -295,7 +275,9 @@ struct PersonSettingsView: View {
 
     private func scheduleReminder() {
         // Cancel all existing reminders for this person
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [person.id.uuidString])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
+            person.id.uuidString
+        ])
 
         guard person.reminderFrequency != .none else {
             nextReminderDate = nil
@@ -303,7 +285,8 @@ struct PersonSettingsView: View {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "\(person.name) is \(AgeCalculator.calculate(for: person, at: Date()).toString()) old today"
+        content.title =
+            "\(person.name) is \(AgeCalculator.calculate(for: person, at: Date()).toString()) old today"
         content.body = "Upload a photo to their LifeReel!"
         content.sound = .default
 
@@ -319,35 +302,36 @@ struct PersonSettingsView: View {
             components.hour = 9
             components.minute = 0
             components.second = 0
-            
+
             if let date = calendar.date(from: components), date <= now {
                 components.day! += 1
             }
-            
+
             nextReminderDate = calendar.date(from: components)
-            
+
         case .monthly:
             let birthDay = calendar.component(.day, from: person.dateOfBirth)
             var components = DateComponents()
             components.day = birthDay
             components.hour = 9
             components.minute = 0
-            
-            nextReminderDate = calendar.nextDate(after: now, matching: components, matchingPolicy: .nextTime)
-            
+
+            nextReminderDate = calendar.nextDate(
+                after: now, matching: components, matchingPolicy: .nextTime)
+
         case .yearly:
             var components = calendar.dateComponents([.month, .day], from: person.dateOfBirth)
             components.year = calendar.component(.year, from: now)
             components.hour = 9
             components.minute = 0
-            
+
             var nextDate = calendar.date(from: components)!
             if nextDate <= now {
                 components.year! += 1
                 nextDate = calendar.date(from: components)!
             }
             nextReminderDate = nextDate
-            
+
         case .none:
             nextReminderDate = nil
             return
@@ -356,9 +340,12 @@ struct PersonSettingsView: View {
         print("Calculated next reminder date: \(nextReminderDate ?? Date())")
 
         if let nextReminderDate = nextReminderDate {
-            let triggerComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: nextReminderDate)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComponents, repeats: true)
-            let request = UNNotificationRequest(identifier: person.id.uuidString, content: content, trigger: trigger)
+            let triggerComponents = calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute], from: nextReminderDate)
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: triggerComponents, repeats: true)
+            let request = UNNotificationRequest(
+                identifier: person.id.uuidString, content: content, trigger: trigger)
 
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error {

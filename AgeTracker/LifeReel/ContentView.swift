@@ -37,6 +37,10 @@ struct ContentView: View {
         var id: Int { hashValue }
     }
 
+    init(viewModel: PersonViewModel) {
+        self.viewModel = viewModel
+    }
+
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
