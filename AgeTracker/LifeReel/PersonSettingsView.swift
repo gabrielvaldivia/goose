@@ -29,6 +29,7 @@ struct PersonSettingsView: View {
     @State private var nextReminderDate: Date?
     @State private var showingDatePicker = false
     @State private var showOnboarding = false
+    @Environment(\.dismiss) private var dismiss
 
     // Alert handling
     @State private var showingAlert = false
@@ -39,7 +40,6 @@ struct PersonSettingsView: View {
         case deletePhotos, deletePerson
     }
 
-    @Environment(\.presentationMode) var presentationMode
     @GestureState private var dragOffset = CGSize.zero
 
     init(viewModel: PersonViewModel, person: Binding<Person>) {
@@ -251,12 +251,8 @@ struct PersonSettingsView: View {
     }
 
     private func deletePerson() {
-        viewModel.deletePerson(person) {
-            // Dismiss the settings view
-            DispatchQueue.main.async {
-                self.presentationMode.wrappedValue.dismiss()
-            }
-        }
+        viewModel.deletePerson(person)
+        dismiss()
     }
 
     private func formatDate(_ date: Date) -> String {

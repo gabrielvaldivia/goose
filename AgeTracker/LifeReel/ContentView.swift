@@ -44,7 +44,7 @@ struct ContentView: View {
     // Main body of the view
     var body: some View {
         GeometryReader { geometry in
-            NavigationStack {
+            NavigationStack(path: $viewModel.navigationPath) {
                 ZStack {
                     if viewModel.people.isEmpty {
                         OnboardingView(showOnboarding: .constant(true), viewModel: viewModel)
@@ -52,15 +52,13 @@ struct ContentView: View {
                         mainView
                     }
                 }
-
-                // Navigation Bar
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         CircularButton(
                             systemName: "gearshape.fill",
                             action: {
-                                isSettingsActive = true
+                                viewModel.navigationPath.append("settings")
                             },
                             size: 32,
                             backgroundColor: Color.gray.opacity(0.2),
@@ -74,7 +72,7 @@ struct ContentView: View {
                         Menu {
                             ForEach(viewModel.people) { person in
                                 Button(person.name) {
-                                    viewModel.selectedPerson = person
+                                    viewModel.setSelectedPerson(person)
                                 }
                             }
 
@@ -91,13 +89,10 @@ struct ContentView: View {
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(
-                                    viewModel.selectedPerson?.name ?? viewModel.people.first?.name
-                                        ?? "Select Person"
-                                )
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
+                                Text(viewModel.selectedPerson?.name ?? "Select Person")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
 
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 12, weight: .bold))
@@ -134,13 +129,22 @@ struct ContentView: View {
                         }
                     }
                 }
-                .background(
-                    NavigationLink(
-                        destination: settingsView,
-                        isActive: $isSettingsActive,
-                        label: { EmptyView() }
+                .navigationDestination(for: Person.self) { person in
+                    GridView(
+                        viewModel: viewModel,
+                        person: viewModel.bindingForPerson(person),
+                        selectedPhoto: $fullScreenPhoto,
+                        sectionTitle: nil,
+                        forceUpdate: false,
+                        showAge: true,
+                        showMilestoneScroll: true
                     )
-                )
+                }
+                .navigationDestination(for: String.self) { destination in
+                    if destination == "settings" {
+                        settingsView
+                    }
+                }
             }
 
             // New Life Reel Sheet
@@ -259,35 +263,29 @@ struct ContentView: View {
 
     // Main view component
     private var mainView: some View {
-        if let person = viewModel.selectedPerson ?? viewModel.people.first {
-            AnyView(
-                NavigationStack {
-                    GeometryReader { geometry in
-                        GridView(
-                            viewModel: viewModel,
-                            person: viewModel.bindingForPerson(person),
-                            selectedPhoto: $fullScreenPhoto,
-                            sectionTitle: nil,
-                            forceUpdate: false,
-                            showAge: true,
-                            showMilestoneScroll: true
-                        )
-                        .frame(minHeight: geometry.size.height)
-                        .onAppear {
-                            loadInitialPhotos(for: person)
-                        }
-                        .onChange(of: person.id) { _, _ in
-                            resetPagination()
-                            loadInitialPhotos(for: person)
-                        }
-                    }
+        Group {
+            if let person = viewModel.selectedPerson ?? viewModel.people.first {
+                GridView(
+                    viewModel: viewModel,
+                    person: viewModel.bindingForPerson(person),
+                    selectedPhoto: $fullScreenPhoto,
+                    sectionTitle: nil,
+                    forceUpdate: false,
+                    showAge: true,
+                    showMilestoneScroll: true
+                )
+                .frame(maxHeight: .infinity)
+                .onAppear {
+                    loadInitialPhotos(for: person)
                 }
-                .id(person.id)
-            )
-        } else {
-            AnyView(
+                .onChange(of: person.id) { _, _ in
+                    resetPagination()
+                    loadInitialPhotos(for: person)
+                }
+            } else {
                 Text("No person selected")
-            )
+                    .frame(maxHeight: .infinity)
+            }
         }
     }
 

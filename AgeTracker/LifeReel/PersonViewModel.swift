@@ -42,6 +42,9 @@ class PersonViewModel: ObservableObject {
         addPhoto(to: &newPerson, asset: asset)
         people.append(newPerson)
         savePeople()
+
+        // Use setSelectedPerson to handle navigation
+        setSelectedPerson(newPerson)
     }
 
     func addPhoto(to person: inout Person, asset: PHAsset) {
@@ -99,31 +102,23 @@ class PersonViewModel: ObservableObject {
         savePeople()
     }
 
-    func deletePerson(_ person: Person, completion: (() -> Void)? = nil) {
+    func deletePerson(_ person: Person) {
         if let index = people.firstIndex(where: { $0.id == person.id }) {
             // Remove the person
             people.remove(at: index)
             savePeople()
 
-            // Clear selected person if it was the deleted one
-            if selectedPerson?.id == person.id {
-                // Select the next person, or the previous one if this was the last person
-                let nextIndex = min(index, people.count - 1)
-                if nextIndex >= 0 {
-                    selectedPerson = people[nextIndex]
-                    // Reset navigation path
-                    navigationPath = NavigationPath()
-                } else {
-                    selectedPerson = nil
-                    navigationPath = NavigationPath()
-                }
+            // Select the next person, or the previous one if this was the last person
+            let nextIndex = min(index, people.count - 1)
+            if nextIndex >= 0 {
+                setSelectedPerson(people[nextIndex])
+            } else {
+                selectedPerson = nil
+                navigationPath = NavigationPath()
             }
 
             // Notify observers of the change
             objectWillChange.send()
-
-            // Call completion handler if provided
-            completion?()
         }
     }
 
@@ -479,6 +474,14 @@ class PersonViewModel: ObservableObject {
     func setSelectedPerson(_ person: Person?) {
         if let person = person {
             setLastOpenedPerson(person)
+            selectedPerson = person
+
+            // If we're in settings, preserve that state
+            let wasInSettings = navigationPath.count == 1
+            navigationPath = NavigationPath()
+            if wasInSettings {
+                navigationPath.append("settings")
+            }
         }
         objectWillChange.send()
     }
