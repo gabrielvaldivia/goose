@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftUI
 import PhotosUI
+import SwiftUI
 
 struct NewLifeReelView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -21,15 +21,16 @@ struct NewLifeReelView: View {
     @State private var showDatePickerSheet = false
     @State private var showAgeText = false
     @State private var isLoading = false
-    @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    @State private var photoLibraryAuthorizationStatus = PHPhotoLibrary.authorizationStatus(
+        for: .readWrite)
     @State private var showingPermissionAlert = false
     @State private var navigateToPersonDetail: Person?
     @State private var shouldNavigateToDetail = false
-    
+
     let columns: [GridItem] = [
         GridItem(.adaptive(minimum: 111, maximum: 111), spacing: 10)
     ]
-    
+
     private var remainingPlaceholders: Int {
         switch selectedAssets.count {
         case 0:
@@ -40,13 +41,13 @@ struct NewLifeReelView: View {
             return 1
         }
     }
-    
+
     init(viewModel: PersonViewModel, isPresented: Binding<Bool>, onboardingMode: Bool) {
         self.viewModel = viewModel
         self._isPresented = isPresented
         self.onboardingMode = onboardingMode
     }
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -60,7 +61,8 @@ struct NewLifeReelView: View {
             .ignoresSafeArea(.keyboard)
             .gesture(
                 DragGesture().onChanged { _ in
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             )
             .navigationTitle("New Life Reel")
@@ -104,7 +106,7 @@ struct NewLifeReelView: View {
             DatePickerSheet(
                 date: Binding(
                     get: { self.dateOfBirth ?? Date() },
-                    set: { 
+                    set: {
                         self.dateOfBirth = $0
                         self.showAgeText = true
                     }
@@ -135,7 +137,7 @@ struct NewLifeReelView: View {
         )
         .alert(isPresented: $showingPermissionAlert, content: { permissionAlert })
     }
-    
+
     private var nameAndBirthDateView: some View {
         VStack(alignment: .leading, spacing: 30) {
             // Name section
@@ -148,7 +150,7 @@ struct NewLifeReelView: View {
                     .background(Color(UIColor.secondarySystemGroupedBackground))
                     .cornerRadius(8)
             }
-            
+
             // Date of Birth section
             VStack(alignment: .leading, spacing: 10) {
                 Text("Date of birth")
@@ -173,10 +175,10 @@ struct NewLifeReelView: View {
                     showDatePickerSheet = true
                 }
             }
-        
+
         }
     }
-    
+
     private var photosView: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Add some of your favorite memories")
@@ -191,7 +193,7 @@ struct NewLifeReelView: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                
+
                 ForEach(0..<remainingPlaceholders, id: \.self) { _ in
                     Button(action: {
                         requestPhotoLibraryAuthorization()
@@ -202,7 +204,7 @@ struct NewLifeReelView: View {
                                 .foregroundColor(Color(UIColor.placeholderText).opacity(0.5))
                                 .aspectRatio(1, contentMode: .fit)
                                 .frame(height: 111)
-                            
+
                             Image(systemName: "plus")
                                 .font(.system(size: 24))
                                 .foregroundColor(Color(UIColor.placeholderText))
@@ -213,14 +215,14 @@ struct NewLifeReelView: View {
             .frame(maxWidth: .infinity)
         }
     }
-    
+
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter
     }
-    
+
     private func extractDateTaken(from metadata: [String: Any]?) -> Date? {
         if let dateTimeOriginal = metadata?["DateTimeOriginal"] as? String {
             let dateFormatter = DateFormatter()
@@ -229,48 +231,56 @@ struct NewLifeReelView: View {
         }
         return nil
     }
-    
-    
+
     private func loadImages(from assets: [PHAsset]) {
         for asset in assets {
             let options = PHImageRequestOptions()
             options.isSynchronous = false
             options.deliveryMode = .highQualityFormat
-            
-            PHImageManager.default().requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: options) { _, info in
+
+            PHImageManager.default().requestImage(
+                for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit,
+                options: options
+            ) { _, info in
                 self.imageMeta = info as? [String: Any]
             }
         }
     }
-    
+
     private func saveNewPerson() {
         guard !name.isEmpty, let dateOfBirth = dateOfBirth, !selectedAssets.isEmpty else { return }
-        
+
         isLoading = true
-        
-        let ageInMonths = Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
-        let birthMonthsDisplay = ageInMonths < 24 ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
-        
-        var newPerson = Person(name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
-        
+
+        let ageInMonths =
+            Calendar.current.dateComponents([.month], from: dateOfBirth, to: Date()).month ?? 0
+        let birthMonthsDisplay =
+            ageInMonths < 24
+            ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
+
+        var newPerson = Person(
+            name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
+
         for asset in selectedAssets {
             viewModel.addPhoto(to: &newPerson, asset: asset)
         }
-        
-        viewModel.updatePerson(newPerson)
-        
+
+        // Add the person to the array first
+        viewModel.people.append(newPerson)
+        viewModel.savePeople()
+
         self.isLoading = false
         viewModel.selectedPerson = newPerson
         viewModel.setLastOpenedPerson(newPerson)
-        
+
         if onboardingMode {
             UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         }
-        
+
         isPresented = false
         viewModel.navigateToPersonDetail(newPerson)
     }
-    
+
     private func requestPhotoLibraryAuthorization() {
         switch photoLibraryAuthorizationStatus {
         case .notDetermined:
@@ -290,7 +300,7 @@ struct NewLifeReelView: View {
             break
         }
     }
-    
+
     private func removeAsset(_ asset: PHAsset) {
         selectedAssets.removeAll { $0.localIdentifier == asset.localIdentifier }
     }
@@ -300,7 +310,9 @@ extension NewLifeReelView {
     var permissionAlert: Alert {
         Alert(
             title: Text("Photo Access Required"),
-            message: Text("Life Reel needs access to your photo library to select photos for age tracking. Please grant access in Settings."),
+            message: Text(
+                "Life Reel needs access to your photo library to select photos for age tracking. Please grant access in Settings."
+            ),
             primaryButton: .default(Text("Open Settings"), action: openSettings),
             secondaryButton: .cancel()
         )
@@ -317,7 +329,7 @@ struct AssetThumbnail: View {
     let asset: PHAsset
     @State private var image: UIImage?
     var onRemove: () -> Void
-    
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Group {
@@ -332,7 +344,7 @@ struct AssetThumbnail: View {
                         .frame(width: 111, height: 111)
                 }
             }
-            
+
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.white)
@@ -344,12 +356,15 @@ struct AssetThumbnail: View {
         .frame(width: 111, height: 111)
         .onAppear(perform: loadImage)
     }
-    
+
     private func loadImage() {
         let manager = PHImageManager.default()
         let option = PHImageRequestOptions()
         option.isSynchronous = true
-        manager.requestImage(for: asset, targetSize: CGSize(width: 111, height: 111), contentMode: .aspectFill, options: option) { result, info in
+        manager.requestImage(
+            for: asset, targetSize: CGSize(width: 111, height: 111), contentMode: .aspectFill,
+            options: option
+        ) { result, info in
             if let result = result {
                 image = result
             }
