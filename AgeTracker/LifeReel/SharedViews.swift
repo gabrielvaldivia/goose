@@ -13,37 +13,36 @@ import SwiftUI
 // PhotoUtils: Utility struct containing helper functions for photo management and organization
 public struct PhotoUtils {
 
-    static func groupAndSortPhotos(for person: Person) -> [(String, [Photo])] {
-        let sortedPhotos = person.photos.sorted { $0.dateTaken < $1.dateTaken }
-        var groupedPhotos: [String: [Photo]] = [:]
-
-        for photo in sortedPhotos {
-            let sectionTitle = sectionForPhoto(photo, person: person)
-            groupedPhotos[sectionTitle, default: []].append(photo)
+    static func groupPhotos(for person: Person, includeEmpty: Bool = false) -> [(String, [Photo])] {
+        let allStacks = includeEmpty ? getAllMilestones(for: person) : []
+        let groupedPhotos = Dictionary(grouping: person.photos) { photo in
+            sectionForPhoto(photo, person: person)
         }
 
-        return groupedPhotos.sorted { $0.key < $1.key }
+        if includeEmpty {
+            let completeGroupedPhotos = allStacks.map { stack in
+                (stack, groupedPhotos[stack] ?? [])
+            }
+            return completeGroupedPhotos.sorted { $0.0 < $1.0 }
+        } else {
+            return groupedPhotos.sorted { $0.key < $1.key }
+        }
+    }
+
+    static func groupAndSortPhotos(for person: Person) -> [(String, [Photo])] {
+        return groupPhotos(for: person, includeEmpty: false)
     }
 
     static func sortedGroupedPhotosForAll(person: Person, viewModel: PersonViewModel) -> [(
         String, [Photo]
     )] {
-        return groupAndSortPhotos(for: person)
+        return groupPhotos(for: person, includeEmpty: false)
     }
 
     static func sortedGroupedPhotosForAllIncludingEmpty(person: Person, viewModel: PersonViewModel)
         -> [(String, [Photo])]
     {
-        let allStacks = getAllMilestones(for: person)
-        let groupedPhotos = Dictionary(grouping: person.photos) { photo in
-            PhotoUtils.sectionForPhoto(photo, person: person)
-        }
-
-        let completeGroupedPhotos = allStacks.map { stack in
-            (stack, groupedPhotos[stack] ?? [])
-        }
-
-        return completeGroupedPhotos.sorted { $0.0 < $1.0 }
+        return groupPhotos(for: person, includeEmpty: true)
     }
 
     static func getAllMilestones(for person: Person) -> [String] {
@@ -121,66 +120,39 @@ public struct PhotoUtils {
 
         switch section {
         case "Pregnancy":
-            let start = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-            return (start: start, end: birthDate)
+            let range = DateRange.pregnancyRange(birthDate: birthDate)
+            return (start: range.start, end: range.end)
         case "First Trimester":
-            let pregnancyStart =
-                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-            let end = calendar.date(byAdding: .month, value: 3, to: pregnancyStart) ?? birthDate
-            return (start: pregnancyStart, end: end)
+            let range = DateRange.trimesterRange(trimester: 1, birthDate: birthDate)
+            return (start: range.start, end: range.end)
         case "Second Trimester":
-            let pregnancyStart =
-                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-            let start = calendar.date(byAdding: .month, value: 3, to: pregnancyStart) ?? birthDate
-            let end = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
-            return (start: start, end: end)
+            let range = DateRange.trimesterRange(trimester: 2, birthDate: birthDate)
+            return (start: range.start, end: range.end)
         case "Third Trimester":
-            let pregnancyStart =
-                calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-            let start = calendar.date(byAdding: .month, value: 6, to: pregnancyStart) ?? birthDate
-            return (start: start, end: birthDate)
+            let range = DateRange.trimesterRange(trimester: 3, birthDate: birthDate)
+            return (start: range.start, end: range.end)
         case "Birth Month":
-            let start = person.dateOfBirth
-            let nextMonth = calendar.date(byAdding: .month, value: 1, to: start)!
-            let end = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
-            return (start: start, end: end)
+            let range = DateRange.monthRange(month: 1, birthDate: birthDate)
+            return (start: range.start, end: range.end)
         case "Birth Year":
-            let start = calendar.startOfDay(for: birthDate)
-            let end = calendar.date(byAdding: .year, value: 1, to: start)!
-            let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end)!
-            return (start: start, end: adjustedEnd)
+            let range = DateRange.yearRange(year: 0, birthDate: birthDate)
+            return (start: range.start, end: range.end)
         default:
-            if section.contains("Month") {
-                if let months = Int(section.components(separatedBy: " ").first ?? "") {
-                    let start =
-                        calendar.date(byAdding: .month, value: months - 1, to: birthDate)
-                        ?? birthDate
-                    let end =
-                        calendar.date(byAdding: .month, value: months, to: birthDate) ?? birthDate
-                    return (start: start, end: end)
-                }
-            } else if section.contains("Year") {
-                if let years = Int(section.components(separatedBy: " ").first ?? "") {
-                    let targetYear = calendar.component(.year, from: birthDate) + years
-                    let startComponents = DateComponents(
-                        year: targetYear, month: calendar.component(.month, from: birthDate),
-                        day: calendar.component(.day, from: birthDate))
-                    let start = calendar.date(from: startComponents) ?? birthDate
-                    let end = calendar.date(byAdding: .year, value: 1, to: start) ?? birthDate
-                    let adjustedEnd = calendar.date(byAdding: .day, value: -1, to: end) ?? end
-                    return (start: start, end: adjustedEnd)
-                }
-            } else if section.starts(with: "Week") {
-                if let week = Int(section.components(separatedBy: " ").last ?? "") {
-                    let pregnancyStart =
-                        calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
-                    let start =
-                        calendar.date(byAdding: .day, value: (week - 1) * 7, to: pregnancyStart)
-                        ?? pregnancyStart
-                    let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
-                    let adjustedEnd = calendar.date(byAdding: .second, value: -1, to: end) ?? end
-                    return (start: start, end: adjustedEnd)
-                }
+            if section.contains("Month"),
+                let months = Int(section.components(separatedBy: " ").first ?? "")
+            {
+                let range = DateRange.monthRange(month: months, birthDate: birthDate)
+                return (start: range.start, end: range.end)
+            } else if section.contains("Year"),
+                let years = Int(section.components(separatedBy: " ").first ?? "")
+            {
+                let range = DateRange.yearRange(year: years, birthDate: birthDate)
+                return (start: range.start, end: range.end)
+            } else if section.starts(with: "Week"),
+                let week = Int(section.components(separatedBy: " ").last ?? "")
+            {
+                let range = DateRange.weekRange(week: week, birthDate: birthDate)
+                return (start: range.start, end: range.end)
             }
             throw NSError(domain: "Invalid section", code: 0, userInfo: nil)
         }
@@ -460,5 +432,57 @@ struct VisualEffectView: UIViewRepresentable {
     }
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) {
         uiView.effect = effect
+    }
+}
+
+struct DateRange {
+    let start: Date
+    let end: Date
+
+    static func pregnancyRange(birthDate: Date, calendar: Calendar = .current) -> DateRange {
+        let start = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+        return DateRange(start: start, end: birthDate)
+    }
+
+    static func trimesterRange(trimester: Int, birthDate: Date, calendar: Calendar = .current)
+        -> DateRange
+    {
+        let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+        let start =
+            calendar.date(byAdding: .month, value: (trimester - 1) * 3, to: pregnancyStart)
+            ?? birthDate
+        let end =
+            calendar.date(byAdding: .month, value: trimester * 3, to: pregnancyStart) ?? birthDate
+        return DateRange(start: start, end: end)
+    }
+
+    static func weekRange(week: Int, birthDate: Date, calendar: Calendar = .current) -> DateRange {
+        let pregnancyStart = calendar.date(byAdding: .month, value: -9, to: birthDate) ?? birthDate
+        let start =
+            calendar.date(byAdding: .day, value: (week - 1) * 7, to: pregnancyStart)
+            ?? pregnancyStart
+        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
+        return DateRange(
+            start: start, end: calendar.date(byAdding: .second, value: -1, to: end) ?? end)
+    }
+
+    static func monthRange(month: Int, birthDate: Date, calendar: Calendar = .current) -> DateRange
+    {
+        let start = calendar.date(byAdding: .month, value: month - 1, to: birthDate) ?? birthDate
+        let end = calendar.date(byAdding: .month, value: month, to: birthDate) ?? birthDate
+        return DateRange(start: start, end: end)
+    }
+
+    static func yearRange(year: Int, birthDate: Date, calendar: Calendar = .current) -> DateRange {
+        let targetYear = calendar.component(.year, from: birthDate) + year
+        let startComponents = DateComponents(
+            year: targetYear,
+            month: calendar.component(.month, from: birthDate),
+            day: calendar.component(.day, from: birthDate)
+        )
+        let start = calendar.date(from: startComponents) ?? birthDate
+        let end = calendar.date(byAdding: .year, value: 1, to: start) ?? birthDate
+        return DateRange(
+            start: start, end: calendar.date(byAdding: .day, value: -1, to: end) ?? end)
     }
 }

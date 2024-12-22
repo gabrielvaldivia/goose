@@ -47,34 +47,7 @@ class PersonViewModel: ObservableObject {
         setSelectedPerson(newPerson)
     }
 
-    func addPhoto(to person: inout Person, asset: PHAsset) {
-        print("Adding photo to \(person.name) with date: \(asset.creationDate ?? Date())")
-        if let newPhoto = Photo(asset: asset) {
-            if !person.photos.contains(where: { $0.assetIdentifier == newPhoto.assetIdentifier }) {
-                person.photos.append(newPhoto)
-                person.photos.sort { $0.dateTaken < $1.dateTaken }
-                if let index = people.firstIndex(where: { $0.id == person.id }) {
-                    people[index] = person
-                    savePeople()
-                    objectWillChange.send()
-                    NotificationCenter.default.post(name: .photosUpdated, object: nil)
-                    print(
-                        "Photo added successfully. Total photos for \(person.name): \(person.photos.count)"
-                    )
-                } else {
-                    print("Failed to find person \(person.name) in people array")
-                }
-            } else {
-                print(
-                    "Photo with asset identifier \(newPhoto.assetIdentifier) already exists for \(person.name)"
-                )
-            }
-        } else {
-            print("Failed to create Photo object from asset")
-        }
-    }
-
-    func addPhoto(to person: inout Person, photo: Photo) {
+    private func updatePersonWithNewPhoto(_ person: inout Person, photo: Photo) {
         print("Adding photo to \(person.name) with date: \(photo.dateTaken)")
         if !person.photos.contains(where: { $0.assetIdentifier == photo.assetIdentifier }) {
             person.photos.append(photo)
@@ -95,6 +68,18 @@ class PersonViewModel: ObservableObject {
                 "Photo with asset identifier \(photo.assetIdentifier) already exists for \(person.name)"
             )
         }
+    }
+
+    func addPhoto(to person: inout Person, asset: PHAsset) {
+        if let newPhoto = Photo(asset: asset) {
+            updatePersonWithNewPhoto(&person, photo: newPhoto)
+        } else {
+            print("Failed to create Photo object from asset")
+        }
+    }
+
+    func addPhoto(to person: inout Person, photo: Photo) {
+        updatePersonWithNewPhoto(&person, photo: photo)
     }
 
     func deletePerson(at offsets: IndexSet) {
