@@ -20,7 +20,7 @@ struct MilestoneDetailView: View {
     @State private var isLoading = false
     @State private var showingSlideshowSheet = false
     @State private var loadingError: Error? = nil
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
 
     // Cache filtered photos
     @State private var cachedPhotos: [Photo] = []
@@ -97,61 +97,28 @@ struct MilestoneDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                CircularButton(
-                    systemName: "chevron.left",
-                    action: {
-                        presentationMode.wrappedValue.dismiss()
-                    },
-                    size: 32,
-                    backgroundColor: Color.gray.opacity(0.2),
-                    iconColor: .primary,
-                    blurEffect: false,
-                    iconSize: nil  // Add this line
-                )
-            }
             ToolbarItem(placement: .principal) {
                 Text(sectionTitle)
                     .font(.headline)
                     .fontWeight(.bold)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 16) {
-                    if photosToDisplay().count >= 2 {
-                        CircularButton(
-                            systemName: "square.and.arrow.up",
-                            action: {
-                                showingSlideshowSheet = true
-                            },
-                            size: 32,
-                            backgroundColor: Color.gray.opacity(0.2),
-                            iconColor: .primary,
-                            blurEffect: false,
-                            iconSize: 11
-                        )
-                    }
+                if photosToDisplay().count >= 2 {
                     CircularButton(
-                        systemName: "plus",
+                        systemName: "square.and.arrow.up",
                         action: {
-                            showingImagePicker = true
+                            showingSlideshowSheet = true
                         },
                         size: 32,
                         backgroundColor: Color.gray.opacity(0.2),
                         iconColor: .primary,
                         blurEffect: false,
-                        iconSize: nil  // Add this line
+                        iconSize: 11
                     )
                 }
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .gesture(
-            DragGesture().updating($dragOffset) { value, state, _ in
-                if value.startLocation.x < 20 && value.translation.width > 100 {
-                    self.presentationMode.wrappedValue.dismiss()
-                }
-            }
-        )
+        .navigationBarBackButtonHidden(false)
         .fullScreenCover(item: $selectedPhoto) { photo in
             FullScreenPhotoView(
                 viewModel: viewModel,
@@ -185,8 +152,6 @@ struct MilestoneDetailView: View {
             )
         }
     }
-
-    @GestureState private var dragOffset = CGSize.zero
 
     private var emptyStateView: some View {
         GeometryReader { geometry in
