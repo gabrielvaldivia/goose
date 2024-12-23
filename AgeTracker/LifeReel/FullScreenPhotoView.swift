@@ -693,11 +693,9 @@ struct ThumbnailScrubber: View {
                         forName: NSNotification.Name("photoDeleted"),
                         object: nil,
                         queue: .main
-                    ) { notification in
-                        if let deletedPhotoID = notification.userInfo?["photoID"] as? UUID {
-                            DispatchQueue.main.async {
-                                scrollToCurrentIndex(proxy: scrollProxy)
-                            }
+                    ) { _ in
+                        DispatchQueue.main.async {
+                            scrollToCurrentIndex(proxy: scrollProxy)
                         }
                     }
                 }

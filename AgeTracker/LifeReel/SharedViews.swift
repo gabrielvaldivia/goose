@@ -115,7 +115,7 @@ public struct PhotoUtils {
     static func getDateRangeForSection(_ section: String, person: Person) throws -> (
         start: Date, end: Date
     ) {
-        let calendar = Calendar.current
+        _ = Calendar.current
         let birthDate = person.dateOfBirth
 
         switch section {
@@ -160,7 +160,6 @@ public struct PhotoUtils {
 
     static func sectionForPhoto(_ photo: Photo, person: Person) -> String {
         let exactAge = AgeCalculator.calculate(for: person, at: photo.dateTaken)
-        let calendar = Calendar.current
 
         if exactAge.isPregnancy {
             switch person.pregnancyTracking {
@@ -175,8 +174,8 @@ public struct PhotoUtils {
         }
 
         // Check if the photo is within the birth month
-        let nextMonth = calendar.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
-        let endOfBirthMonth = calendar.date(byAdding: .day, value: -1, to: nextMonth)!
+        let nextMonth = Calendar.current.date(byAdding: .month, value: 1, to: person.dateOfBirth)!
+        let endOfBirthMonth = Calendar.current.date(byAdding: .day, value: -1, to: nextMonth)!
         if photo.dateTaken >= person.dateOfBirth && photo.dateTaken <= endOfBirthMonth {
             return "Birth Month"
         }
@@ -204,9 +203,8 @@ public struct PhotoUtils {
 
     static func getGeneralAgeStacks(for person: Person) -> [String] {
         var stacks: [String] = ["Pregnancy"]
-        let calendar = Calendar.current
         let currentDate = Date()
-        let ageComponents = calendar.dateComponents(
+        let ageComponents = Calendar.current.dateComponents(
             [.year, .month], from: person.dateOfBirth, to: currentDate)
         let currentAgeInMonths = (ageComponents.year ?? 0) * 12 + (ageComponents.month ?? 0)
         let currentAgeInYears = ageComponents.year ?? 0

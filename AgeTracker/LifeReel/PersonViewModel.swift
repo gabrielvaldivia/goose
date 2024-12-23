@@ -210,7 +210,7 @@ class PersonViewModel: ObservableObject {
     func loadPhotos(
         for person: Person, page: Int, perPage: Int, completion: @escaping (Bool) -> Void
     ) {
-        guard let index = people.firstIndex(where: { $0.id == person.id }) else {
+        guard people.contains(where: { $0.id == person.id }) else {
             completion(false)
             return
         }

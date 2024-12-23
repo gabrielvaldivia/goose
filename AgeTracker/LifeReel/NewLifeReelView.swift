@@ -258,7 +258,7 @@ struct NewLifeReelView: View {
             ageInMonths < 24
             ? Person.BirthMonthsDisplay.twelveMonths : Person.BirthMonthsDisplay.none
 
-        var newPerson = Person(
+        let newPerson = Person(
             name: self.name, dateOfBirth: dateOfBirth, birthMonthsDisplay: birthMonthsDisplay)
 
         // First add the person to the array
