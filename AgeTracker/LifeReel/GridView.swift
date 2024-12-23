@@ -8,6 +8,7 @@
 import Foundation
 import Photos
 import SwiftUI
+import UIKit
 
 struct GridView: View {
     @ObservedObject var viewModel: PersonViewModel
@@ -20,6 +21,8 @@ struct GridView: View {
 
     @State private var orientation = UIDeviceOrientation.unknown
     @State private var showingImagePicker = false  // Add this line
+    @State private var showingSlideshowSheet = false
+    @State private var selectedMilestone: String?
 
     // Add image cache
     @State private var imageCache: [String: UIImage] = [:]
@@ -128,13 +131,11 @@ struct GridView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
                                 ForEach(getMilestones(for: person), id: \.0) { milestone, photos in
-                                    NavigationLink(
-                                        destination: MilestoneDetailView(
-                                            viewModel: viewModel,
-                                            person: viewModel.bindingForPerson(person),
-                                            sectionTitle: milestone
-                                        )
-                                    ) {
+                                    Button(action: {
+                                        selectedPhoto = nil
+                                        selectedMilestone = milestone
+                                        showingSlideshowSheet = true
+                                    }) {
                                         MilestoneTile(
                                             milestone: milestone,
                                             photos: photos,
@@ -228,6 +229,27 @@ struct GridView: View {
                     // Handle newly added photos if needed
                 }
             )
+        }
+        .sheet(isPresented: $showingSlideshowSheet) {
+            if let milestone = selectedMilestone {
+                let milestonePhotos = person.photos.filter { photo in
+                    let photoSection = PhotoUtils.sectionForPhoto(photo, person: person)
+                    let shouldInclude = photoSection == milestone
+                    
+                    if person.pregnancyTracking == .none {
+                        let age = AgeCalculator.calculate(for: person, at: photo.dateTaken)
+                        return shouldInclude && !age.isPregnancy
+                    }
+                    return shouldInclude
+                }
+                
+                ShareSlideshowView(
+                    photos: milestonePhotos,
+                    person: person,
+                    sectionTitle: milestone,
+                    forceAllPhotos: true
+                )
+            }
         }
     }
 

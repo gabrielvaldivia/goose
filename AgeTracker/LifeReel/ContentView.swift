@@ -232,6 +232,8 @@ struct ContentView: View {
                     person: person,
                     sectionTitle: "All Photos"
                 )
+                .presentationDetents([.large])
+                .presentationBackground(.regularMaterial)
             } else {
                 Text("No person selected")
             }

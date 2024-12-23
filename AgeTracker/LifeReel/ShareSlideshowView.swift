@@ -9,6 +9,7 @@ import AVFoundation
 import Foundation
 import Photos
 import SwiftUI
+import UIKit
 import Vision
 
 enum SlideshowRange: Hashable {
@@ -40,28 +41,6 @@ enum SlideshowRange: Hashable {
     }
 }
 
-enum SharePlatform {
-    case facebook, instagram, instagramStory, sms
-
-    var label: String {
-        switch self {
-        case .facebook: return "Facebook"
-        case .instagram: return "Instagram"
-        case .instagramStory: return "IG Story"
-        case .sms: return "Messages"
-        }
-    }
-
-    var iconName: String {
-        switch self {
-        case .facebook: return "FacebookIcon"
-        case .instagram: return "InstagramIcon"
-        case .instagramStory: return "InstagramStoryIcon"
-        case .sms: return "SMSIcon"
-        }
-    }
-}
-
 // ShareSlideshowView
 struct ShareSlideshowView: View {
     // Properties
@@ -87,8 +66,8 @@ struct ShareSlideshowView: View {
 
     @State private var currentImageId = UUID()
     @State private var baseImageDuration: Double = 3.0  // Base duration for each image
-    @State private var imageDuration: Double = 3.0  // Actual duration, affected by speed
-    @State private var effectOption: EffectOption = .kenBurns
+    @State private var imageDuration: Double = 1.5  // Actual duration, affected by speed
+    @State private var effectOption: EffectOption = .none
 
     @State private var audioPlayer: AVAudioPlayer?
     @State private var selectedMusic: String?
@@ -118,6 +97,9 @@ struct ShareSlideshowView: View {
 
         // Set milestone mode based on the forceAllPhotos parameter
         _milestoneMode = State(initialValue: forceAllPhotos ? .allPhotos : .milestones)
+
+        // Set default playback speed to 2x
+        _playbackSpeed = State(initialValue: 2.0)
     }
 
     enum TitleOption: String, CaseIterable, CustomStringConvertible {
@@ -145,31 +127,79 @@ struct ShareSlideshowView: View {
 
     // Body
     var body: some View {
-        VStack(alignment: .center, spacing: 10) {
-            navigationBar
-
+        GeometryReader { geometry in
             contentView
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color(UIColor.secondarySystemBackground))
-        .onAppear(perform: onAppear)
-        .onChange(of: isPlaying) { oldValue, newValue in
-            handlePlayingChange(oldValue: oldValue, newValue: newValue)
-        }
-        .onChange(of: playbackSpeed) { oldValue, newValue in
-            handleSpeedChange(oldValue: oldValue, newValue: newValue)
-        }
-        .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in
-            handleIndexChange(oldValue: oldValue, newValue: newValue)
-        }
-        .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
-        .onDisappear {
-            stopAudio()
-        }
-        .onChange(of: milestoneMode) { oldValue, newValue in
-            if forceAllPhotos && newValue != .allPhotos {
-                milestoneMode = .allPhotos
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.primary.colorInvert())
+                .edgesIgnoringSafeArea(.all)
+                .presentationCornerRadius(20)
+                .onAppear(perform: onAppear)
+                .onChange(of: isPlaying) { oldValue, newValue in
+                    handlePlayingChange(oldValue: oldValue, newValue: newValue)
+                }
+                .onChange(of: playbackSpeed) { oldValue, newValue in
+                    handleSpeedChange(oldValue: oldValue, newValue: newValue)
+                }
+                .onChange(of: currentFilteredPhotoIndex) { oldValue, newValue in
+                    handleIndexChange(oldValue: oldValue, newValue: newValue)
+                }
+                .alert("Coming Soon", isPresented: $showComingSoonAlert, actions: comingSoonAlert)
+                .onDisappear {
+                    stopAudio()
+                }
+                .onChange(of: milestoneMode) { oldValue, newValue in
+                    if forceAllPhotos && newValue != .allPhotos {
+                        milestoneMode = .allPhotos
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    if !isEditing {
+                        Button(action: {
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.black.opacity(0.2))
+                                .clipShape(Circle())
+                        }
+                        .padding()
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if isEditing {
+                        Button(action: {
+                            withAnimation {
+                                isEditing = false
+                            }
+                        }) {
+                            Text("Done")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.black.opacity(0.2))
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+                        .padding()
+                    } else {
+                        Button(action: {
+                            withAnimation {
+                                isEditing = true
+                            }
+                        }) {
+                            Text("Edit")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.black.opacity(0.2))
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+                        .padding()
+                    }
+                }
         }
     }
 
@@ -178,7 +208,7 @@ struct ShareSlideshowView: View {
         if filteredPhotos.isEmpty {
             emptyStateView
         } else {
-            VStack {
+            VStack(spacing: 0) {
                 photoView
                 if isEditing {
                     bottomControls
@@ -189,37 +219,6 @@ struct ShareSlideshowView: View {
         }
     }
 
-    private var navigationBar: some View {
-        HStack {
-            if isEditing {
-                Button("Cancel") {
-                    withAnimation {
-                        isEditing = false
-                        // Revert any unsaved changes here
-                    }
-                }
-            } else {
-                cancelButton
-            }
-            Spacer()
-            Text("Slideshow")
-                .font(.headline)
-            Spacer()
-            if isEditing {
-                Button("Save") {
-                    withAnimation {
-                        isEditing = false
-                        // Save changes here
-                    }
-                }
-            } else {
-                editButton
-            }
-        }
-        .padding(.horizontal)
-        .padding(.top, 10)
-    }
-
     private var emptyStateView: some View {
         Text("No photos available for this range")
             .foregroundColor(.secondary)
@@ -227,8 +226,7 @@ struct ShareSlideshowView: View {
     }
 
     private var photoView: some View {
-        VStack {
-            Spacer()
+        GeometryReader { geometry in
             if !filteredPhotos.isEmpty {
                 let safeIndex = min(currentFilteredPhotoIndex, filteredPhotos.count - 1)
                 if safeIndex >= 0 && safeIndex < filteredPhotos.count {
@@ -254,8 +252,7 @@ struct ShareSlideshowView: View {
                             PlayButton(isPlaying: $isPlaying)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())  // Ensures the entire area is tappable
                     .onTapGesture {
                         isPlaying.toggle()
@@ -268,57 +265,74 @@ struct ShareSlideshowView: View {
                 Text("No photos available")
                     .foregroundColor(.secondary)
             }
-            Spacer()
         }
     }
 
     private var shareOptions: some View {
         HStack(spacing: 20) {
-            shareButton(for: .facebook)
-            shareButton(for: .instagram)
-            shareButton(for: .instagramStory)
-            shareButton(for: .sms)
-        }
-        .padding()
-    }
+            Button(action: {
+                showComingSoonAlert = true
+            }) {
+                VStack(spacing: 4) {
+                    Image("FacebookIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 36, height: 36)
+                    Text("Facebook")
+                        .font(.caption2)
+                        .foregroundColor(.primary)
+                }
+            }
 
-    private func shareButton(for platform: SharePlatform) -> some View {
-        Button(action: {
-            shareToPlaftorm(platform)
-        }) {
-            VStack {
-                CustomIcon(name: platform.iconName, renderingMode: .original)
-                    .frame(width: 44, height: 44)
-                Text(platform.label)
-                    .font(.caption)
-                    .foregroundColor(.primary)
+            Button(action: {
+                showComingSoonAlert = true
+            }) {
+                VStack(spacing: 4) {
+                    Image("InstagramIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 36, height: 36)
+                    Text("Instagram")
+                        .font(.caption2)
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button(action: {
+                showComingSoonAlert = true
+            }) {
+                VStack(spacing: 4) {
+                    Image("InstagramStoryIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 36, height: 36)
+                    Text("IG Story")
+                        .font(.caption2)
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button(action: {
+                showComingSoonAlert = true
+            }) {
+                VStack(spacing: 4) {
+                    Image("SMSIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 36, height: 36)
+                    Text("Messages")
+                        .font(.caption2)
+                        .foregroundColor(.primary)
+                }
             }
         }
-    }
-
-    private var editButton: some View {
-        Button("Edit") {
-            withAnimation {
-                isEditing = true
-            }
-        }
-    }
-
-    private func shareToPlaftorm(_ platform: SharePlatform) {
-        switch platform {
-        case .facebook, .instagram, .instagramStory:
-            // Implement specific sharing logic for each platform
-            print("Sharing to \(platform.label)")
-        case .sms:
-            // Implement native share sheet
-            print("Opening native share sheet")
-        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .padding(.bottom, 10)
     }
 
     private var bottomControls: some View {
         VStack(spacing: 0) {
-            Divider()
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
 
@@ -415,8 +429,8 @@ struct ShareSlideshowView: View {
                 .padding(.vertical, 10)
             }
         }
-        .frame(height: 80)
-        .background(Color(UIColor.secondarySystemBackground))
+        .frame(height: 67)
+        .padding(.bottom, 20)
     }
 
     private var musicBinding: Binding<String> {
@@ -597,12 +611,6 @@ struct ShareSlideshowView: View {
 
     private func groupAndSortPhotos() -> [(String, [Photo])] {
         return PhotoUtils.groupAndSortPhotos(for: person)
-    }
-
-    private var cancelButton: some View {
-        Button("Close") {
-            presentationMode.wrappedValue.dismiss()
-        }
     }
 
     private var filteredPhotos: [Photo] {
